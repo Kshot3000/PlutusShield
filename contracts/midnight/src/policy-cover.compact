@@ -11,6 +11,10 @@
  *   policy whose committed coverage is >= minCoverage. Partners (DEXes,
  *   lending markets) can gate "insured-only" flows on this.
  *
+ * Holder rotation: rotateHolder(policyId, newHolderCommitment) lets the current
+ * holder move an ACTIVE policy to a new key (lost-device recovery, wallet
+ * migration, private transfer) without revealing either key.
+ *
  * Authorization follows the witness-commitment pattern (no ownPublicKey()):
  *   roleCommitment(sk, tag) = persistentHash("plutusshield:role:" || tag || sk)
  *
@@ -49,6 +53,7 @@ export ledger activePolicies: Counter;
 export ledger claimsFiled: Counter;
 export ledger claimsPaid: Counter;
 export ledger coverProofs: Counter;
+export ledger holderRotations: Counter;
 
 /* ---------- private witnesses ---------- */
 
@@ -155,6 +160,34 @@ export circuit proveCover(policyId: Bytes<32>, minCoverage: Uint<64>): [] {
   );
   assert(disclose(amount >= minCoverage), "coverage below requested minimum");
   coverProofs.increment(1);
+}
+
+/*
+ * Current holder rotates the policy to a new holder commitment (key rotation
+ * or private transfer). Only the holder field changes; coverage, expiry and
+ * evidence are untouched. The old key immediately loses proveCover/fileClaim
+ * and the new key gains them. The coverage opening (amount, salt) is handed to
+ * the new holder off-ledger; they can check it against the public commitment.
+ * Only ACTIVE policies rotate: a pending claim, a paid claim or an expired
+ * policy is frozen to the holder of record.
+ */
+export circuit rotateHolder(policyId: Bytes<32>, newHolderCommitment: Bytes<32>): [] {
+  const id = disclose(policyId);
+  assert(policies.member(id), "unknown policy");
+  const rec = policies.lookup(id);
+  assert(rec.status == PolicyStatus.ACTIVE, "policy not transferable");
+  assertHolder(rec);
+  const next = disclose(newHolderCommitment);
+  assert(next != pad(32, ""), "empty holder commitment");
+  assert(next != rec.holder, "new holder matches current holder");
+  policies.insert(id, PolicyRecord {
+    holder: next,
+    coverage: rec.coverage,
+    expiry: rec.expiry,
+    status: rec.status,
+    evidence: rec.evidence
+  });
+  holderRotations.increment(1);
 }
 
 /* Holder files a claim; only a commitment to the evidence bundle goes on-ledger. */

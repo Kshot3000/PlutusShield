@@ -135,3 +135,90 @@ test('issuer expires an active policy; expired cover cannot be proven', () => {
   assert.equal(L(s).activePolicies, 0n);
   assert.throws(() => call(s, holder, 'proveCover', policyId, 1n), /not active/);
 });
+
+/* ---------- holder rotation / private transfer ---------- */
+
+const newHolderSk = b32();
+const newHolderCommit = roleCommitment(newHolderSk, holderTag());
+
+// Register a policy, then rotate it from holderSk to newHolderSk.
+function rotated() {
+  const base = setup();
+  const before = L(base.state).policies.lookup(base.policyId);
+  const state = call(base.state, base.holder, 'rotateHolder', base.policyId, newHolderCommit);
+  const newHolder = { ...base.holder, sk: newHolderSk };
+  return { ...base, state, before, newHolder };
+}
+
+test('holder rotates to a new key; only the holder commitment changes', () => {
+  const { state, policyId, before } = rotated();
+  const l = L(state);
+  const rec = l.policies.lookup(policyId);
+  assert.deepEqual([...rec.holder], [...newHolderCommit]);
+  assert.deepEqual([...rec.coverage], [...before.coverage]);
+  assert.equal(rec.expiry, before.expiry);
+  assert.equal(rec.status, PolicyStatus.ACTIVE);
+  assert.equal(l.holderRotations, 1n);
+  assert.equal(l.activePolicies, 1n);
+});
+
+test('after rotation the old key can no longer prove, claim or rotate', () => {
+  const { state, policyId, holder } = rotated();
+  assert.throws(() => call(state, holder, 'proveCover', policyId, 1n), /does not hold/);
+  assert.throws(() => call(state, holder, 'fileClaim', policyId, b32()), /does not hold/);
+  assert.throws(() => call(state, holder, 'rotateHolder', policyId, roleCommitment(holderSk, holderTag())), /does not hold/);
+});
+
+test('after rotation the new key can prove cover and file a claim', () => {
+  const { state, policyId, newHolder } = rotated();
+  let s = call(state, newHolder, 'proveCover', policyId, 25_000n);
+  assert.equal(L(s).coverProofs, 1n);
+  s = call(s, newHolder, 'fileClaim', policyId, b32());
+  assert.equal(L(s).policies.lookup(policyId).status, PolicyStatus.CLAIM_PENDING);
+  assert.equal(L(s).claimsFiled, 1n);
+});
+
+test('new holder can rotate again (chain of transfers)', () => {
+  const { state, policyId, holder, newHolder } = rotated();
+  const s = call(state, newHolder, 'rotateHolder', policyId, roleCommitment(holderSk, holderTag()));
+  assert.equal(L(s).holderRotations, 2n);
+  assert.equal(L(call(s, holder, 'proveCover', policyId, 1n)).coverProofs, 1n);
+});
+
+test('non-holder cannot rotate a policy', () => {
+  const { state, policyId, holder } = setup();
+  const stranger = { ...holder, sk: strangerSk };
+  assert.throws(
+    () => call(state, stranger, 'rotateHolder', policyId, roleCommitment(strangerSk, holderTag())),
+    /does not hold/,
+  );
+  assert.throws(
+    () => call(state, { sk: issuerSk, openings: {} }, 'rotateHolder', policyId, newHolderCommit),
+    /does not hold/,
+  );
+});
+
+test('rotation rejects empty or unchanged holder commitments and unknown ids', () => {
+  const { state, policyId, holder } = setup();
+  assert.throws(() => call(state, holder, 'rotateHolder', policyId, new Uint8Array(32)), /empty holder commitment/);
+  assert.throws(
+    () => call(state, holder, 'rotateHolder', policyId, roleCommitment(holderSk, holderTag())),
+    /matches current holder/,
+  );
+  assert.throws(() => call(state, holder, 'rotateHolder', b32(), newHolderCommit), /unknown policy/);
+});
+
+test('cannot rotate while a claim is pending', () => {
+  const { state, policyId, holder } = setup();
+  const s = call(state, holder, 'fileClaim', policyId, b32());
+  assert.throws(() => call(s, holder, 'rotateHolder', policyId, newHolderCommit), /not transferable/);
+});
+
+test('cannot rotate after payout or expiry', () => {
+  const { state, policyId, holder } = setup();
+  let paid = call(state, holder, 'fileClaim', policyId, b32());
+  paid = call(paid, { sk: assessorSk, openings: {} }, 'resolveClaim', policyId, true);
+  assert.throws(() => call(paid, holder, 'rotateHolder', policyId, newHolderCommit), /not transferable/);
+  const expired = call(state, { sk: issuerSk, openings: {} }, 'expirePolicy', policyId);
+  assert.throws(() => call(expired, holder, 'rotateHolder', policyId, newHolderCommit), /not transferable/);
+});
