@@ -171,6 +171,8 @@ export function MyPolicies({ chain }: { chain: CoverChain }) {
             checks when you prove cover or file a claim there, without revealing your wallet or the amount. &ldquo;On this device&rdquo;
             means the saved key re-derives this policy&apos;s on-chain commitment. Keys stay in this browser until you export them;
             on another device, use &ldquo;Restore from backup&rdquo;. Policies bought before Midnight keys shipped (Oct 6, 2026) have none.
+            &ldquo;Mirrored on Midnight&rdquo; is read live from the Midnight Preprod indexer: the policy id is a key in the
+            registry&apos;s public state, so its holder can prove cover there.
           </p>
         </div>
       )}

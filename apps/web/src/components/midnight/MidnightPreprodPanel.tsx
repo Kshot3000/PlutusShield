@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/Button";
 import { explorerTx } from "@/lib/preview";
 import { MIDNIGHT_PREPROD as M, shortHash } from "@/lib/midnightPreprod";
+import { ActivityFeed, LiveCounters } from "./LiveContractActivity";
 
 const rows: { step: string; what: string; hash: string; href?: string; block?: number }[] = [
   {
@@ -23,7 +24,7 @@ const rows: { step: string; what: string; hash: string; href?: string; block?: n
   },
 ];
 
-/** Live Midnight Preprod proof that a Cardano policy has a private twin. Public data only. */
+/** Live Midnight Preprod proof that a Cardano policy has a private twin. Public data only; counters and the activity feed stream from the Preprod indexer. */
 export function MidnightPreprodPanel() {
   return (
     <section aria-labelledby="midnight-preprod-title" className="glass-panel relative mt-6 overflow-hidden p-6 sm:p-8">
@@ -46,16 +47,7 @@ export function MidnightPreprodPanel() {
             proof and learn nothing else.
           </p>
         </div>
-        <dl className="grid grid-cols-2 gap-3 text-right">
-          <div className="rounded-2xl border border-[var(--hairline)] bg-white/[0.02] px-4 py-3">
-            <dt className="font-mono-label text-[9px] text-text-dim">Active policies</dt>
-            <dd className="font-display text-2xl text-text">{M.ledger.activePolicies}</dd>
-          </div>
-          <div className="rounded-2xl border border-[var(--hairline)] bg-white/[0.02] px-4 py-3">
-            <dt className="font-mono-label text-[9px] text-text-dim">Cover proofs</dt>
-            <dd className="font-display text-2xl text-text">{M.ledger.coverProofs}</dd>
-          </div>
-        </dl>
+        <LiveCounters />
       </div>
 
       <ol className="relative mt-6 grid gap-3 md:grid-cols-3">
@@ -78,6 +70,8 @@ export function MidnightPreprodPanel() {
           </li>
         ))}
       </ol>
+
+      <ActivityFeed />
 
       <div className="relative mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--hairline)] pt-4">
         <p className="min-w-0 font-mono text-[11px] text-text-dim">

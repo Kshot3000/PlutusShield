@@ -118,7 +118,7 @@ if (mode === "policies") {
   await page.locator("#my-policies").scrollIntoViewIfNeeded();
   await page.locator("#my-policies").screenshot({ path: "/tmp/plutusshield-my-policies.png" });
   const keys = await page.locator("#my-policies tbody tr td:nth-child(6)").allInnerTexts();
-  console.log(JSON.stringify({ rows: actions.length, actions, midnightKeys: keys.map((k) => k.split("\n")[0]), midnight }));
+  console.log(JSON.stringify({ rows: actions.length, actions, midnightKeys: keys.map((k) => k.split("\n")[0]), mirrored: keys.map((k) => k.split("\n")[1] ?? null), midnight }));
   console.log(logs.filter((l) => /error|warn/i.test(l)).slice(0, 15).join("\n"));
   await browser.close();
   process.exit(actions.length ? 0 : 1);

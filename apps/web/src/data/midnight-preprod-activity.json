@@ -1,0 +1,31 @@
+{
+ "takenAt": "2026-10-06T18:47:23.269Z",
+ "address": "d84c618775ffa4d9c2e9283b6fe95319cecd708e84742c27ec4b6762925e8787",
+ "fromHeight": 2865271,
+ "actions": [
+  {
+   "entryPoint": "deploy",
+   "txHash": "f83ba034a4000e952a41cae4cf7ea07279962ee9bc32e45e766878f28963e6b2",
+   "height": 2865271,
+   "timestamp": 1791309456000,
+   "status": "SUCCESS"
+  },
+  {
+   "entryPoint": "registerPolicy",
+   "txHash": "151a5ede0f1a87d784d1b2a541b9bfc3b00895a36db853ccf4df036be544300e",
+   "height": 2865275,
+   "timestamp": 1791309480000,
+   "status": "SUCCESS"
+  },
+  {
+   "entryPoint": "proveCover",
+   "txHash": "dee4fe6cdd05eb59dd28e2787f66de2ae6198339d2f33cc4130cedd762247b6c",
+   "height": 2865279,
+   "timestamp": 1791309504000,
+   "status": "SUCCESS"
+  }
+ ],
+ "mirroredPolicyIds": [
+  "72512facd0a8eb5257888b8f3b0ee71b774862cc7f4c7d7cc4f124c6f6d745d0"
+ ]
+}

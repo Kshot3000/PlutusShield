@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { isEncryptedPolicyKey, type PolicyKey } from "@plutusshield/sdk/midnight";
 import { exportPolicyKey, importPolicyKey, keyState, usePolicyKeys, type KeyState } from "@/lib/policyKeys";
+import { MirroredOnMidnight } from "@/components/midnight/LiveContractActivity";
 
 const inputCls =
   "h-9 w-full rounded-lg border border-border bg-bg-muted px-3 text-[13px] text-text outline-none transition-colors placeholder:text-text-dim focus:border-accent focus:ring-2 focus:ring-accent/30 [color-scheme:dark]";
@@ -175,6 +176,7 @@ export function MidnightKeyCell({ policyId, midnightCommitment, holder }: { poli
   return (
     <div className="max-w-[230px] space-y-1.5">
       <Badge variant={s.variant}>{s.label}</Badge>
+      <MirroredOnMidnight policyId={policyId} />
       {state === "missing" && !holder && <span className="block text-[11px] leading-snug text-text-dim">The key stays with whoever bought it.</span>}
       {state === "mismatch" && <span className="block text-[11px] leading-snug text-[var(--gold)]">The saved key doesn&apos;t open this policy&apos;s on-chain commitment.</span>}
 

@@ -123,6 +123,14 @@ node policy-cover-preprod.mjs
 
 It needs a funded Preprod wallet (tNIGHT plus generated tDUST) and a local proof server on `:6300`. Set `MIDNIGHT_POLICY_COVER_ADDRESS` (or keep the deploy record) to reuse the contract instead of deploying again.
 
+### Reading it live
+
+The web app reads the registry straight from the public Preprod indexer (GraphQL v4), with no wallet, keys or WASM: `apps/web/src/lib/midnightIndexer.ts` streams `contractActions` for the contract over the indexer's `graphql-transport-ws` socket from the deploy block (history, then new calls as they land) and fetches the latest serialized state over HTTP.
+
+- `/app` shows live counters (successful `registerPolicy`, `proveCover`, `fileClaim` calls) and a contract activity feed with circuit, tx hash and block.
+- `/cover` My policies marks each policy **Mirrored on Midnight** when its 32-byte policy id is a key in the contract's public `policies` map (ids are serialized verbatim in the state).
+- `pnpm build` runs `apps/web/scripts/snapshot-midnight.mjs` first, baking the same data into `apps/web/src/data/midnight-preprod-activity.json` so the static site still shows real Midnight state if a browser can't reach the indexer.
+
 ## Status
 
 Compiles, passes local simulation, and runs on Midnight Preprod (deploy, `registerPolicy`, `proveCover`). Registration is operator-run from the box today; next is relaying every Cardano Buy automatically. Not audited. Expiry here is issuer-driven and mirrors the Cardano side, where `Expire` in `contracts/cardano` is time-locked (expiry + claim grace) and callable by anyone.
