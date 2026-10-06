@@ -24,6 +24,24 @@
  * one policy at a time, stops at the first failure. Pre-binding policies and
  * policies with neither a ticket nor a key are reported, never faked.
  *
+ * `--claim <policyId> --evidence <input.json>` and `--resolve <policyId>
+ * --approve|--reject` (claims relay, contracts/midnight/relay/claims.ts) run the
+ * exploit-claim lifecycle on an already-mirrored policy, in argv order, in one
+ * wallet sync:
+ *   claim:   seal the evidence input with packages/sdk/src/evidence.ts
+ *            (canonical bundle -> SHA-256 digest -> fresh salt ->
+ *            evidenceCommitment), save the encrypted envelope + key file under
+ *            $PLUTUSSHIELD_SECRETS/evidence/, then fileClaim(policyId,
+ *            commitment) as the holder (policy key from the key dirs, re-checked
+ *            against the Cardano datum and the ledger's holder commitment).
+ *   resolve: as the assessor, open the bundle off-ledger and check it against
+ *            the commitment the ledger holds for the policy (verifyEvidence);
+ *            only then resolveClaim(policyId, approved). Approve -> PAID,
+ *            reject -> ACTIVE with the evidence cleared.
+ * Preflight (ledger state, keys, Cardano datum, sealing) runs before the wallet
+ * syncs, so a bad request fails in seconds, not after the dust sync; add
+ * `--dry-run` to stop after it (no wallet, no proof, no tx).
+ *
  * Only reports success from finalized tx data (txId + blockHeight + status).
  * Never prints seeds or secrets. Writes public results to
  * $PLUTUSSHIELD_SECRETS/midnight-preprod-deploy.json after every policy, and to
@@ -70,6 +88,8 @@ const BLOCKFROST = env('BLOCKFROST_PREVIEW_ID', '');
 const DEPLOY_RECORD = path.join(SECRETS, 'midnight-preprod-deploy.json');
 const PUBLIC_RECORD = env('PLUTUSSHIELD_PUBLIC_RECORD', '');
 const ALL = process.argv.includes('--all');
+const ARGV = process.argv.slice(2);
+const CLAIM_MODE = ARGV.includes('--claim') || ARGV.includes('--resolve');
 const KEY_DIRS = env('PLUTUSSHIELD_POLICY_KEY_DIRS', [path.join(SECRETS, 'policy-keys'), path.join(REPO, 'contracts/cardano/deploy/.keys/policy-keys')].join(','))
   .split(',')
   .filter(Boolean);
@@ -164,8 +184,6 @@ async function main() {
   const issuerState = { sk: roles.issuerSk, openings: {} };
   const assessorCommitment = pure.roleCommitment(u8(roles.assessorSk), pure.assessorTag());
 
-  // Validate the key file against Cardano before spending any time on the wallet.
-  let keyText = !ALL && KEY_FILE && fs.existsSync(KEY_FILE) ? fs.readFileSync(KEY_FILE, 'utf8') : null;
   const checkKey = async (text) => {
     const key = Holder.parsePolicyKey(text);
     const { policy, outRef } = await cardanoPolicy(key, Chain);
@@ -174,6 +192,75 @@ async function main() {
     log(`policy ${key.policyId.slice(0, 16)}… datum ${outRef}: key opens midnight_commitment ${policy.midnightCommitment.slice(0, 16)}…`);
     return { key: { ...key, coverage: policy.coverage.toString(), expiry: policy.expiry.toString() }, policy, outRef };
   };
+
+  // Claims mode: plan + check everything against the public ledger and Cardano before the wallet sync.
+  const Claims = CLAIM_MODE ? await import(pathToFileURL(path.join(REPO, 'contracts/midnight/relay/claims.ts')).href) : null;
+  const claimOps = Claims ? Claims.parseClaimOps(ARGV) : [];
+  const publicData = indexerPublicDataProvider(PREPROD.indexer, PREPROD.indexerWS);
+  const ledgerAt = async (address) => {
+    const state = await publicData.queryContractState(address);
+    if (!state) throw new Error(`no contract state for ${address}`);
+    try {
+      return ledger(state.data);
+    } catch {
+      return ledger(state);
+    }
+  };
+  const statusName = (n) => ['NONE', 'ACTIVE', 'CLAIM_PENDING', 'PAID', 'EXPIRED'][Number(n)] ?? `#${n}`;
+  const claimView = (l, id) => {
+    if (!l.policies.member(u8(id))) return null;
+    const r = l.policies.lookup(u8(id));
+    return { status: statusName(r.status), evidence: hex(r.evidence), holder: hex(r.holder) };
+  };
+  const ledgerSummary = (l, id) => {
+    const v = claimView(l, id);
+    return { status: v?.status ?? 'NONE', evidence: v?.evidence ?? null, activePolicies: String(l.activePolicies), claimsFiled: String(l.claimsFiled), claimsPaid: String(l.claimsPaid) };
+  };
+  const prepared = [];
+  if (CLAIM_MODE) {
+    const rec0 = fs.existsSync(DEPLOY_RECORD) ? JSON.parse(fs.readFileSync(DEPLOY_RECORD, 'utf8')) : null;
+    const address = env('MIDNIGHT_POLICY_COVER_ADDRESS', rec0?.contractAddress);
+    if (!address) throw new Error('claims mode needs a deployed contract (deploy record or MIDNIGHT_POLICY_COVER_ADDRESS)');
+    const Plan = await import(pathToFileURL(path.join(REPO, 'contracts/midnight/relay/plan.ts')).href);
+    const keys = Plan.localPolicyKeys(KEY_DIRS);
+    const l0 = await ledgerAt(address);
+    const planned = new Map(); // policyId -> status after the ops so far
+    for (const op of claimOps) {
+      const now = planned.get(op.policyId) ?? claimView(l0, op.policyId)?.status ?? 'NONE';
+      if (op.kind === 'claim') {
+        if (now !== 'ACTIVE') throw new Error(`--claim ${op.policyId.slice(0, 16)}…: policy is ${now} on Midnight, not ACTIVE`);
+        const local = keys.get(op.policyId);
+        if (!local) throw new Error(`--claim ${op.policyId.slice(0, 16)}…: no holder policy key in ${KEY_DIRS.join(', ')}`);
+        const c = await checkKey(fs.readFileSync(local.file, 'utf8'));
+        const onLedger = claimView(l0, op.policyId);
+        if (onLedger && onLedger.holder !== c.key.holderCommitment.toLowerCase()) throw new Error(`--claim ${op.policyId.slice(0, 16)}…: key is not the ledger's holder (rotated?)`);
+        const sealed = await Claims.sealEvidenceFile(path.resolve(op.evidence), op.policyId);
+        const files = Claims.saveSealed(SECRETS, sealed);
+        log(`sealed evidence for ${op.policyId.slice(0, 16)}…: commitment ${sealed.commitment.slice(0, 16)}… (fresh salt; envelope + key file in ${path.dirname(files.envelope)})`);
+        prepared.push({ op, key: c.key, cardano: { network: 'preview', buyTx: c.key.txHash, policyDatum: c.outRef }, sealed });
+        planned.set(op.policyId, 'CLAIM_PENDING');
+      } else {
+        if (now !== 'CLAIM_PENDING') throw new Error(`--resolve ${op.policyId.slice(0, 16)}…: policy is ${now}, no pending claim`);
+        // A claim already on the ledger is assessed now, so a bundle that doesn't open fails before the sync.
+        const v = claimView(l0, op.policyId);
+        if (v?.status === 'CLAIM_PENDING' && !planned.has(op.policyId)) {
+          const a = await Claims.assessClaim({ policyId: op.policyId, ledger: v, ...Claims.loadFiling(SECRETS, op, v.evidence) });
+          if (!a.ok) throw new Error(`--resolve ${op.policyId.slice(0, 16)}…: assessor check failed: ${a.reason}`);
+          log(`preflight assessor check ${op.policyId.slice(0, 16)}…: ${a.reason}`);
+        }
+        prepared.push({ op });
+        planned.set(op.policyId, op.approved ? 'PAID' : 'ACTIVE');
+      }
+    }
+    if (ARGV.includes('--dry-run')) {
+      log(`claims plan (dry run, no wallet, no txs): ${claimOps.map((o) => `${o.kind} ${o.policyId.slice(0, 16)}…${o.kind === 'resolve' ? (o.approved ? ' approve' : ' reject') : ''}`).join(', ')}`);
+      return;
+    }
+    log(`claims plan: ${claimOps.map((o) => `${o.kind} ${o.policyId.slice(0, 16)}…${o.kind === 'resolve' ? (o.approved ? ' approve' : ' reject') : ''}`).join(', ')}`);
+  }
+
+  // Validate the key file against Cardano before spending any time on the wallet.
+  let keyText = !ALL && !CLAIM_MODE && KEY_FILE && fs.existsSync(KEY_FILE) ? fs.readFileSync(KEY_FILE, 'utf8') : null;
   let cardano = keyText ? await checkKey(keyText) : null;
 
   log('building wallet (seed from env, never printed)…');
@@ -213,6 +300,7 @@ async function main() {
     let record = fs.existsSync(DEPLOY_RECORD) ? JSON.parse(fs.readFileSync(DEPLOY_RECORD, 'utf8')) : null;
     let address = env('MIDNIGHT_POLICY_COVER_ADDRESS', record?.contractAddress);
     let issuer;
+    if (!address && CLAIM_MODE) throw new Error('claims mode never deploys');
     if (!address) {
       log('deployContract policy-cover (prove + balance + submit)…');
       const deployed = await deployContract(providers, {
@@ -240,7 +328,7 @@ async function main() {
       jsonOut(DEPLOY_RECORD, record);
       log('DEPLOYED', address, 'tx', record.deployTxId, 'block', record.blockHeight);
       issuer = deployed;
-    } else {
+    } else if (!CLAIM_MODE) {
       log('joining', address);
       issuer = await findDeployedContract(providers, { compiledContract: compiled, contractAddress: address, privateStateId: 'plutusshieldIssuer', initialPrivateState: issuerState });
     }
@@ -292,6 +380,70 @@ async function main() {
       if (!entry.bindingHolds) throw new Error('ledger record does not recompute to the Cardano commitment');
       return entry;
     };
+
+    if (CLAIM_MODE) {
+      const tx = (label, f) => finalized(label, f);
+      const done = [];
+      const saveClaim = (entry) => {
+        record.claims = [...(record.claims ?? []).filter((c) => !(c.policyId === entry.policyId && c.evidenceCommitment === entry.evidenceCommitment)), entry];
+        jsonOut(DEPLOY_RECORD, record);
+        writePublic(record);
+      };
+      for (const p of prepared) {
+        const { op } = p;
+        const id = op.policyId;
+        if (op.kind === 'claim') {
+          const before = claimView(await readLedger(), id);
+          if (before?.status !== 'ACTIVE') throw new Error(`fileClaim ${id.slice(0, 16)}…: policy is ${before?.status ?? 'NONE'} now; not filing`);
+          const holderState = { sk: p.key.holderSecret, openings: { [id]: { amount: p.key.coverage, salt: p.key.coverageSalt } } };
+          const holder = await findDeployedContract(providers, { compiledContract: compiled, contractAddress: address, privateStateId: `plutusshieldHolder-${id.slice(0, 16)}`, initialPrivateState: holderState });
+          log(`fileClaim ${id.slice(0, 16)}… as holder, evidence commitment ${p.sealed.commitment.slice(0, 16)}…`);
+          const filed = tx('fileClaim', await holder.callTx.fileClaim(u8(id), u8(p.sealed.commitment)));
+          log('FILED tx', filed.txId, 'hash', filed.txHash, 'block', filed.blockHeight);
+          const l = await readLedger();
+          const after = ledgerSummary(l, id);
+          const entry = {
+            policyId: id,
+            cardano: p.cardano,
+            evidenceCommitment: p.sealed.commitment,
+            evidenceInput: path.relative(REPO, path.resolve(op.evidence)),
+            fileClaim: filed,
+            ledgerAfterFile: after,
+            filedAt: new Date().toISOString(),
+          };
+          saveClaim(entry);
+          done.push(entry);
+          if (after.status !== 'CLAIM_PENDING' || after.evidence !== p.sealed.commitment) throw new Error(`ledger after fileClaim: ${after.status} ${after.evidence}; expected CLAIM_PENDING ${p.sealed.commitment}`);
+        } else {
+          const l = await readLedger();
+          const v = claimView(l, id);
+          const a = await Claims.assessClaim({ policyId: id, ledger: v, ...(v ? Claims.loadFiling(SECRETS, op, v.evidence) : { envelopeText: '', keyFileText: '' }) });
+          if (!a.ok) throw new Error(`assessor check failed for ${id.slice(0, 16)}…: ${a.reason}; not resolving`);
+          log(`assessor verified ${id.slice(0, 16)}… off-ledger: ${a.reason} (${a.summary.protocol}, ${a.summary.loss})`);
+          const assessor = await findDeployedContract(providers, { compiledContract: compiled, contractAddress: address, privateStateId: 'plutusshieldAssessor', initialPrivateState: { sk: roles.assessorSk, openings: {} } });
+          log(`resolveClaim ${id.slice(0, 16)}… ${op.approved ? 'APPROVE' : 'REJECT'} as assessor…`);
+          const res = { ...tx('resolveClaim', await assessor.callTx.resolveClaim(u8(id), op.approved)), approved: op.approved };
+          log('RESOLVED tx', res.txId, 'hash', res.txHash, 'block', res.blockHeight);
+          const after = ledgerSummary(await readLedger(), id);
+          const prev = (record.claims ?? []).find((c) => c.policyId === id && c.evidenceCommitment === v.evidence) ?? { policyId: id, evidenceCommitment: v.evidence };
+          const entry = {
+            ...prev,
+            assessment: { ok: a.ok, reason: a.reason, checks: a.checks.map((c) => ({ id: c.id, ok: c.ok })), bundle: a.summary },
+            resolveClaim: res,
+            ledgerAfterResolve: after,
+            resolvedAt: new Date().toISOString(),
+          };
+          saveClaim(entry);
+          done.push(entry);
+          const want = op.approved ? 'PAID' : 'ACTIVE';
+          if (after.status !== want) throw new Error(`ledger after resolveClaim: ${after.status}; expected ${want}`);
+          if (!op.approved && !/^0+$/.test(after.evidence ?? '')) throw new Error('rejected claim kept its evidence commitment');
+        }
+        console.log(JSON.stringify({ contractAddress: address, ...done[done.length - 1] }, null, 2));
+      }
+      log(`claims done: ${done.length} txs`);
+      return;
+    }
 
     if (ALL) {
       // Batch relay: plan from Cardano (Koios) + this ledger, then one policy at a time.

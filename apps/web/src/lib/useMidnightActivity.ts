@@ -9,7 +9,7 @@
 import { useSyncExternalStore } from "react";
 import snapshot from "@/data/midnight-preprod-activity.json";
 import { MIDNIGHT_PREPROD } from "@/lib/midnightPreprod";
-import { countCalls, stateHasPolicy, watchContractActions, type MidnightAction } from "@/lib/midnightIndexer";
+import { countCalls, policyRecordFromState, stateHasPolicy, watchContractActions, type MidnightAction, type MidnightPolicyRecord } from "@/lib/midnightIndexer";
 import type { MirrorState } from "@plutusshield/sdk/relay";
 
 export type RelayPolicy = { policyId: string; state: MirrorState; source: "ticket" | "key" | null; buyTx: string; blockTime: number | null };
@@ -34,11 +34,18 @@ export type MidnightActivity = {
   calls: Record<string, number>;
   /** Live state when available; otherwise the snapshot's checked policy ids. */
   isMirrored: (policyId: string) => boolean;
+  /** The policy's Midnight record (status, evidence commitment): live state, else the snapshot. */
+  record: (policyId: string) => MidnightPolicyRecord | null;
   error: string | null;
 };
 
 const snapIds = new Set(snapshot.mirroredPolicyIds.map((x) => x.toLowerCase()));
 const snapActions = snapshot.actions as MidnightAction[];
+const snapRecords = new Map(
+  (((snapshot as { policyRecords?: MidnightPolicyRecord[] }).policyRecords ?? []) as MidnightPolicyRecord[]).map((r) => [r.policyId.toLowerCase(), r]),
+);
+/** Policy ids we know about, so the decoder also finds ids that end in zero bytes. */
+const knownPolicyIds = [...new Set([...snapIds, ...RELAY_SNAPSHOT.policies.map((p) => p.policyId)])];
 
 let current: MidnightActivity = {
   source: "snapshot",
@@ -46,6 +53,7 @@ let current: MidnightActivity = {
   actions: snapActions,
   calls: countCalls(snapActions),
   isMirrored: (id) => snapIds.has(id.toLowerCase()),
+  record: (id) => snapRecords.get(id.toLowerCase()) ?? null,
   error: null,
 };
 const listeners = new Set<() => void>();
@@ -63,6 +71,7 @@ const liveView = (actions: MidnightAction[], state: string): MidnightActivity =>
   actions,
   calls: countCalls(actions),
   isMirrored: (id) => stateHasPolicy(state, id),
+  record: (id) => policyRecordFromState(state, id),
   error: null,
 });
 
@@ -95,7 +104,7 @@ function start() {
       retryMs = Math.min(retryMs * 2, 120_000);
       setTimeout(() => listeners.size > 0 && start(), wait);
     },
-  });
+  }, { knownPolicyIds });
 }
 
 function subscribe(l: () => void) {

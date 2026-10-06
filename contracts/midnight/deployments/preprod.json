@@ -118,5 +118,157 @@
       "at": "2026-10-06T20:01:50.893Z"
     }
   ],
+  "claims": [
+    {
+      "policyId": "72512facd0a8eb5257888b8f3b0ee71b774862cc7f4c7d7cc4f124c6f6d745d0",
+      "cardano": {
+        "network": "preview",
+        "buyTx": "7c3365bb519dfdaca6e12a371b35e0c1b7ffd321bec42130021e22b47c31386d",
+        "policyDatum": "7c3365bb519dfdaca6e12a371b35e0c1b7ffd321bec42130021e22b47c31386d#1"
+      },
+      "evidenceCommitment": "ca7e8da3bd36b464fcf670687f690d8e2276c08d694773c88d7ced5399622b30",
+      "evidenceInput": "contracts/midnight/preprod/demo-evidence/approve-72512fac.json",
+      "fileClaim": {
+        "txId": "0036d730049e0a7870032a770061aee53cd4875bad60ffd2e37c7cb591cabf7c30",
+        "txHash": "b5120dd0b2268c7459128f68a4fc958a8e8710c4b5f5e6b6debcb674d20ba1af",
+        "blockHeight": 2867361,
+        "blockHash": "519ea9455aa1a89a4777e09767fc2c6b9fcb5f251072400addb6132f6b1d81cf",
+        "status": "SucceedEntirely"
+      },
+      "ledgerAfterFile": {
+        "status": "CLAIM_PENDING",
+        "evidence": "ca7e8da3bd36b464fcf670687f690d8e2276c08d694773c88d7ced5399622b30",
+        "activePolicies": "3",
+        "claimsFiled": "1",
+        "claimsPaid": "0"
+      },
+      "filedAt": "2026-10-06T21:26:50.786Z",
+      "assessment": {
+        "ok": true,
+        "reason": "bundle opens to the on-ledger evidence commitment",
+        "checks": [
+          {
+            "id": "files",
+            "ok": true
+          },
+          {
+            "id": "decrypt",
+            "ok": true
+          },
+          {
+            "id": "canonical",
+            "ok": true
+          },
+          {
+            "id": "commitment",
+            "ok": true
+          },
+          {
+            "id": "ledger",
+            "ok": true
+          }
+        ],
+        "bundle": {
+          "protocol": "DEMO ONLY - PlutusShield claims drill (no real incident)",
+          "chain": "cardano",
+          "kind": "logic-bug",
+          "loss": "50 tADA",
+          "txHashes": 1,
+          "createdAt": "2026-10-06T20:46:51.950Z"
+        }
+      },
+      "resolveClaim": {
+        "txId": "00f7a6ef7f2da2e9fffe157d1bbba2596b1967436706c41d5ddb79f059dbffb0e8",
+        "txHash": "cdd32797f1f73c4f0c21e7d20fc56b2a59a372640d324bfcaf4354fe9b632511",
+        "blockHeight": 2867365,
+        "blockHash": "7a26e9dbb7b770d6979de69ff0dbd9fc4737e804a9eda1fa9db3087eab800b53",
+        "status": "SucceedEntirely",
+        "approved": true
+      },
+      "ledgerAfterResolve": {
+        "status": "PAID",
+        "evidence": "ca7e8da3bd36b464fcf670687f690d8e2276c08d694773c88d7ced5399622b30",
+        "activePolicies": "2",
+        "claimsFiled": "1",
+        "claimsPaid": "1"
+      },
+      "resolvedAt": "2026-10-06T21:27:13.841Z"
+    },
+    {
+      "policyId": "a33af8052854e2b4b32bff59afcb652dc0240bcb19b231314685bfaed13b2b3d",
+      "cardano": {
+        "network": "preview",
+        "buyTx": "1e70f0895de64c50dbbc39df0e8d23af362a29e476d1bdfb1e2068ff780f321f",
+        "policyDatum": "1e70f0895de64c50dbbc39df0e8d23af362a29e476d1bdfb1e2068ff780f321f#1"
+      },
+      "evidenceCommitment": "dcdd60be82a7f163ac38021a477b1bd84e3f0442cdcbb4d7e3243caecaa13721",
+      "evidenceInput": "contracts/midnight/preprod/demo-evidence/reject-a33af805.json",
+      "fileClaim": {
+        "txId": "0060910be3c3a712611c446458c91bc7f78b3890fd746cd0d5d257e086350e4a27",
+        "txHash": "e9878f893cac9a9a47ae6a30bf2ffe5a9595c24a419c12e03b1310830e695425",
+        "blockHeight": 2867368,
+        "blockHash": "50ef1733ef7df882deb1103b4de22c8117457fecef34d7f6efce5435eefecd60",
+        "status": "SucceedEntirely"
+      },
+      "ledgerAfterFile": {
+        "status": "CLAIM_PENDING",
+        "evidence": "dcdd60be82a7f163ac38021a477b1bd84e3f0442cdcbb4d7e3243caecaa13721",
+        "activePolicies": "2",
+        "claimsFiled": "2",
+        "claimsPaid": "1"
+      },
+      "filedAt": "2026-10-06T21:27:34.825Z",
+      "assessment": {
+        "ok": true,
+        "reason": "bundle opens to the on-ledger evidence commitment",
+        "checks": [
+          {
+            "id": "files",
+            "ok": true
+          },
+          {
+            "id": "decrypt",
+            "ok": true
+          },
+          {
+            "id": "canonical",
+            "ok": true
+          },
+          {
+            "id": "commitment",
+            "ok": true
+          },
+          {
+            "id": "ledger",
+            "ok": true
+          }
+        ],
+        "bundle": {
+          "protocol": "DEMO ONLY - PlutusShield claims drill, rejection path (no real incident)",
+          "chain": "cardano",
+          "kind": "other",
+          "loss": "0.000001 tADA",
+          "txHashes": 1,
+          "createdAt": "2026-10-06T20:46:52.076Z"
+        }
+      },
+      "resolveClaim": {
+        "txId": "003205aeb82c8cf35e868b9a07cbce6acb233181869aaae015052451cbdddfd384",
+        "txHash": "e7a4b0e24740eab11b0ec7222640f0ae316427fe7519b30705407856339b9a68",
+        "blockHeight": 2867372,
+        "blockHash": "e8cc05e992e6a5a095a2f6259ee165ab1b86e69b428051c26259bf2067bd0196",
+        "status": "SucceedEntirely",
+        "approved": false
+      },
+      "ledgerAfterResolve": {
+        "status": "ACTIVE",
+        "evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+        "activePolicies": "2",
+        "claimsFiled": "2",
+        "claimsPaid": "1"
+      },
+      "resolvedAt": "2026-10-06T21:27:55.917Z"
+    }
+  ],
   "_note": "Public Midnight Preprod data only (copied from the policy-cover-preprod.mjs run record). No keys, seeds or holder secrets."
 }

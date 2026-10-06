@@ -1,0 +1,18 @@
+{
+  "_note": "TEST / DEMO evidence for the Midnight Preprod claims drill. There was no real exploit. Not a real incident report.",
+  "policyId": "72512facd0a8eb5257888b8f3b0ee71b774862cc7f4c7d7cc4f124c6f6d745d0",
+  "protocol": {
+    "name": "DEMO ONLY - PlutusShield claims drill (no real incident)",
+    "chain": "cardano",
+    "contracts": ["4e5423fefc28871aef53bd2ee85722c19af742e6b7a99d507e0ce2ac (PlutusShield Preview cover script, named only as the drill target)"]
+  },
+  "incident": {
+    "kind": "logic-bug",
+    "description": "TEST / DEMO exploit report for the PlutusShield claims drill on Cardano Preview + Midnight Preprod. No funds were lost and no contract was exploited. This bundle exists to exercise fileClaim -> off-ledger assessor verification -> resolveClaim(approved) end to end with a real evidence commitment. The tx hash listed is the policy's own Buy tx, used as a placeholder reference.",
+    "startedAt": "2026-10-06T19:00:00.000Z",
+    "detectedAt": "2026-10-06T19:30:00.000Z"
+  },
+  "txHashes": ["7c3365bb519dfdaca6e12a371b35e0c1b7ffd321bec42130021e22b47c31386d"],
+  "loss": { "amount": "50", "asset": "tADA" },
+  "attachments": []
+}

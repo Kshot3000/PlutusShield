@@ -240,8 +240,9 @@ salt   = 32 random bytes, kept in the claimant's key file`}</Formula>
         </P>
         <Callout tone="warn" title="Limits of the vault today">
           <p>
-            <Strong>Filing isn&apos;t live.</Strong> The registry is not deployed to any Midnight network, so the
-            page shows the <C>fileClaim</C> call but can&apos;t submit it.
+            <Strong>Filing is operator-run.</Strong> The registry is live on Midnight Preprod and a claims drill ran
+            <C>fileClaim</C> and <C>resolveClaim</C> there from the relay, but the vault page can&apos;t submit
+            <C>fileClaim</C> from the browser yet: it seals the bundle and shows the exact call.
           </p>
           <p>
             <Strong>Disclosure is all or nothing.</Strong> The key file opens the whole bundle. There is no

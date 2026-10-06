@@ -221,11 +221,22 @@ policy.start         ≥ tx_upper_bound + waiting_period_ms`}</Formula>
           calling <C>resolveClaim</C>. Details in{" "}
           <DocLink href="/docs/privacy#evidence-vault">the vault&apos;s trust model</DocLink>.
         </P>
+        <P>
+          This runs on Midnight Preprod today: a claims drill filed demo evidence on two mirrored test policies,
+          the assessor verified each bundle against its on-ledger commitment, then approved one (PAID) and
+          rejected the other (back to ACTIVE, commitment cleared). Tx hashes are on the{" "}
+          <DocLink href="/claim/evidence">evidence vault page</DocLink> and in the public deployment record.
+        </P>
         <Callout tone="planned">
           <p>
-            Paying an approved Midnight claim from the Cardano pool isn&apos;t wired yet. The Cardano validator
-            currently settles only parametric triggers. A governance-rotatable assessor (or committee) is also
-            planned. The oracle relay&apos;s core (<C>services/oracle-relay</C>) already computes feed datums and
+            Paying an approved Midnight claim from the Cardano pool isn&apos;t wired yet, and the drill moved no ADA or
+            USDC. What&apos;s missing on Cardano: the validator&apos;s only payout redeemer, <C>Settle</C>, requires an
+            oracle quorum to attest a parametric trigger; <C>CoverParams</C> has no assessor credential; the Preview
+            pool is parameterised for the depeg product only (and <C>Buy</C> requires the policy&apos;s product to match),
+            with no admin key, so it can&apos;t gain a new path. Cardano also can&apos;t read Midnight state, so the
+            approval has to arrive as an assessor signature (or, later, a bridge proof). The fix is a separate exploit
+            product deployment with an assessor-signed settle path. A governance-rotatable assessor (or committee) is
+            also planned. The oracle relay&apos;s core (<C>services/oracle-relay</C>) already computes feed datums and
             re-checks them against the on-chain rules; venue adapters and a long-running publisher are next.
           </p>
         </Callout>

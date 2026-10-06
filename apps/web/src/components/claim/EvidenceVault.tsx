@@ -22,6 +22,7 @@ import {
 } from "@plutusshield/sdk/evidence";
 import { Button } from "@/components/ui/Button";
 import { ChoiceGroup, Chip } from "@/components/ui/ChoiceGroup";
+import { useMidnightActivity } from "@/lib/useMidnightActivity";
 
 /* ---------- small helpers ---------- */
 
@@ -503,15 +504,16 @@ function SealedPanel({ sealed, onReset }: { sealed: SealedEvidence | null; onRes
       <div className="rounded-xl border border-[var(--hairline)] bg-bg-muted/60 p-3.5">
         <div className="flex items-center justify-between gap-3">
           <p className="font-mono-label text-[9.5px] text-text-dim">Midnight call · policy-cover.compact</p>
-          <Chip tone="gold">Not live</Chip>
+          <Chip tone="gold">Browser filing next</Chip>
         </div>
         <pre className="mt-2 overflow-x-auto font-mono text-[11.5px] leading-relaxed text-text-muted">{`fileClaim(
   policyId:           ${short(b.policyId, 8)},
   evidenceCommitment: ${short(sealed.commitment, 8)}
 )`}</pre>
         <p className="mt-2 text-[12px] leading-relaxed text-text-dim">
-          The registry isn&apos;t deployed to any Midnight network yet, so this page can&apos;t file the claim. When it is,
-          your wallet submits exactly this call. The bundle never enters the circuit; only the commitment is recorded.
+          The registry is live on Midnight Preprod, and the operator relay files exactly this call
+          (<span className="font-mono">policy-cover-preprod.mjs --claim</span>); filing it from this browser with your policy key is
+          next. The bundle never enters the circuit; only the commitment is recorded.
         </p>
       </div>
       <Button variant="ghost" size="sm" onClick={onReset}>
@@ -592,6 +594,17 @@ function AssessorPanel({ sealed }: { sealed: SealedEvidence | null }) {
   const [result, setResult] = useState<EvidenceVerification | null>(null);
   const [matches, setMatches] = useState<{ files: AttachmentMatch[]; missing: EvidenceAttachment[] } | null>(null);
   const [busy, setBusy] = useState(false);
+  const midnight = useMidnightActivity();
+  // The bundle header names its policy; if that policy is in the live Midnight registry, offer its record's commitment.
+  const headerPolicy = (() => {
+    try {
+      const id = String(JSON.parse(bundleText?.text ?? "").policyId ?? "").toLowerCase();
+      return /^[0-9a-f]{64}$/.test(id) ? id : null;
+    } catch {
+      return null;
+    }
+  })();
+  const ledgerRecord = headerPolicy ? midnight.record(headerPolicy) : null;
 
   const readJson = async (list: FileList | null, setter: (v: { name: string; text: string } | null) => void) => {
     const f = list?.[0];
@@ -665,6 +678,40 @@ function AssessorPanel({ sealed }: { sealed: SealedEvidence | null }) {
             <input id="as-key" type="file" accept="application/json,.json" onChange={(e) => void readJson(e.target.files, setKeyText)} className={fileCls} />
             {keyText && <p className="mt-1 truncate font-mono text-[11px] text-text-dim">Loaded {keyText.name}</p>}
           </div>
+          {headerPolicy && (
+            <div className="rounded-xl border border-[var(--hairline)] bg-white/[0.02] p-3 text-[12px] leading-relaxed text-text-muted" aria-live="polite">
+              {ledgerRecord ? (
+                <>
+                  <p>
+                    <span className="text-midnight">Midnight Preprod record</span> for this policy:{" "}
+                    <span className="font-mono text-[11.5px] text-text">{ledgerRecord.status}</span>
+                    {ledgerRecord.evidence ? (
+                      <>
+                        , evidence <span className="font-mono text-[11.5px]">{short(ledgerRecord.evidence, 8)}</span>
+                      </>
+                    ) : (
+                      ", no evidence commitment on file"
+                    )}
+                    <span className="text-text-dim"> ({midnight.source === "live" ? "live from the indexer" : "build snapshot"})</span>
+                  </p>
+                  {ledgerRecord.evidence && ledgerRecord.evidence !== expected && (
+                    <button
+                      type="button"
+                      className="mt-1.5 text-[12px] text-text underline underline-offset-4 hover:text-accent-strong"
+                      onClick={() => {
+                        setExpected(ledgerRecord.evidence ?? "");
+                        setResult(null);
+                      }}
+                    >
+                      Check against the on-ledger commitment
+                    </button>
+                  )}
+                </>
+              ) : (
+                <p className="text-text-dim">This bundle&apos;s policy isn&apos;t in the Midnight Preprod registry; paste the commitment by hand.</p>
+              )}
+            </div>
+          )}
           <Field id="as-commit" label="On-ledger evidence commitment" hint="From the policy's PolicyRecord.evidence on Midnight (64 hex).">
             {(a) => (
               <input

@@ -1,5 +1,5 @@
 {
- "takenAt": "2026-10-06T20:08:58.122Z",
+ "takenAt": "2026-10-06T21:36:55.701Z",
  "address": "d84c618775ffa4d9c2e9283b6fe95319cecd708e84742c27ec4b6762925e8787",
  "fromHeight": 2865271,
  "actions": [
@@ -8,55 +8,169 @@
    "txHash": "f83ba034a4000e952a41cae4cf7ea07279962ee9bc32e45e766878f28963e6b2",
    "height": 2865271,
    "timestamp": 1791309456000,
-   "status": "SUCCESS"
+   "status": "SUCCESS",
+   "changes": []
   },
   {
    "entryPoint": "registerPolicy",
    "txHash": "151a5ede0f1a87d784d1b2a541b9bfc3b00895a36db853ccf4df036be544300e",
    "height": 2865275,
    "timestamp": 1791309480000,
-   "status": "SUCCESS"
+   "status": "SUCCESS",
+   "changes": [
+    {
+     "policyId": "72512facd0a8eb5257888b8f3b0ee71b774862cc7f4c7d7cc4f124c6f6d745d0",
+     "from": "NONE",
+     "to": "ACTIVE",
+     "evidence": null
+    }
+   ]
   },
   {
    "entryPoint": "proveCover",
    "txHash": "dee4fe6cdd05eb59dd28e2787f66de2ae6198339d2f33cc4130cedd762247b6c",
    "height": 2865279,
    "timestamp": 1791309504000,
-   "status": "SUCCESS"
+   "status": "SUCCESS",
+   "changes": []
   },
   {
    "entryPoint": "registerPolicy",
    "txHash": "c2aafffc20cf3b2349a92f15247fbc5b95826f9d830a477d137b18b4fe088647",
    "height": 2866500,
    "timestamp": 1791316830001,
-   "status": "SUCCESS"
+   "status": "SUCCESS",
+   "changes": [
+    {
+     "policyId": "a33af8052854e2b4b32bff59afcb652dc0240bcb19b231314685bfaed13b2b3d",
+     "from": "NONE",
+     "to": "ACTIVE",
+     "evidence": null
+    }
+   ]
   },
   {
    "entryPoint": "proveCover",
    "txHash": "d81ba90c719113c99b7b3596f499d93c10967f750153eb495e43298590d60084",
    "height": 2866504,
    "timestamp": 1791316854000,
-   "status": "SUCCESS"
+   "status": "SUCCESS",
+   "changes": []
   },
   {
    "entryPoint": "registerPolicy",
    "txHash": "0fa8b01e9dbec394e5afffa65b6183d19509b9acabd9a852091a534587611f3b",
    "height": 2866508,
    "timestamp": 1791316878000,
-   "status": "SUCCESS"
+   "status": "SUCCESS",
+   "changes": [
+    {
+     "policyId": "7c24be86268f54972c49f6f6e4ec10be6c59506e4c28d3869d33635979468ccb",
+     "from": "NONE",
+     "to": "ACTIVE",
+     "evidence": null
+    }
+   ]
   },
   {
    "entryPoint": "proveCover",
    "txHash": "c6905d13b2ab87a2818a7f482359df6826227ff761ffad3cd7ba250efdb10a26",
    "height": 2866511,
    "timestamp": 1791316896000,
-   "status": "SUCCESS"
+   "status": "SUCCESS",
+   "changes": []
+  },
+  {
+   "entryPoint": "fileClaim",
+   "txHash": "b5120dd0b2268c7459128f68a4fc958a8e8710c4b5f5e6b6debcb674d20ba1af",
+   "height": 2867361,
+   "timestamp": 1791321996000,
+   "status": "SUCCESS",
+   "changes": [
+    {
+     "policyId": "72512facd0a8eb5257888b8f3b0ee71b774862cc7f4c7d7cc4f124c6f6d745d0",
+     "from": "ACTIVE",
+     "to": "CLAIM_PENDING",
+     "evidence": "ca7e8da3bd36b464fcf670687f690d8e2276c08d694773c88d7ced5399622b30"
+    }
+   ]
+  },
+  {
+   "entryPoint": "resolveClaim",
+   "txHash": "cdd32797f1f73c4f0c21e7d20fc56b2a59a372640d324bfcaf4354fe9b632511",
+   "height": 2867365,
+   "timestamp": 1791322020001,
+   "status": "SUCCESS",
+   "changes": [
+    {
+     "policyId": "72512facd0a8eb5257888b8f3b0ee71b774862cc7f4c7d7cc4f124c6f6d745d0",
+     "from": "CLAIM_PENDING",
+     "to": "PAID",
+     "evidence": "ca7e8da3bd36b464fcf670687f690d8e2276c08d694773c88d7ced5399622b30"
+    }
+   ]
+  },
+  {
+   "entryPoint": "fileClaim",
+   "txHash": "e9878f893cac9a9a47ae6a30bf2ffe5a9595c24a419c12e03b1310830e695425",
+   "height": 2867368,
+   "timestamp": 1791322038000,
+   "status": "SUCCESS",
+   "changes": [
+    {
+     "policyId": "a33af8052854e2b4b32bff59afcb652dc0240bcb19b231314685bfaed13b2b3d",
+     "from": "ACTIVE",
+     "to": "CLAIM_PENDING",
+     "evidence": "dcdd60be82a7f163ac38021a477b1bd84e3f0442cdcbb4d7e3243caecaa13721"
+    }
+   ]
+  },
+  {
+   "entryPoint": "resolveClaim",
+   "txHash": "e7a4b0e24740eab11b0ec7222640f0ae316427fe7519b30705407856339b9a68",
+   "height": 2867372,
+   "timestamp": 1791322062000,
+   "status": "SUCCESS",
+   "changes": [
+    {
+     "policyId": "a33af8052854e2b4b32bff59afcb652dc0240bcb19b231314685bfaed13b2b3d",
+     "from": "CLAIM_PENDING",
+     "to": "ACTIVE",
+     "evidence": null
+    }
+   ]
   }
  ],
  "mirroredPolicyIds": [
   "72512facd0a8eb5257888b8f3b0ee71b774862cc7f4c7d7cc4f124c6f6d745d0",
   "a33af8052854e2b4b32bff59afcb652dc0240bcb19b231314685bfaed13b2b3d",
   "7c24be86268f54972c49f6f6e4ec10be6c59506e4c28d3869d33635979468ccb"
+ ],
+ "policyRecords": [
+  {
+   "policyId": "72512facd0a8eb5257888b8f3b0ee71b774862cc7f4c7d7cc4f124c6f6d745d0",
+   "holder": "9e951978ba75a8e6987c8047521ac4a9b560b8c71253fa5e3c00fb3faf4b2f67",
+   "coverage": "5f1c8915b8e1edef14ff1a6796d2f34a107698612e4c530b0f675818eb583c2b",
+   "expiry": 1792521141000,
+   "status": "PAID",
+   "evidence": "ca7e8da3bd36b464fcf670687f690d8e2276c08d694773c88d7ced5399622b30"
+  },
+  {
+   "policyId": "7c24be86268f54972c49f6f6e4ec10be6c59506e4c28d3869d33635979468ccb",
+   "holder": "fe435e1c70aed663e72ba011d9bb99b91f6c86081854ff67a0bf785d8ece5340",
+   "coverage": "9ff196e70b23ec063eca9b73075d835b263fbead076f2b0c6dd6f518cc2f46ab",
+   "expiry": 1792528003000,
+   "status": "ACTIVE",
+   "evidence": null
+  },
+  {
+   "policyId": "a33af8052854e2b4b32bff59afcb652dc0240bcb19b231314685bfaed13b2b3d",
+   "holder": "49fbea54ed81af2b3f9711154818db0278c75405a264ad5db2d64dd08b3d51f6",
+   "coverage": "fe69fb50cabd857ae5284256473b9654de9ab947456abb8c97be3b2794233a5a",
+   "expiry": 1792527971000,
+   "status": "ACTIVE",
+   "evidence": null
+  }
  ],
  "relay": {
   "summary": {

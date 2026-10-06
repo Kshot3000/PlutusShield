@@ -4,6 +4,7 @@ import { MIRROR_STATE_LABEL, mirrorSummary, type MirrorState } from "@plutusshie
 import { RELAY_SNAPSHOT, relayEntry, useMidnightActivity } from "@/lib/useMidnightActivity";
 import { useNow } from "@/lib/useNow";
 import { shortHash } from "@/lib/midnightPreprod";
+import { describeChange, type MidnightPolicyStatus, type PolicyChange } from "@/lib/midnightIndexer";
 
 const circuitCopy: Record<string, string> = {
   deploy: "Registry deployed",
@@ -36,9 +37,10 @@ export function LiveCounters() {
     { label: "Policies mirrored", value: a.calls.registerPolicy ?? 0 },
     { label: "Cover proofs", value: a.calls.proveCover ?? 0 },
     { label: "Claims filed", value: a.calls.fileClaim ?? 0 },
+    { label: "Claims resolved", value: a.calls.resolveClaim ?? 0 },
   ];
   return (
-    <dl className="grid grid-cols-3 gap-3 text-right" aria-live="polite">
+    <dl className="grid grid-cols-2 gap-3 text-right sm:grid-cols-4" aria-live="polite">
       {cells.map((c) => (
         <div key={c.label} className="rounded-2xl border border-[var(--hairline)] bg-white/[0.02] px-4 py-3">
           <dt className="font-mono-label text-[9px] text-text-dim">{c.label}</dt>
@@ -49,8 +51,38 @@ export function LiveCounters() {
   );
 }
 
+// registerPolicy rows already say what happened; claim lifecycle rows name the policy and the outcome.
+const showChanges = (entryPoint: string) => entryPoint === "fileClaim" || entryPoint === "resolveClaim" || entryPoint === "expirePolicy" || entryPoint === "rotateHolder";
+
+const changeTone = (c: PolicyChange) =>
+  c.to === "PAID" ? "text-success" : c.to === "CLAIM_PENDING" ? "text-[var(--gold)]" : c.from === "CLAIM_PENDING" ? "text-text-muted" : "text-text-dim";
+
+function ChangeLine({ c }: { c: PolicyChange }) {
+  return (
+    <span className="flex flex-wrap items-baseline gap-x-2 text-[11px] leading-snug">
+      <span className="font-mono text-[10.5px] text-text-dim" title={c.policyId}>
+        policy {shortHash(c.policyId)}
+      </span>
+      <span className={changeTone(c)}>
+        {describeChange(c)}
+        {c.from !== "NONE" && c.from !== c.to ? (
+          <span className="font-mono text-[10px] text-text-dim">
+            {" "}
+            {c.from} → {c.to}
+          </span>
+        ) : null}
+      </span>
+      {c.evidence && c.to === "CLAIM_PENDING" ? (
+        <span className="font-mono text-[10px] text-text-dim" title={`evidenceCommitment ${c.evidence}`}>
+          evidence {shortHash(c.evidence)}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 /** Every call the policy-cover contract has received, newest first, streamed from the Preprod indexer. */
-export function ActivityFeed({ limit = 6 }: { limit?: number }) {
+export function ActivityFeed({ limit = 8 }: { limit?: number }) {
   const a = useMidnightActivity();
   const now = useNow(15_000);
   const rows = [...a.actions].reverse().slice(0, limit);
@@ -77,6 +109,13 @@ export function ActivityFeed({ limit = 6 }: { limit?: number }) {
               {shortHash(r.txHash)} · block {r.height.toLocaleString("en-US")}
               {now !== null && <> · {ago(r.timestamp, now)}</>}
             </span>
+            {showChanges(r.entryPoint) && r.changes?.length ? (
+              <span className="w-full space-y-0.5">
+                {r.changes.map((c) => (
+                  <ChangeLine key={c.policyId} c={c} />
+                ))}
+              </span>
+            ) : null}
           </li>
         ))}
       </ol>
@@ -122,9 +161,50 @@ const mirrorCopy: Record<MirrorState | "unknown", { label: string; title: string
   },
 };
 
-/** Per-policy Midnight mirror state: live "mirrored" from the indexer, otherwise the build-time relay plan. */
+const statusCopy: Record<MidnightPolicyStatus, { label: string; title: string; tone: string; dot: string }> = {
+  ACTIVE: {
+    label: "Mirrored · ACTIVE on Midnight",
+    title: "Registered in the policy-cover registry on Midnight Preprod with status ACTIVE: its holder can prove cover or file an exploit claim there.",
+    tone: "text-midnight",
+    dot: "bg-[var(--midnight)]",
+  },
+  CLAIM_PENDING: {
+    label: "Claim pending on Midnight",
+    title: "The holder filed an exploit claim (fileClaim) with a sealed evidence commitment. The assessor opens the bundle off-ledger and checks it against that commitment before resolveClaim.",
+    tone: "text-[var(--gold)]",
+    dot: "bg-[var(--gold)] animate-pulse-dot",
+  },
+  PAID: {
+    label: "Claim approved · PAID on Midnight",
+    title: "The assessor approved the claim (resolveClaim) on Midnight Preprod: the record is PAID and keeps its evidence commitment. Paying it out of the Cardano pool is not wired yet: the Preview validator only settles parametric depeg claims.",
+    tone: "text-success",
+    dot: "bg-success",
+  },
+  EXPIRED: {
+    label: "Expired on Midnight",
+    title: "The issuer mirrored this policy's expiry (expirePolicy) into the Midnight registry.",
+    tone: "text-text-dim",
+    dot: "border border-border-strong",
+  },
+};
+
+/**
+ * Per-policy Midnight state: the live record's lifecycle status (ACTIVE /
+ * CLAIM_PENDING / PAID / EXPIRED, decoded from the indexer's contract state),
+ * otherwise the build-time relay plan.
+ */
 export function MirroredOnMidnight({ policyId }: { policyId: string }) {
   const a = useMidnightActivity();
+  const rec = a.isMirrored(policyId) ? a.record(policyId) : null;
+  if (rec) {
+    const c = statusCopy[rec.status];
+    return (
+      <span className={`flex items-center gap-1.5 text-[11px] leading-snug ${c.tone}`} title={c.title + (rec.evidence ? ` Evidence commitment ${rec.evidence}.` : "")}>
+        <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} aria-hidden="true" />
+        {c.label}
+      </span>
+    );
+  }
   const state: MirrorState | "unknown" = a.isMirrored(policyId) ? "mirrored" : (() => {
     const s = relayEntry(policyId)?.state;
     // The snapshot said mirrored but the live state doesn't: don't claim it.

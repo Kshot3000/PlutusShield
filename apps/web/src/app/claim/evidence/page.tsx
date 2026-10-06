@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { EvidenceVault } from "@/components/claim/EvidenceVault";
+import { ClaimLifecycle } from "@/components/claim/ClaimLifecycle";
 
 export const metadata: Metadata = {
   title: "Exploit evidence vault",
@@ -20,7 +21,7 @@ const notes = [
   },
   {
     title: "Disclosed only to the assessor",
-    body: "You choose who gets the key file. Today that's an off-ledger handoff to the assessor. The registry stores the commitment on an approved claim and clears it on a rejected one.",
+    body: "You choose who gets the key file. Today that's an off-ledger handoff to the assessor. The registry keeps the commitment on an approved claim and clears it on a rejected one.",
   },
 ];
 
@@ -45,10 +46,13 @@ export default function EvidencePage() {
           </div>
         ))}
       </div>
+      <ClaimLifecycle />
       <p className="mt-6 text-xs leading-relaxed text-text-dim">
-        Filing isn&apos;t live: the Midnight registry (<code className="font-mono">policy-cover.compact</code>) is not
-        deployed to any network, and exploit cover can&apos;t be bought yet. The encryption and commitment are real and
-        tested against the compiled contract. Read the{" "}
+        The registry (<code className="font-mono">policy-cover.compact</code>) is live on Midnight Preprod, and the claims
+        drill above ran <code className="font-mono">fileClaim</code> and <code className="font-mono">resolveClaim</code> there
+        from the operator relay. Filing straight from this page (a browser Midnight wallet and proof) is next; today the page
+        seals the bundle and shows the exact <code className="font-mono">fileClaim</code> arguments. Exploit cover can&apos;t be
+        bought on Cardano yet, and approved claims aren&apos;t paid out on Cardano yet. Read the{" "}
         <Link href="/docs/privacy#evidence-vault" className="text-text-muted underline underline-offset-4 hover:text-text">
           vault&apos;s trust model
         </Link>{" "}

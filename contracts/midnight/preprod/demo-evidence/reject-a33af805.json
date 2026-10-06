@@ -1,0 +1,18 @@
+{
+  "_note": "TEST / DEMO evidence for the Midnight Preprod claims drill (rejection path). There was no real exploit. Not a real incident report.",
+  "policyId": "a33af8052854e2b4b32bff59afcb652dc0240bcb19b231314685bfaed13b2b3d",
+  "protocol": {
+    "name": "DEMO ONLY - PlutusShield claims drill, rejection path (no real incident)",
+    "chain": "cardano",
+    "contracts": ["4e5423fefc28871aef53bd2ee85722c19af742e6b7a99d507e0ce2ac (PlutusShield Preview cover script, named only as the drill target)"]
+  },
+  "incident": {
+    "kind": "other",
+    "description": "TEST / DEMO claim filed to exercise the assessor's rejection path: the bundle opens to its on-ledger commitment, but describes no covered loss, so the assessor rejects it and the policy returns to ACTIVE with its evidence cleared. No funds were lost. The tx hash listed is the policy's own Buy tx, used as a placeholder reference.",
+    "startedAt": "2026-10-06T19:00:00.000Z",
+    "detectedAt": "2026-10-06T19:30:00.000Z"
+  },
+  "txHashes": ["1e70f0895de64c50dbbc39df0e8d23af362a29e476d1bdfb1e2068ff780f321f"],
+  "loss": { "amount": "0.000001", "asset": "tADA" },
+  "attachments": []
+}

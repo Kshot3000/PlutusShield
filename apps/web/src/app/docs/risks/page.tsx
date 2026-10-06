@@ -38,7 +38,7 @@ export default function RisksPage() {
           rows={[
             ["Audit", <Strong key="a">Not audited.</Strong>],
             ["Cardano deployment", "Live on the Preview testnet only (test ADA and mock tUSDCx, no real value). Not deployed to mainnet, and no mainnet deploy happens before an external audit"],
-            ["Midnight deployment", "Not deployed to any network"],
+            ["Midnight deployment", "policy-cover live on Midnight Preprod (testnet): Cardano Preview policies mirrored, cover proofs, and a claims drill (fileClaim, assessor resolveClaim) with demo evidence. Not on mainnet"],
             ["Buying cover", "Closed. /cover is a quote preview"],
             ["Underwriting", "Closed. /pool is a simulator"],
             ["Real funds", "None. The protocol holds no money"],
