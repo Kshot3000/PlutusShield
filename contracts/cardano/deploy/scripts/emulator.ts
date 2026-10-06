@@ -16,7 +16,7 @@
  * Every step asserts the on-chain pool state against @plutusshield/sdk.
  */
 import assert from "node:assert/strict";
-import { Emulator, Lucid, generateEmulatorAccountFromPrivateKey, type LucidEvolution, type TxSignBuilder } from "@lucid-evolution/lucid";
+import { CML, Emulator, Lucid, generateEmulatorAccountFromPrivateKey, type LucidEvolution, type TxSignBuilder } from "@lucid-evolution/lucid";
 import { ADA, DAY_MS, lpTokenName, textHex } from "../../../../packages/sdk/src/cardano.ts";
 import { PREVIEW_MOCK_USDC_ASSET_NAME } from "../../../../packages/sdk/src/assets.ts";
 import { buildParams, deployment, loadConfig, unitOf } from "../lib/cover.ts";
@@ -24,6 +24,13 @@ import { keyInfo, sigPolicy } from "../lib/keys.ts";
 import * as act from "../lib/actions.ts";
 import { listWalletPolicies } from "../../../../apps/web/src/lib/tx/cover.ts";
 import { checkPolicyKey } from "../../../../packages/sdk/src/midnight.ts";
+import { MIDNIGHT_TICKET_LABEL, parseTicket, ticketOpensDatum } from "../../../../packages/sdk/src/relay.ts";
+
+/** The Buy's Midnight registration ticket, read back from the signed tx's auxiliary data. */
+function ticketOf(tx: TxSignBuilder) {
+  const md = tx.toTransaction().auxiliary_data()?.metadata()?.get(BigInt(MIDNIGHT_TICKET_LABEL));
+  return md ? parseTicket({ [MIDNIGHT_TICKET_LABEL]: JSON.parse(CML.decode_metadatum_to_json_str(md, CML.MetadataJsonSchema.BasicConversions)) }) : null;
+}
 
 const log = (...a: unknown[]) => console.log("  ", ...a);
 const U = 1_000_000n;
@@ -121,12 +128,17 @@ for (const b of [bUsd, bAda]) {
   assert.equal(b.policyKey.expiry, onChain.policy.expiry.toString());
   assert.ok((await checkPolicyKey(b.policyKey, onChain.policy.midnightCommitment)).ok, "policy key opens the on-chain commitment");
   assert.ok(!(await checkPolicyKey({ ...b.policyKey, holderSecret: "11".repeat(32) }, onChain.policy.midnightCommitment)).ok, "a different holder secret does not");
+  // The Buy publishes the public registration ticket (commitments only) that opens the datum, for the Midnight relay.
+  const ticket = ticketOf(b.tx);
+  assert.deepEqual(ticket, { policyId: b.policyKey.policyId, holderCommitment: b.policyKey.holderCommitment, coverageCommitment: b.policyKey.coverageCommitment }, "Buy tx carries the Midnight ticket");
+  assert.ok(await ticketOpensDatum(ticket!, onChain.policy), "ticket opens the on-chain midnight_commitment");
+  assert.ok(!JSON.stringify(ticket).includes(b.policyKey.holderSecret), "ticket holds no secret");
 }
 assert.notEqual(bUsd.policy.midnightCommitment, bAda.policy.midnightCommitment, "same secrets, different policy id -> different commitment");
 as(deployerAcct);
 assert.equal((await listWalletPolicies(lucid, act.coverScriptOf(d), emulator.now())).length, 0, "other wallets see none");
 as(buyerAcct);
-log("✓ listWalletPolicies: buyer sees its 2 policies (waiting period), the LP wallet sees none");
+log("✓ listWalletPolicies: buyer sees its 2 policies (waiting period), the LP wallet sees none; each Buy carries a Midnight ticket that opens its datum");
 
 // 4b. feed-c now reports 0.93. feed-a and feed-b are still a fresh healthy
 //     quorum, but sales need every feed, using its newest reading.

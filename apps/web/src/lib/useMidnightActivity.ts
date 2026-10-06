@@ -10,6 +10,21 @@ import { useSyncExternalStore } from "react";
 import snapshot from "@/data/midnight-preprod-activity.json";
 import { MIDNIGHT_PREPROD } from "@/lib/midnightPreprod";
 import { countCalls, stateHasPolicy, watchContractActions, type MidnightAction } from "@/lib/midnightIndexer";
+import type { MirrorState } from "@plutusshield/sdk/relay";
+
+export type RelayPolicy = { policyId: string; state: MirrorState; source: "ticket" | "key" | null; buyTx: string; blockTime: number | null };
+
+/**
+ * The relay plan baked at build time (scripts/snapshot-midnight.mjs): every
+ * live Preview policy and its Midnight mirror state, from the Buy tx ticket and
+ * the contract state. "mirrored" is re-read live; the rest comes from here.
+ */
+export const RELAY_SNAPSHOT: { takenAt: string; policies: RelayPolicy[] } = {
+  takenAt: snapshot.takenAt,
+  policies: ((snapshot as { relay?: { policies: RelayPolicy[] } }).relay?.policies ?? []).map((p) => ({ ...p, policyId: p.policyId.toLowerCase() })),
+};
+const relayById = new Map(RELAY_SNAPSHOT.policies.map((p) => [p.policyId, p]));
+export const relayEntry = (policyId: string): RelayPolicy | undefined => relayById.get(policyId.toLowerCase());
 
 export type MidnightActivity = {
   source: "snapshot" | "live";

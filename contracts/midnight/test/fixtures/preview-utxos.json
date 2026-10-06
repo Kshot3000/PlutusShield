@@ -1,5 +1,6 @@
 {
- "takenAt": "2026-10-06T20:08:56.182Z",
+ "_note": "Public Cardano Preview UTxOs at the PlutusShield cover script, 2026-10-06 (snapshot-pool.mjs). Test fixture for relay/plan.ts.",
+ "takenAt": "2026-10-06T19:21:53.373Z",
  "address": "addr_test1wp89ggl7ls5gwxh02w7ja6zhytqe4a6zu6m6n82s0cxw9tq4j5tgr",
  "utxos": [
   {

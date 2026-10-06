@@ -176,6 +176,7 @@ See [contracts/cardano/README.md](contracts/cardano/README.md) for validators, d
 - [x] Compact contract: private policy commitment + coverage proof (`contracts/midnight`)
 - [x] Quote engine with risk tiers and utilization-kinked pricing (`packages/sdk`)
 - [x] Midnight holder registration wired into Buy: per-policy key made in the browser, its commitment in the Cardano datum, `registerPolicy` bound to it, key backup / export / restore in My policies (`packages/sdk/src/midnight.ts`)
+- [x] Cardano → Midnight batch relay: every Buy publishes a public registration ticket (tx metadata 7731); `policy-cover-preprod.mjs --all` mirrors every live Preview policy whose ticket or holder key opens its datum, idempotently; `pnpm midnight:relay:plan` dry run; per-policy mirror state on `/cover` and `/app` (`packages/sdk/src/relay.ts`, `contracts/midnight/relay`)
 - [x] Private evidence vault for exploit claims: canonical bundle, in-browser AES-256-GCM, evidence commitment matching the Midnight contract, assessor verification (`/claim/evidence`, `packages/sdk/src/evidence.ts`)
 - [ ] Exploit claims flow end to end: `fileClaim` on a deployed Midnight registry, assessor resolution, approved payout from the Cardano pool
 - [x] Marketing site + app shell (`apps/web`)

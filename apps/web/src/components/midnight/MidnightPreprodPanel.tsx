@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/Button";
 import { explorerTx } from "@/lib/preview";
 import { MIDNIGHT_PREPROD as M, shortHash } from "@/lib/midnightPreprod";
-import { ActivityFeed, LiveCounters } from "./LiveContractActivity";
+import { ActivityFeed, LiveCounters, RelayStatus } from "./LiveContractActivity";
 
 const rows: { step: string; what: string; hash: string; href?: string; block?: number }[] = [
   {
@@ -42,9 +42,9 @@ export function MidnightPreprodPanel() {
             Your cover, <em className="text-midnight-grad">provable and private.</em>
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-text-muted">
-            The private policy registry is deployed on Midnight. A real Preview policy was mirrored into it, and its holder
-            proved cover on-chain without revealing who they are or how much they hold. Lenders and DEXs can ask for that
-            proof and learn nothing else.
+            The private policy registry is deployed on Midnight. Every Cardano Buy publishes a registration ticket, the relay
+            mirrors the policy into the registry, and its holder proves cover on-chain without revealing who they are or how
+            much they hold. Lenders and DEXs can ask for that proof and learn nothing else.
           </p>
         </div>
         <LiveCounters />
@@ -70,6 +70,8 @@ export function MidnightPreprodPanel() {
           </li>
         ))}
       </ol>
+
+      <RelayStatus />
 
       <ActivityFeed />
 

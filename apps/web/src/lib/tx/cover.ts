@@ -45,6 +45,7 @@ import { healthy, latestPerFeed, type FeedUtxo } from "@plutusshield/sdk/oracle"
 import { buy as buyStep, type PoolLedger } from "@plutusshield/sdk/pool";
 import { plutusAddressOf } from "@plutusshield/sdk/cip30";
 import { makePolicyKey, type HolderSecrets, type PolicyKey } from "@plutusshield/sdk/midnight";
+import { MIDNIGHT_TICKET_LABEL, ticketMetadata } from "@plutusshield/sdk/relay";
 import { poolScriptFrom, readLivePool, unitOf, type PoolScript } from "./lp.ts";
 
 /** The pool script plus everything a Buy needs to know about the deployment. */
@@ -262,6 +263,9 @@ export async function buildBuy(lucid: LucidEvolution, c: CoverScript, a: BuyArgs
     .pay.ToContract(c.address, inline(toCborHex(coverDatumData({ kind: "Pool", pool: setCover(pool.datum, t, step.pool.activeCover) }))), value)
     .pay.ToContract(c.address, inline(toCborHex(coverDatumData({ kind: "Policy", policy }))), { lovelace: POLICY_REF_LOVELACE, [ref]: 1n })
     .readFrom(peg)
+    // Public Midnight registration ticket (holder + coverage commitments, no secrets): lets the
+    // issuer relay register this policy on Midnight from chain data alone. See @plutusshield/sdk/relay.
+    .attachMetadata(MIDNIGHT_TICKET_LABEL, ticketMetadata(policyKey))
     .validFrom(Math.max(a.now - BUY_LOWER_SLACK_MS, lucid.slotToUnixTime(0)))
     .validTo(upper)
     .complete();

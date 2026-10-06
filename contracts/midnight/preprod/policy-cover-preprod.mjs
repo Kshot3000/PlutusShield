@@ -15,9 +15,19 @@
  *   4. proveCover(policyId, coverage) as the holder, with the holder secret
  *      from the key file as the localSecretKey witness.
  *
+ * `--all` (batch relay) replaces steps 2-4 with the relay plan
+ * (contracts/midnight/relay/plan.ts): every live PlutusShield policy on
+ * Preview that is not yet in the contract's ledger is registered from its Buy
+ * tx's public registration ticket or a local policy key (whichever opens the
+ * datum's midnight_commitment), and proven with proveCover when the holder's
+ * key is on this machine. Idempotent (re-checks the ledger before each call),
+ * one policy at a time, stops at the first failure. Pre-binding policies and
+ * policies with neither a ticket nor a key are reported, never faked.
+ *
  * Only reports success from finalized tx data (txId + blockHeight + status).
  * Never prints seeds or secrets. Writes public results to
- * $PLUTUSSHIELD_SECRETS/midnight-preprod-*.json; docs copy them by hand.
+ * $PLUTUSSHIELD_SECRETS/midnight-preprod-deploy.json after every policy, and to
+ * $PLUTUSSHIELD_PUBLIC_RECORD (contracts/midnight/deployments/preprod.json) if set.
  *
  * Runtime: midnight-js 4.1.1, wallet-sdk 1.2.0, compact-runtime 0.16.0,
  * proof server 8.1.0 on :6300, Node 22.18+ (imports the TS SDK by type
@@ -58,12 +68,25 @@ const KEY_FILE = env('PLUTUSSHIELD_POLICY_KEY', '');
 const KEY_WAIT_MS = Number(env('PLUTUSSHIELD_POLICY_KEY_WAIT_MS', '0'));
 const BLOCKFROST = env('BLOCKFROST_PREVIEW_ID', '');
 const DEPLOY_RECORD = path.join(SECRETS, 'midnight-preprod-deploy.json');
+const PUBLIC_RECORD = env('PLUTUSSHIELD_PUBLIC_RECORD', '');
+const ALL = process.argv.includes('--all');
+const KEY_DIRS = env('PLUTUSSHIELD_POLICY_KEY_DIRS', [path.join(SECRETS, 'policy-keys'), path.join(REPO, 'contracts/cardano/deploy/.keys/policy-keys')].join(','))
+  .split(',')
+  .filter(Boolean);
 const ROLES_FILE = path.join(SECRETS, 'midnight-preprod-roles.json');
 
 const log = (...a) => console.error(new Date().toISOString(), ...a);
 const hex = (b) => Buffer.from(b).toString('hex');
 const u8 = (h) => new Uint8Array(Buffer.from(h, 'hex'));
+const jsonText = (v) => `${JSON.stringify(v, (_, x) => (typeof x === 'bigint' ? x.toString() : x), 2)}\n`;
 const jsonOut = (file, v) => fs.writeFileSync(file, `${JSON.stringify(v, (_, x) => (typeof x === 'bigint' ? x.toString() : x), 2)}\n`, { mode: 0o600 });
+
+/** Mirror the run record into the repo's public record (keeps its _note; public data only). */
+function writePublic(record) {
+  if (!PUBLIC_RECORD) return;
+  const prev = fs.existsSync(PUBLIC_RECORD) ? JSON.parse(fs.readFileSync(PUBLIC_RECORD, 'utf8')) : {};
+  fs.writeFileSync(PUBLIC_RECORD, jsonText({ ...record, _note: prev._note ?? 'Public Midnight Preprod data only. No keys, seeds or holder secrets.' }));
+}
 
 // ---------------------------------------------------------------- roles (issuer / assessor secrets, never printed)
 
@@ -142,7 +165,7 @@ async function main() {
   const assessorCommitment = pure.roleCommitment(u8(roles.assessorSk), pure.assessorTag());
 
   // Validate the key file against Cardano before spending any time on the wallet.
-  let keyText = KEY_FILE && fs.existsSync(KEY_FILE) ? fs.readFileSync(KEY_FILE, 'utf8') : null;
+  let keyText = !ALL && KEY_FILE && fs.existsSync(KEY_FILE) ? fs.readFileSync(KEY_FILE, 'utf8') : null;
   const checkKey = async (text) => {
     const key = Holder.parsePolicyKey(text);
     const { policy, outRef } = await cardanoPolicy(key, Chain);
@@ -222,6 +245,96 @@ async function main() {
       issuer = await findDeployedContract(providers, { compiledContract: compiled, contractAddress: address, privateStateId: 'plutusshieldIssuer', initialPrivateState: issuerState });
     }
 
+    const readLedger = async () => {
+      const state = await providers.publicDataProvider.queryContractState(address);
+      if (!state) throw new Error(`no contract state for ${address}`);
+      try {
+        return ledger(state.data);
+      } catch {
+        return ledger(state);
+      }
+    };
+
+    /**
+     * registerPolicy (issuer) then, with a holder key, proveCover (holder) for one
+     * policy; read the record back and recompute the Cardano binding from it.
+     * `args` are registerPolicy's five arguments, all from the datum + ticket/key.
+     */
+    const relayOne = async ({ policyId, args, holderKey, cardano: c, source }) => {
+      log(`registerPolicy ${policyId.slice(0, 16)}… as issuer (${source})…`);
+      const reg = finalized('registerPolicy', await issuer.callTx.registerPolicy(args.policyId, args.holderCommitment, args.coverage, args.expiry, args.cardanoCommitment));
+      log('REGISTERED tx', reg.txId, 'hash', reg.txHash, 'block', reg.blockHeight);
+      let prove = null;
+      if (holderKey) {
+        const holderState = { sk: holderKey.holderSecret, openings: { [policyId]: { amount: holderKey.coverage, salt: holderKey.coverageSalt } } };
+        const holder = await findDeployedContract(providers, { compiledContract: compiled, contractAddress: address, privateStateId: `plutusshieldHolder-${policyId.slice(0, 16)}`, initialPrivateState: holderState });
+        log('proveCover as holder…');
+        prove = { ...finalized('proveCover', await holder.callTx.proveCover(args.policyId, BigInt(holderKey.coverage))), minCoverage: holderKey.coverage };
+        log('PROVED tx', prove.txId, 'hash', prove.txHash, 'block', prove.blockHeight);
+      }
+      const l = await readLedger();
+      const rec = l.policies.lookup(args.policyId);
+      const rebound = hex(pure.registrationCommitment(args.policyId, rec.holder, rec.coverage));
+      const entry = {
+        policyId,
+        cardano: c,
+        source,
+        registerPolicy: reg,
+        ...(prove ? { proveCover: prove } : {}),
+        ledger: { status: Number(rec.status), holder: hex(rec.holder), coverage: hex(rec.coverage), activePolicies: String(l.activePolicies), coverProofs: String(l.coverProofs) },
+        bindingHolds: rebound === c.midnightCommitment,
+        at: new Date().toISOString(),
+      };
+      record.registrations = [...(record.registrations ?? []).filter((r) => r.policyId !== policyId), entry];
+      jsonOut(DEPLOY_RECORD, record);
+      writePublic(record);
+      console.log(JSON.stringify({ contractAddress: address, ...entry }, (_, x) => (typeof x === 'bigint' ? x.toString() : x), 2));
+      if (!entry.bindingHolds) throw new Error('ledger record does not recompute to the Cardano commitment');
+      return entry;
+    };
+
+    if (ALL) {
+      // Batch relay: plan from Cardano (Koios) + this ledger, then one policy at a time.
+      const Plan = await import(pathToFileURL(path.join(REPO, 'contracts/midnight/relay/plan.ts')).href);
+      const Relay = await import(pathToFileURL(path.join(REPO, 'packages/sdk/src/relay.ts')).href);
+      const dep = JSON.parse(fs.readFileSync(path.join(REPO, 'apps/web/src/data/preview-deployment.json'), 'utf8'));
+      const memberNow = async (id) => (await readLedger()).policies.member(u8(id));
+      const l0 = await readLedger();
+      const plan = await Plan.buildRelayPlan({ deployment: dep, keyDirs: KEY_DIRS, isMirrored: (id) => l0.policies.member(u8(id)) });
+      const sum = Relay.mirrorSummary(plan);
+      log(`plan: ${sum.total} live Preview policies: ${sum.mirrored} mirrored, ${sum.ready} ready, ${sum['awaiting-key']} awaiting holder key, ${sum['pre-binding']} pre-binding`);
+      for (const e of plan.filter((x) => x.state !== 'ready')) log(`  skip ${e.policyId.slice(0, 16)}… ${Relay.MIRROR_STATE_LABEL[e.state]}`);
+      const done = [];
+      for (const e of plan.filter((x) => x.state === 'ready')) {
+        if (await memberNow(e.policyId)) {
+          log(`  ${e.policyId.slice(0, 16)}… registered meanwhile; skipping`);
+          continue;
+        }
+        let holderKey = null;
+        let regArgs;
+        if (e.keyFile) {
+          const k = Holder.parsePolicyKey(fs.readFileSync(e.keyFile, 'utf8'));
+          holderKey = { ...k, coverage: e.coverage.toString(), expiry: e.expiry.toString() };
+          const chk = await Holder.checkPolicyKey(holderKey, e.midnightCommitment);
+          if (!chk.ok) throw new Error(`key for ${e.policyId} no longer opens the datum: ${chk.reason}`);
+          regArgs = Holder.registerPolicyArgs(holderKey);
+        } else {
+          if (!(await Relay.ticketOpensDatum(e.ticket, e))) throw new Error(`ticket for ${e.policyId} does not open the datum`);
+          regArgs = {
+            policyId: u8(e.policyId),
+            holderCommitment: u8(e.ticket.holderCommitment),
+            coverage: u8(e.ticket.coverageCommitment),
+            expiry: e.expiry,
+            cardanoCommitment: u8(e.midnightCommitment),
+          };
+        }
+        const c = { network: 'preview', buyTx: e.buyTx, policyDatum: e.ref, midnightCommitment: e.midnightCommitment, coverage: e.coverage.toString(), expiry: e.expiry.toString() };
+        done.push(await relayOne({ policyId: e.policyId, args: regArgs, holderKey, cardano: c, source: e.source }));
+      }
+      log(`batch relay done: ${done.length} newly mirrored, ${done.filter((d) => d.proveCover).length} cover proofs`);
+      return;
+    }
+
     // 2. policy key -> registerPolicy -> proveCover
     if (!cardano) {
       keyText = await waitForKey();
@@ -232,40 +345,13 @@ async function main() {
       cardano = await checkKey(keyText);
     }
     const { key, policy, outRef } = cardano;
-    const a = Holder.registerPolicyArgs(key);
-    log('registerPolicy as issuer…');
-    const reg = finalized('registerPolicy', await issuer.callTx.registerPolicy(a.policyId, a.holderCommitment, a.coverage, a.expiry, a.cardanoCommitment));
-    log('REGISTERED tx', reg.txId, 'block', reg.blockHeight);
-
-    const holderState = { sk: key.holderSecret, openings: { [key.policyId]: { amount: key.coverage, salt: key.coverageSalt } } };
-    const holder = await findDeployedContract(providers, { compiledContract: compiled, contractAddress: address, privateStateId: `plutusshieldHolder-${key.policyId.slice(0, 16)}`, initialPrivateState: holderState });
-    log('proveCover as holder…');
-    const prove = finalized('proveCover', await holder.callTx.proveCover(a.policyId, BigInt(key.coverage)));
-    log('PROVED tx', prove.txId, 'block', prove.blockHeight);
-
-    // Read back the public record and recompute the Cardano binding from it.
-    const state = await providers.publicDataProvider.queryContractState(address);
-    let l;
-    try {
-      l = ledger(state.data);
-    } catch {
-      l = ledger(state);
-    }
-    const rec = l.policies.lookup(a.policyId);
-    const rebound = hex(pure.registrationCommitment(a.policyId, rec.holder, rec.coverage));
-    const entry = {
+    await relayOne({
       policyId: key.policyId,
+      args: Holder.registerPolicyArgs(key),
+      holderKey: key,
       cardano: { network: 'preview', buyTx: key.txHash, policyDatum: outRef, midnightCommitment: policy.midnightCommitment, coverage: policy.coverage.toString(), expiry: policy.expiry.toString() },
-      registerPolicy: reg,
-      proveCover: { ...prove, minCoverage: key.coverage },
-      ledger: { status: Number(rec.status), holder: hex(rec.holder), coverage: hex(rec.coverage), activePolicies: String(l.activePolicies), coverProofs: String(l.coverProofs) },
-      bindingHolds: rebound === policy.midnightCommitment,
-      at: new Date().toISOString(),
-    };
-    record.registrations = [...(record.registrations ?? []).filter((r) => r.policyId !== key.policyId), entry];
-    jsonOut(DEPLOY_RECORD, record);
-    console.log(JSON.stringify({ contractAddress: address, ...entry }, null, 2));
-    if (!entry.bindingHolds) throw new Error('ledger record does not recompute to the Cardano commitment');
+      source: 'key',
+    });
   } finally {
     await ctx.wallet.stop().catch(() => {});
   }

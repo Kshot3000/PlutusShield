@@ -23,7 +23,8 @@
     "relay:live": "pnpm --filter @plutusshield/oracle-relay live",
     "test:midnight": "pnpm --filter @plutusshield/midnight-contracts test",
     "build:cardano": "pnpm --filter @plutusshield/cardano-contracts build",
-    "compile:midnight": "pnpm --filter @plutusshield/midnight-contracts compile"
+    "compile:midnight": "pnpm --filter @plutusshield/midnight-contracts compile",
+    "midnight:relay:plan": "pnpm --filter @plutusshield/midnight-contracts relay:plan"
   },
   "engines": {
     "node": ">=20"

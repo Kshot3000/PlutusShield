@@ -7,7 +7,8 @@
   "scripts": {
     "compile": "compact compile +0.31.1 src/policy-cover.compact src/managed/policy-cover",
     "compile:fast": "compact compile +0.31.1 --skip-zk src/policy-cover.compact src/managed/policy-cover",
-    "test": "pnpm run compile:fast && node --experimental-strip-types --no-warnings --test test/*.test.mjs"
+    "test": "pnpm run compile:fast && node --experimental-strip-types --no-warnings --test test/*.test.mjs",
+    "relay:plan": "node --experimental-strip-types --no-warnings relay/plan-cli.ts"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.16.0"

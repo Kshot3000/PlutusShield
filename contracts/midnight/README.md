@@ -99,6 +99,8 @@ pnpm test           # --skip-zk compile, then node:test simulation via @midnight
   - `registerPolicy` rejects a swapped holder, an inflated coverage, a replay under another policy id, and a random (pre-wiring placeholder) datum commitment
   - a key restored from an encrypted backup still proves cover
 
+`test/relay-plan.test.mjs` (4 more) runs the relay plan against real public Preview UTxOs (fixture) with Koios mocked: 8 pre-binding, 1 mirrored and 2 ticketed policies classify correctly, a forged ticket is flagged and ignored, a local key that doesn't open the datum never makes a policy provable, and the plan fails closed when Koios is down.
+
 ## Midnight Preprod
 
 `policy-cover` is deployed on **Midnight Preprod** (compactc 0.31.1, proof server 8.1.0), and the first real Cardano Preview policy is mirrored into it. Public record: [`deployments/preprod.json`](deployments/preprod.json).
@@ -123,6 +125,46 @@ node policy-cover-preprod.mjs
 
 It needs a funded Preprod wallet (tNIGHT plus generated tDUST) and a local proof server on `:6300`. Set `MIDNIGHT_POLICY_COVER_ADDRESS` (or keep the deploy record) to reuse the contract instead of deploying again.
 
+### Batch relay: every Cardano Buy
+
+`registerPolicy` needs the holder and coverage commitments, but the datum only holds their hash. So every Buy (same shared builder: `/cover`, `pnpm web-buy`, `pnpm preview buy`, the emulator) also publishes a **registration ticket** as Cardano tx metadata:
+
+```
+label 7731: { "v": 1, "p": policyId, "h": holderCommitment, "c": coverageCommitment }      // 64-hex strings, no secrets
+```
+
+Both values are hiding commitments and are public on Midnight as soon as the policy is registered, so the ticket reveals nothing new. It lets the issuer relay register a policy from chain data alone; `proveCover` still needs the holder secret, which stays with the buyer.
+
+`packages/sdk/src/relay.ts` has the ticket codec and `classifyMirror`; `relay/plan.ts` builds the plan from Koios (live policy datums at the cover script, then `tx_metadata` of each Buy), local policy key files, and the contract's state. Each live Preview policy is one of:
+
+| State | Meaning | Relay action |
+|---|---|---|
+| `mirrored` | policy id is in the contract's `policies` map | none |
+| `ready` | a ticket or a local policy key reproduces the datum's `midnight_commitment` | `registerPolicy`, plus `proveCover` if the holder key is local |
+| `awaiting-key` | bound policy, but no valid ticket and no key | none; reported |
+| `pre-binding` | bought before the binding shipped (Preview, 2026-10-06 17:23 UTC): random placeholder commitment, which `registerPolicy` rejects by design | none; reported |
+
+A ticket that doesn't open the datum is flagged (`badTicket`) and never used.
+
+First batch run (2026-10-06 20:00 UTC): plan = 11 live Preview policies, 1 mirrored, 2 ready, 8 pre-binding. Both ready policies were relayed (holder keys local, so registered and proven), every tx confirmed `SUCCESS` on the Preprod indexer:
+
+| Cardano Buy (Preview) | `registerPolicy` | `proveCover` |
+|---|---|---|
+| [`1e70f089…0f321f`](https://preview.cardanoscan.io/transaction/1e70f0895de64c50dbbc39df0e8d23af362a29e476d1bdfb1e2068ff780f321f) 20 ADA | `c2aafffc20cf3b2349a92f15247fbc5b95826f9d830a477d137b18b4fe088647` (block 2866500) | `d81ba90c719113c99b7b3596f499d93c10967f750153eb495e43298590d60084` (block 2866504) |
+| [`94c4dc05…1325ff`](https://preview.cardanoscan.io/transaction/94c4dc052711c6eec5b2942da768b151b9f1dd9519cf11bcd55982a6bd1325ff) 25 USDC | `0fa8b01e9dbec394e5afffa65b6183d19509b9acabd9a852091a534587611f3b` (block 2866508) | `c6905d13b2ab87a2818a7f482359df6826227ff761ffad3cd7ba250efdb10a26` (block 2866511) |
+
+Ledger after: 3 active policies, 3 cover proofs, so all 3 mirrorable Preview policies are mirrored; a dry run afterwards plans 0 ready.
+
+```bash
+pnpm midnight:relay:plan            # dry run: no wallet, no proof server, no txs (Koios + public Preprod indexer); --json for machine output
+# live, from the midnight-js workspace (same env as above, plus):
+PLUTUSSHIELD_PUBLIC_RECORD=$REPO/contracts/midnight/deployments/preprod.json \
+PLUTUSSHIELD_POLICY_KEY_DIRS=<dirs with plutusshield/policy-key@1 files> \
+node policy-cover-preprod.mjs --all
+```
+
+`--all` syncs the issuer wallet once, plans against the decoded ledger, then relays `ready` policies oldest first, one at a time: it re-checks `policies.member(id)` right before each call (idempotent, safe to re-run), re-verifies the ticket or key against the datum, records only finalized `SucceedEntirely` txs, recomputes the binding from the stored record, writes both records after every policy, and stops at the first failure. `/cover` My policies shows the per-policy state (live "Mirrored on Midnight", otherwise the build-time plan: "Relay pending", "Awaiting holder key", "Pre-binding"), and `/app` shows how many mirrorable Preview policies are mirrored.
+
 ### Reading it live
 
 The web app reads the registry straight from the public Preprod indexer (GraphQL v4), with no wallet, keys or WASM: `apps/web/src/lib/midnightIndexer.ts` streams `contractActions` for the contract over the indexer's `graphql-transport-ws` socket from the deploy block (history, then new calls as they land) and fetches the latest serialized state over HTTP.
@@ -133,4 +175,4 @@ The web app reads the registry straight from the public Preprod indexer (GraphQL
 
 ## Status
 
-Compiles, passes local simulation, and runs on Midnight Preprod (deploy, `registerPolicy`, `proveCover`). Registration is operator-run from the box today; next is relaying every Cardano Buy automatically. Not audited. Expiry here is issuer-driven and mirrors the Cardano side, where `Expire` in `contracts/cardano` is time-locked (expiry + claim grace) and callable by anyone.
+Compiles, passes local simulation, and runs on Midnight Preprod (deploy, `registerPolicy`, `proveCover`). Every Buy carries a registration ticket and the batch relay mirrors every relayable Preview policy; it is operator-run (`--all`) from the box today. Next: run it on a schedule, and `proveCover` from the browser with the key the Buy saved. Not audited. Expiry here is issuer-driven and mirrors the Cardano side, where `Expire` in `contracts/cardano` is time-locked (expiry + claim grace) and callable by anyone.

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMidnightActivity } from "@/lib/useMidnightActivity";
+import { MIRROR_STATE_LABEL, mirrorSummary, type MirrorState } from "@plutusshield/sdk/relay";
+import { RELAY_SNAPSHOT, relayEntry, useMidnightActivity } from "@/lib/useMidnightActivity";
 import { useNow } from "@/lib/useNow";
 import { shortHash } from "@/lib/midnightPreprod";
 
@@ -88,17 +89,76 @@ export function ActivityFeed({ limit = 6 }: { limit?: number }) {
   );
 }
 
-/** Small "mirrored on Midnight" line for a policy row. */
+const mirrorCopy: Record<MirrorState | "unknown", { label: string; title: string; tone: string; dot: string }> = {
+  mirrored: {
+    label: MIRROR_STATE_LABEL.mirrored,
+    title: "This policy id is a key in the policy-cover registry's public state on Midnight Preprod, so its holder can prove cover there.",
+    tone: "text-midnight",
+    dot: "bg-[var(--midnight)]",
+  },
+  ready: {
+    label: MIRROR_STATE_LABEL.ready,
+    title: "The Buy transaction carries a registration ticket that opens this policy's commitment. The issuer relay registers it on Midnight on its next run.",
+    tone: "text-text-muted",
+    dot: "border border-[var(--midnight)]",
+  },
+  "awaiting-key": {
+    label: MIRROR_STATE_LABEL["awaiting-key"],
+    title: "Bound to a Midnight key, but the relay has neither the Buy's registration ticket nor the holder's key, so it can't register it yet.",
+    tone: "text-[var(--gold)]",
+    dot: "border border-[var(--gold)]",
+  },
+  "pre-binding": {
+    label: MIRROR_STATE_LABEL["pre-binding"],
+    title: "Bought before Midnight keys shipped (Oct 6, 2026): the datum holds a placeholder commitment that no key opens, and registerPolicy rejects it by design.",
+    tone: "text-text-dim",
+    dot: "border border-border-strong",
+  },
+  unknown: {
+    label: "Not mirrored yet",
+    title: "Not registered in the Midnight Preprod registry yet. Every Buy publishes a registration ticket and the relay mirrors policies after they confirm on Cardano.",
+    tone: "text-text-dim",
+    dot: "border border-border-strong",
+  },
+};
+
+/** Per-policy Midnight mirror state: live "mirrored" from the indexer, otherwise the build-time relay plan. */
 export function MirroredOnMidnight({ policyId }: { policyId: string }) {
   const a = useMidnightActivity();
-  const yes = a.isMirrored(policyId);
+  const state: MirrorState | "unknown" = a.isMirrored(policyId) ? "mirrored" : (() => {
+    const s = relayEntry(policyId)?.state;
+    // The snapshot said mirrored but the live state doesn't: don't claim it.
+    return !s || s === "mirrored" ? "unknown" : s;
+  })();
+  const c = mirrorCopy[state];
   return (
-    <span
-      className={`flex items-center gap-1.5 text-[11px] leading-snug ${yes ? "text-midnight" : "text-text-dim"}`}
-      title={yes ? "This policy id is a key in the policy-cover registry's public state on Midnight Preprod." : "Not registered in the Midnight Preprod registry yet. The relay mirrors policies after they confirm on Cardano."}
-    >
-      <span className={`h-1.5 w-1.5 rounded-full ${yes ? "bg-[var(--midnight)]" : "border border-border-strong"}`} aria-hidden="true" />
-      {yes ? "Mirrored on Midnight" : "Not mirrored yet"}
+    <span className={`flex items-center gap-1.5 text-[11px] leading-snug ${c.tone}`} title={c.title}>
+      <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} aria-hidden="true" />
+      {c.label}
     </span>
+  );
+}
+
+/** "3 of 11 live Preview policies mirrored" line for the /app panel; mirrored is live, the rest from the relay plan. */
+export function RelayStatus() {
+  const a = useMidnightActivity();
+  const entries = RELAY_SNAPSHOT.policies.map((p) => ({ state: a.isMirrored(p.policyId) ? ("mirrored" as const) : p.state === "mirrored" ? ("ready" as const) : p.state }));
+  if (!entries.length) return null;
+  const n = mirrorSummary(entries);
+  const parts = [
+    n.ready ? `${n.ready} relay pending` : null,
+    n["awaiting-key"] ? `${n["awaiting-key"]} awaiting holder key` : null,
+    n["pre-binding"] ? `${n["pre-binding"]} pre-binding (can't mirror)` : null,
+  ].filter(Boolean);
+  return (
+    <p className="relative mt-4 flex flex-wrap items-baseline gap-x-2 text-xs text-text-muted" aria-live="polite">
+      <span className="font-display text-base tabular-nums text-text">
+        {n.mirrored} of {n.mirrorable}
+      </span>
+      <span>
+        mirrorable Cardano Preview policies are mirrored on Midnight
+        {parts.length ? <span className="text-text-dim"> · {parts.join(" · ")}</span> : null}
+      </span>
+    </p>
   );
 }

@@ -13,7 +13,8 @@
     "./cip30": "./src/cip30.ts",
     "./evidence": "./src/evidence.ts",
     "./chain": "./src/chain.ts",
-    "./midnight": "./src/midnight.ts"
+    "./midnight": "./src/midnight.ts",
+    "./relay": "./src/relay.ts"
   },
   "scripts": {
     "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts"

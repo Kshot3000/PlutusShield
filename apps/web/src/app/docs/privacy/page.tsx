@@ -84,6 +84,16 @@ Cardano PolicyDatum.midnight_commitment = registration`}</Formula>
           to. Because the stored record is public, anyone can recompute the binding against the Cardano datum.
         </P>
         <P>
+          <C>registerPolicy</C> needs the holder and coverage commitments themselves, not just their hash, so the
+          Buy transaction also carries a <Strong>registration ticket</Strong> in its metadata (label{" "}
+          <C>7731</C>: policy id, holder commitment, coverage commitment). It holds no secret: both values are
+          hiding commitments, and they are published on Midnight anyway the moment the policy is registered. The
+          relay lists every live policy on Cardano, keeps only tickets that reproduce the datum&apos;s{" "}
+          <C>midnight_commitment</C>, and registers each policy that isn&apos;t in the registry yet. A forged ticket
+          is reported and ignored; the circuit would reject it regardless. Policies bought before the binding
+          shipped hold a placeholder commitment and are shown as pre-binding rather than mirrored.
+        </P>
+        <P>
           The policy key is the private proof of ownership on Midnight: <C>proveCover</C>,{" "}
           <C>fileClaim</C>, and <C>rotateHolder</C> all check the holder secret through the{" "}
           <C>localSecretKey</C> witness. It&apos;s saved in your browser (localStorage, keyed by policy id)

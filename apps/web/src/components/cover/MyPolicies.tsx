@@ -171,8 +171,12 @@ export function MyPolicies({ chain }: { chain: CoverChain }) {
             checks when you prove cover or file a claim there, without revealing your wallet or the amount. &ldquo;On this device&rdquo;
             means the saved key re-derives this policy&apos;s on-chain commitment. Keys stay in this browser until you export them;
             on another device, use &ldquo;Restore from backup&rdquo;. Policies bought before Midnight keys shipped (Oct 6, 2026) have none.
+            The Buy also publishes a <span className="font-mono">registration ticket</span> (the holder and coverage
+            commitments, never the key) so the relay can mirror the policy on Midnight from chain data alone.
             &ldquo;Mirrored on Midnight&rdquo; is read live from the Midnight Preprod indexer: the policy id is a key in the
-            registry&apos;s public state, so its holder can prove cover there.
+            registry&apos;s public state, so its holder can prove cover there. &ldquo;Relay pending&rdquo; means the ticket
+            checks out and the next relay run registers it; &ldquo;Pre-binding&rdquo; policies carry a placeholder commitment
+            and can&apos;t be mirrored.
           </p>
         </div>
       )}

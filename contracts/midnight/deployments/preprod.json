@@ -44,6 +44,78 @@
       },
       "bindingHolds": true,
       "at": "2026-10-06T17:58:38.354Z"
+    },
+    {
+      "policyId": "a33af8052854e2b4b32bff59afcb652dc0240bcb19b231314685bfaed13b2b3d",
+      "cardano": {
+        "network": "preview",
+        "buyTx": "1e70f0895de64c50dbbc39df0e8d23af362a29e476d1bdfb1e2068ff780f321f",
+        "policyDatum": "1e70f0895de64c50dbbc39df0e8d23af362a29e476d1bdfb1e2068ff780f321f#1",
+        "midnightCommitment": "75fc88b744e44863f6f7faa37d49c7e1f77b5d6a44b7f24774d9e4b1cb088045",
+        "coverage": "20000000",
+        "expiry": "1792527971000"
+      },
+      "source": "key",
+      "registerPolicy": {
+        "txId": "00f672dfb35a2679b7f633df570ac173fb81f4eb87951e42b4a0e0fdf7d8ae1ff3",
+        "txHash": "c2aafffc20cf3b2349a92f15247fbc5b95826f9d830a477d137b18b4fe088647",
+        "blockHeight": 2866500,
+        "blockHash": "9e68adb63d9221b7d0617550a71f37e17cacdcf3a9eaba26848fac4c411193d3",
+        "status": "SucceedEntirely"
+      },
+      "proveCover": {
+        "txId": "001a93117c4750a49ac2bd725492d3a8f6ed48c5876505b3825d205170d6e436b7",
+        "txHash": "d81ba90c719113c99b7b3596f499d93c10967f750153eb495e43298590d60084",
+        "blockHeight": 2866504,
+        "blockHash": "edbc99af99593413b4e267448421ee153c9912c2de1205be31865500bff14707",
+        "status": "SucceedEntirely",
+        "minCoverage": "20000000"
+      },
+      "ledger": {
+        "status": 1,
+        "holder": "49fbea54ed81af2b3f9711154818db0278c75405a264ad5db2d64dd08b3d51f6",
+        "coverage": "fe69fb50cabd857ae5284256473b9654de9ab947456abb8c97be3b2794233a5a",
+        "activePolicies": "2",
+        "coverProofs": "2"
+      },
+      "bindingHolds": true,
+      "at": "2026-10-06T20:01:08.994Z"
+    },
+    {
+      "policyId": "7c24be86268f54972c49f6f6e4ec10be6c59506e4c28d3869d33635979468ccb",
+      "cardano": {
+        "network": "preview",
+        "buyTx": "94c4dc052711c6eec5b2942da768b151b9f1dd9519cf11bcd55982a6bd1325ff",
+        "policyDatum": "94c4dc052711c6eec5b2942da768b151b9f1dd9519cf11bcd55982a6bd1325ff#1",
+        "midnightCommitment": "9d4d051d43eeed64615e573116f256e8e6676a06ace73e7c1f57d1240c9d7b27",
+        "coverage": "25000000",
+        "expiry": "1792528003000"
+      },
+      "source": "key",
+      "registerPolicy": {
+        "txId": "0049d80d14ee5e20adb9787ac7bc2114df6cba4753bfa77d4ed92f26c62a448fc4",
+        "txHash": "0fa8b01e9dbec394e5afffa65b6183d19509b9acabd9a852091a534587611f3b",
+        "blockHeight": 2866508,
+        "blockHash": "5bb8482714d8e0bbb34ff8adf1a5a36c0e71aecbe8dcef65541ef94370c73aee",
+        "status": "SucceedEntirely"
+      },
+      "proveCover": {
+        "txId": "00ead0a54086d7f8db156fa562077177ab89cb54f43a5f4646c74cdadb092d3dad",
+        "txHash": "c6905d13b2ab87a2818a7f482359df6826227ff761ffad3cd7ba250efdb10a26",
+        "blockHeight": 2866511,
+        "blockHash": "a0110fe1e70cb0b0b8050c3237568a10ffea4fb83bd4f2115ec8f27a10e9c38b",
+        "status": "SucceedEntirely",
+        "minCoverage": "25000000"
+      },
+      "ledger": {
+        "status": 1,
+        "holder": "fe435e1c70aed663e72ba011d9bb99b91f6c86081854ff67a0bf785d8ece5340",
+        "coverage": "9ff196e70b23ec063eca9b73075d835b263fbead076f2b0c6dd6f518cc2f46ab",
+        "activePolicies": "3",
+        "coverProofs": "3"
+      },
+      "bindingHolds": true,
+      "at": "2026-10-06T20:01:50.893Z"
     }
   ],
   "_note": "Public Midnight Preprod data only (copied from the policy-cover-preprod.mjs run record). No keys, seeds or holder secrets."
