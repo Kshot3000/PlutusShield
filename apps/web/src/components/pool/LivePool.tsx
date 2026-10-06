@@ -7,6 +7,7 @@ import { fetchKoiosUtxos, readPoolState, type ChainUtxo, type LivePoolState } fr
 import { formatUnits } from "@plutusshield/sdk/cip30";
 import { PREVIEW, PREVIEW_ASSETS, explorerAddress, explorerTx } from "@/lib/preview";
 import snapshot from "@/data/preview-pool-snapshot.json";
+import { LpPanel } from "@/components/pool/LpPanel";
 
 type Source = { kind: "live"; at: Date } | { kind: "snapshot"; at: Date; reason?: string };
 
@@ -165,6 +166,8 @@ export function LivePool() {
               );
             })}
           </div>
+
+          <LpPanel tranches={state.tranches} onConfirmed={() => void refresh()} />
 
           <div className="mt-6 overflow-x-auto">
             <table className="w-full min-w-[560px] text-left text-sm">

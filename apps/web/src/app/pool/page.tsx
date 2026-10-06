@@ -34,7 +34,7 @@ export default function PoolPage() {
     <AppShell
       active="pool"
       title="Underwriting pool"
-      description="Back stablecoin depeg cover in ADA or USDC and earn its premiums. See the live Preview pool on-chain, then simulate a position with the same share math as the validator, down to the lovelace."
+      description="Back stablecoin depeg cover in ADA or USDC and earn its premiums. See the live Preview pool on-chain, deposit or withdraw with a signed wallet transaction, then simulate a position with the same share math as the validator, down to the lovelace."
     >
       <LivePool />
       <UnderwriterSimulator />

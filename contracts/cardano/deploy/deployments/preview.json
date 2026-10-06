@@ -44,7 +44,12 @@
     "2026-10-06T13:45:08.940Z Deposit 100000 usdc (+100000000000 lp1)": "681108c18b5f07e22f4e19049cd1553cb7395e3ee75720dca443b97fc41fff90",
     "2026-10-06T13:45:35.206Z oracle peg 10000bps feed-a,feed-b,feed-c": "09f85199086d46dc5954d8a4e6ac83e43cdaf09eb1a82e6ded8d7ca9eb73c899",
     "2026-10-06T13:46:02.204Z Buy 1000 usdc cover": "3410e2db0efdd83fbc8cd5c6d5aff7314e34b5c9bb5c61697e1df8be4a208f84",
-    "2026-10-06T13:46:28.276Z Buy 150 ada cover": "9c3a98093f3bd850d84da815233d5c6145bf9a7226267cae9b102a55828d97eb"
+    "2026-10-06T13:46:28.276Z Buy 150 ada cover": "9c3a98093f3bd850d84da815233d5c6145bf9a7226267cae9b102a55828d97eb",
+    "2026-10-06T14:42:20.000Z web-lp Deposit 25 ada (website builder, run 1)": "f157870b67c821eb3c4020819e0c20658456a01be41b93aa2328dec8a3e2e49a",
+    "2026-10-06T14:43:32.000Z web-lp Deposit 25 ada (website builder, run 2)": "960081821d874fd23ffd59e15f87cf5e63c7f139b21c0f55d6d94097a9620456",
+    "2026-10-06T14:45:05.749Z web-lp Withdraw 10 ada shares": "d9b0b4253db3d83dd8052292879719869f9480e123bfa66d7056a6479a9a0496",
+    "2026-10-06T14:51:20.000Z browser-e2e Deposit 5 ada via /pool CIP-30 panel (+4980079 lp0)": "114a3294bb29cc0a5d0835dcafcb86dccead098dad493a618cf04cf59fddcde4",
+    "2026-10-06T14:53:23.000Z browser-e2e Withdraw 2 ada shares via /pool CIP-30 panel": "179b2fe5cba7f07bdb87fe74b13c11b932cb8a2bf78220b699fa96e02cbce646"
   },
   "script": {
     "hash": "4e5423fefc28871aef53bd2ee85722c19af742e6b7a99d507e0ce2ac",

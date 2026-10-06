@@ -3,9 +3,10 @@
 /**
  * CIP-30 wallet connection for the static site.
  *
- * Read-only for now: we ask the wallet for its network, change address and
- * balance so the app can show who is connected and what they hold on Preview.
- * Nothing here builds, signs or submits a transaction.
+ * We read the wallet's network, change address and balance so the app can
+ * show who is connected and what they hold on Preview. Transactions are built
+ * elsewhere (lib/tx) and only ever signed after the wallet's own approval
+ * prompt; `signingApi()` hands the raw CIP-30 handle to that builder.
  */
 import {
   createContext,
@@ -34,11 +35,9 @@ interface Cip30Provider {
   isEnabled(): Promise<boolean>;
 }
 
-declare global {
-  interface Window {
-    cardano?: Record<string, Cip30Provider | unknown>;
-  }
-}
+/** Injected CIP-30 providers. Read loosely: Lucid also types window.cardano, and wallets inject extra keys. */
+const injected = (): Record<string, unknown> | undefined =>
+  typeof window === "undefined" ? undefined : (window as unknown as { cardano?: Record<string, unknown> }).cardano;
 
 export interface InstalledWallet {
   key: string;
@@ -69,6 +68,8 @@ export interface WalletState {
   connect(key: string): Promise<void>;
   disconnect(): void;
   refresh(): Promise<void>;
+  /** The enabled CIP-30 API (for Lucid's selectWallet.fromAPI), or null when not connected. */
+  signingApi(): unknown | null;
 }
 
 const STORAGE_KEY = "plutusshield.wallet";
@@ -84,10 +85,11 @@ function isProvider(v: unknown): v is Cip30Provider {
 }
 
 function scanWallets(): InstalledWallet[] {
-  if (typeof window === "undefined" || !window.cardano) return [];
+  const cardano = injected();
+  if (!cardano) return [];
   const seen = new Set<string>();
   const out: InstalledWallet[] = [];
-  for (const [key, v] of Object.entries(window.cardano)) {
+  for (const [key, v] of Object.entries(cardano)) {
     if (!isProvider(v)) continue;
     const name = (v.name || key).trim();
     // Some wallets inject twice under different keys (e.g. a legacy alias).
@@ -142,7 +144,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const connectTo = useCallback(
     async (key: string, silent: boolean) => {
-      const provider = window.cardano?.[key];
+      const provider = injected()?.[key];
       if (!isProvider(provider)) {
         if (!silent) {
           setStatus("error");
@@ -240,6 +242,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       connect: (key: string) => connectTo(key, false),
       disconnect,
       refresh,
+      signingApi: () => api.current,
     }),
     [status, wallets, detected, wallet, networkId, address, balance, error, updatedAt, connectTo, disconnect, refresh],
   );
