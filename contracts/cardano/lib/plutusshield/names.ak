@@ -9,8 +9,14 @@ use cardano/transaction.{OutputReference}
 /// Unique pool state token (one per deployment).
 pub const pool_nft: AssetName = "pool"
 
-/// Fungible LP share token.
-pub const lp_token: AssetName = "lp"
+/// Prefix of the fungible LP share tokens. Tranche `i` (0..=255) mints
+/// `lp_name(i)` = "lp" ‖ one byte i, e.g. #"6c7000" for the ada tranche and
+/// #"6c7001" for the USDC tranche in the default [ada, USDC] deployment.
+pub const lp_prefix: AssetName = "lp"
+
+pub fn lp_name(tranche: Int) -> AssetName {
+  bytearray.concat(lp_prefix, bytearray.from_int_big_endian(tranche, 1))
+}
 
 /// CIP-67 label (100): reference token, locked at the script with the datum.
 pub const ref_label: ByteArray = #"000643b0"
@@ -59,5 +65,15 @@ test token_names_are_32_bytes_and_distinct() {
     is_user_name(user_name(id)),
     !is_user_name(ref_name(id)),
     !is_user_name(pool_nft),
+  }
+}
+
+test lp_names_are_per_tranche() {
+  and {
+    lp_name(0) == #"6c7000",
+    lp_name(1) == #"6c7001",
+    lp_name(0) != lp_name(1),
+    lp_name(1) != pool_nft,
+    !is_user_name(lp_name(0)),
   }
 }

@@ -1,8 +1,15 @@
 //// Shared on-chain types for PlutusShield on Cardano.
 ////
-//// All amounts are integers in the pool asset's smallest unit (lovelace, or
-//// the stablecoin's base unit). All times are POSIX milliseconds. All rates
-//// are basis points (10_000 = 100%).
+//// All amounts are integers in the smallest unit of the tranche asset they
+//// belong to (lovelace for ada, the stablecoin's base unit for USDC/USDCx).
+//// All times are POSIX milliseconds. All rates are basis points (10_000 = 100%).
+////
+//// Multi-asset: one pool holds an independent *tranche* per accepted asset
+//// (e.g. ada and USDCx). Each tranche has its own capital, LP share token,
+//// active cover, and utilization. A policy is denominated in exactly one
+//// tranche asset: its premium is paid in that asset and its payout is made in
+//// that asset. Tranches never price against each other, so no FX oracle is
+//// needed and one tranche's claims can never drain another's capital.
 
 use cardano/assets.{AssetName, PolicyId}
 use cardano/transaction.{OutputReference}
@@ -35,8 +42,6 @@ pub type ProductTerms {
   risk_mult_bps: Int,
   min_days: Int,
   max_days: Int,
-  /// Premium floor in pool-asset base units.
-  min_premium: Int,
   /// One policy can take at most this share of pool capital (1_000 = 10%).
   max_single_policy_bps: Int,
   /// Active cover can never exceed this share of capital (9_000 = 90%).
@@ -52,12 +57,22 @@ pub type OracleConfig {
   quorum: Int,
 }
 
+/// One accepted pool currency. Its position in `CoverParams.assets` is the
+/// tranche index used by redeemers, the pool datum, and the LP token name.
+pub type AssetTerms {
+  /// `AssetClass { "", "" }` for ada, or e.g. USDCx `1f3aec8b…7e34.USDCx`.
+  asset: AssetClass,
+  /// Premium floor in this asset's base units (5 ADA = 5_000_000 lovelace).
+  min_premium: Int,
+}
+
 /// Validator parameters. Applied once at deployment; there is no admin key.
 pub type CoverParams {
   /// UTxO consumed to mint the unique pool NFT (one-shot).
   seed: OutputReference,
-  /// Currency for LP capital, premiums, and payouts.
-  pool_asset: AssetClass,
+  /// Accepted currencies for LP capital, premiums, and payouts, one tranche
+  /// each. Distinct, non-empty, at most 255 (tranche index fits a byte).
+  assets: List<AssetTerms>,
   product: ProductTerms,
   oracle: OracleConfig,
   /// After expiry, how long a holder still has to submit a claim for a
@@ -65,13 +80,19 @@ pub type CoverParams {
   claim_grace_ms: Int,
 }
 
-/// State of the underwriting pool, carried by the UTxO holding the pool NFT.
-/// Capital is the pool asset quantity in that UTxO itself.
-pub type PoolDatum {
-  /// Outstanding LP share tokens.
+/// Ledger of one tranche. Its capital is the quantity of the tranche asset
+/// held by the pool UTxO itself (for ada: all lovelace in the pool UTxO).
+pub type Tranche {
+  /// Outstanding LP share tokens of this tranche (`lp` ‖ tranche index byte).
   total_shares: Int,
-  /// Sum of coverage across live policies (capital locked against claims).
+  /// Sum of coverage across live policies in this asset.
   active_cover: Int,
+}
+
+/// State of the underwriting pool, carried by the UTxO holding the pool NFT.
+/// `tranches[i]` is the ledger for `CoverParams.assets[i]`.
+pub type PoolDatum {
+  tranches: List<Tranche>,
 }
 
 /// State of one policy, carried by the UTxO holding its reference token.
@@ -80,6 +101,9 @@ pub type PolicyDatum {
   /// Same id the Midnight `policy-cover` registry is keyed by.
   policy_id: ByteArray,
   product_id: ByteArray,
+  /// Currency of `coverage`, `premium`, and the payout. Must be one of
+  /// `CoverParams.assets`; it selects the tranche the policy draws on.
+  asset: AssetClass,
   coverage: Int,
   premium: Int,
   start: Int,
@@ -114,13 +138,15 @@ pub type MintAction {
 }
 
 pub type PoolAction {
-  /// LP adds capital; LP shares minted pro rata.
-  Deposit
-  /// LP burns `shares` for their pro-rata capital, subject to the reserve rule.
-  Withdraw { shares: Int }
-  /// Buyer pays premium into the pool and mints a policy (ref + user token).
+  /// LP adds capital to `tranche`; that tranche's LP shares minted pro rata.
+  Deposit { tranche: Int }
+  /// LP burns `shares` of `tranche` for their pro-rata capital in that asset,
+  /// subject to the tranche's capital lock.
+  Withdraw { tranche: Int, shares: Int }
+  /// Buyer pays the premium, in the policy's asset, into that tranche and
+  /// mints a policy (ref + user token).
   Buy
-  /// Holder burns the policy and receives `coverage` from the pool.
+  /// Holder burns the policy and receives `coverage` from its tranche.
   Settle
   /// Anyone retires a policy after expiry + grace, unlocking its capital.
   Expire
