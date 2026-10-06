@@ -4,7 +4,7 @@ Aiken (Plutus V3) validators for the MVP product: **parametric stablecoin depeg 
 
 Pools are **multi-asset**: one pool UTxO holds an independent tranche per accepted currency, by default **ada** and **USDC** (Circle **USDCx** on mainnet, a mock tUSDCx on Preview). Each policy is priced, collateralized, and paid out in one tranche's asset.
 
-> **Status:** compiles with Aiken v1.1.24 (stdlib v4.0.0) and passes 72 `aiken check` tests. The whole flow, including ADA and USDC buys and a USDC settlement, passes in the Lucid Emulator against the applied script (`deploy/`, `pnpm test:deploy`). Not deployed to any network yet (see the [Preview runbook](deploy/README.md)) and not audited. No real funds.
+> **Status:** compiles with Aiken v1.1.24 (stdlib v4.0.0) and passes 89 `aiken check` tests. The whole flow, including the sale circuit-breaker, ADA and USDC buys, a USDC settlement, and an expiry refund, passes in the Lucid Emulator against the applied script (`deploy/`, `pnpm test:deploy`). Not deployed to any network yet (see the [Preview runbook](deploy/README.md)) and not audited. No real funds.
 
 ## Layout
 
@@ -74,6 +74,11 @@ CoverParams {
   product:        ProductTerms          one product line per deployment
   oracle:         OracleConfig          trusted feeds + quorum
   claim_grace_ms: Int                   time after expiry to file a claim
+  sale_guard:     SaleGuard             circuit-breaker applied to every Buy
+}
+SaleGuard {
+  waiting_period_ms,                    min gap between the Buy's validity upper bound and policy start
+  max_price_age_ms                      healthy-peg readings must have window_end within this of that bound (> 0)
 }
 AssetTerms { asset: AssetClass ("" "" = ada), min_premium }   premium floor in that asset's base units
 ProductTerms {
@@ -84,7 +89,7 @@ ProductTerms {
 OracleConfig { policy_id, feeds: List<AssetName>, quorum }
 ```
 
-`packages/sdk` builds these from the same model parameters the quote engine uses (`productTerms("depeg", "B", depegTrigger(...))`): base 2% = `200`, tier multipliers A/B/C = `8_000`/`10_000`/`15_000`, kink 70%, single-policy cap 10% = `1_000`, utilization cap 90% = `9_000`, and `assetTerms(asset)` gives a 5-unit premium floor per currency. `InitPool` refuses to start a pool with nonsensical parameters, such as a zero quorum, a quorum larger than the feed list, or a threshold above 100%.
+`packages/sdk` builds these from the same model parameters the quote engine uses (`productTerms("depeg", "B", depegTrigger(...))`): base 2% = `200`, tier multipliers A/B/C = `8_000`/`10_000`/`15_000`, kink 70%, single-policy cap 10% = `1_000`, utilization cap 90% = `9_000`, and `assetTerms(asset)` gives a 5-unit premium floor per currency. `saleGuard()` defaults to a 24h waiting period and 2h max price age (`DEFAULT_SALE_GUARD`); the Preview config uses 60 min / 120 min so drills stay quick. `InitPool` refuses to start a pool with nonsensical parameters, such as a zero quorum, a quorum larger than the feed list, or a threshold above 100%, or a disabled price check (`max_price_age_ms = 0`).
 
 > `plutus.json` holds the **unapplied** script. The deployed hash (and so the policy id and address) depends on the parameters. `deploy/scripts/plan.ts` applies them with Lucid and cross-checks the result against `aiken blueprint apply`.
 
@@ -103,6 +108,7 @@ PolicyDatum {
   start, expiry:       Int        POSIX ms
   trigger:             Trigger    must equal the product's trigger
   midnight_commitment: ByteArray  32-byte Midnight coverage commitment
+  refund_to:           Address    receives the reference UTxO's min-ada on Expire (set by the buyer)
 }
 
 OracleDatum { covered_asset, price_bps, window_start, window_end }   (on oracle feed UTxOs)
@@ -124,9 +130,9 @@ OracleDatum { covered_asset, price_bps, window_start, window_end }   (on oracle 
 |---|---|
 | `Deposit { tranche }` | capital increases by `amount > 0`; mints exactly `amount * total_shares / capital` of `lp ‖ tranche` (or `amount` into an empty tranche) |
 | `Withdraw { tranche, shares }` | burns exactly `shares` of `lp ‖ tranche`; capital decreases by exactly `shares * capital / total_shares`; **capital lock:** `active_cover ≤ remaining capital × max_utilization` for that tranche |
-| `Buy` | `PolicyDatum.asset` must be an accepted asset (selects `t`); mints exactly one ref + one user token for `policy_id = blake2b_256(cbor(pool input ref))`; ref token goes to the script with a `PolicyDatum` whose product and trigger equal the params; term is a whole number of days within the product bounds; `start ≥` tx upper bound (no backdating); single-policy and utilization caps **on tranche `t`**; tranche `t` capital increases by `premium ≥ required_premium(…, assets[t].min_premium, …)`; `active_cover += coverage` |
+| `Buy` | `PolicyDatum.asset` must be an accepted asset (selects `t`); mints exactly one ref + one user token for `policy_id = blake2b_256(cbor(pool input ref))`; ref token goes to the script with a `PolicyDatum` whose product and trigger equal the params; term is a whole number of days within the product bounds; **waiting period:** `start ≥` tx upper bound `+ waiting_period_ms` (no backdating, no last-minute buys); **circuit-breaker:** `quorum` distinct allowlisted feeds report a healthy peg (`price_bps ≥ threshold_bps`) with `window_end ≥` tx upper bound `− max_price_age_ms`; single-policy and utilization caps **on tranche `t`**; tranche `t` capital increases by `premium ≥ required_premium(…, assets[t].min_premium, …)`; `active_cover += coverage` |
 | `Settle` | burns exactly that policy's ref + user token; the claim tx's upper bound `≤ expiry + claim_grace`; **oracle quorum** (below); tranche `t` capital decreases by exactly `coverage` (paid in the policy's asset); `active_cover -= coverage` |
-| `Expire` | anyone, once the tx lower bound `> expiry + claim_grace`; burns the ref token (and optionally the user token); capital unchanged; tranche `t` `active_cover -= coverage` |
+| `Expire` | anyone, once the tx lower bound `> expiry + claim_grace`; burns the ref token (and optionally the user token); capital unchanged; tranche `t` `active_cover -= coverage`; **an output pays `refund_to` at least the reference UTxO's lovelace** (the submitter can't keep the buyer's deposit) |
 
 **Spend policy UTxO.** Allowed only if the UTxO holds its reference token and that token is burned in the transaction.
 
@@ -142,6 +148,18 @@ policy.start <= window_start  and  window_end <= policy.expiry
 ```
 
 `Settle` requires at least `quorum` distinct feeds to attest the trigger.
+
+### Sale circuit-breaker (adverse selection)
+
+A feed attests a **healthy peg** for a `Buy` that can land as late as `upper` when:
+
+```
+covered_asset == trigger.covered_asset
+price_bps     >= trigger.threshold_bps          e.g. TWAP ≥ 0.95
+window_end    >= upper - sale_guard.max_price_age_ms
+```
+
+`Buy` needs `quorum` distinct feeds to attest it, using the same authentication as `Settle`. If any feed has flipped to a depeg reading, or the readings are stale, the quorum fails and nothing can be sold. On top of that, `start ≥ upper + waiting_period_ms`, and because trigger windows must start at or after `start`, a depeg that begins during the waiting period is never covered.
 
 ### Solvency invariant
 
@@ -167,8 +185,8 @@ For the MVP parametric product, coverage and premium are **public on Cardano**, 
 
 See also the gap list in the [Preview runbook](deploy/README.md#known-gaps-before-this-is-more-than-a-testnet-demo).
 
-- **Adverse selection.** Nothing stops someone buying cover while a depeg is already under way (the window must start after `start`, but a depeg that keeps going will qualify). Next step: a sale circuit-breaker that requires a healthy-peg oracle reading at purchase, and/or a waiting period.
-- The expire path lets whoever submits it keep the reference UTxO's min-ada. Refunding it to the holder is planned.
+- **Adverse selection, residual.** The circuit-breaker plus waiting period closes the "buy into a visible depeg" hole. What remains: a buyer who sees a depeg forming off-chain before the oracles publish can still buy, but the waiting period means the depeg has to *persist* past `start` and for a full trigger window after it. Oracle latency and the waiting period length are deployment choices. Readings are TWAPs, so a sharp drop at the very end of a healthy window can still look healthy.
+- **Expiry refunds go to `refund_to`, not to the current holder.** The user token is transferable, but the deposit returns to the address the buyer set at purchase. If you sell your policy, the deposit stays with you. Keepers have no fee incentive to submit `Expire` (LPs do: it unlocks their capital).
 - One pool UTxO serialises all actions (contention under load). Batching / order UTxOs come later.
 - One policy per Settle/Expire transaction.
 - The reference datum is a PlutusShield datum, not CIP-68 metadata, even though the token labels follow CIP-67.
@@ -179,7 +197,7 @@ See also the gap list in the [Preview runbook](deploy/README.md#known-gaps-befor
 
 ```bash
 # Aiken v1.1.24: https://github.com/aiken-lang/aiken/releases/tag/v1.1.24
-aiken check     # 72 tests
+aiken check     # 89 tests
 aiken build     # regenerates plutus.json
 # or from the repo root
 pnpm test:cardano

@@ -8,7 +8,9 @@ import { join } from "node:path";
 import {
   applyDoubleCborEncoding,
   applyParamsToScript,
+  credentialToAddress,
   Data,
+  getAddressDetails,
   mintingPolicyToId,
   validatorToAddress,
   type Network,
@@ -23,9 +25,11 @@ import {
   coverParamsData,
   depegTrigger,
   productTerms,
+  saleGuard,
   textHex,
   toCborHex,
   type AssetClass,
+  type Address,
   type AssetTerms,
   type CoverParams,
   type OutputReference,
@@ -42,6 +46,8 @@ export interface DeployConfig {
   assets: { kind: "ada" | "preview-mock-usdc" | "usdcx"; minPremium: number }[];
   oracle: { policy?: string; policyId?: string; feeds: string[]; quorum: number };
   claimGraceDays: number;
+  /** Sale circuit-breaker: waiting period before cover starts, max age of the healthy-peg readings a Buy uses. */
+  saleGuard: { waitingPeriodMinutes: number; maxPriceAgeMinutes: number };
   poolMinLovelace: number;
 }
 
@@ -70,6 +76,7 @@ export function buildParams(cfg: DeployConfig, seed: OutputReference, oraclePoli
     product: productTerms(cfg.product.id, cfg.product.tier, depegTrigger(textHex(cfg.product.coveredAsset))),
     oracle: { policyId: oraclePolicyId, feeds: cfg.oracle.feeds.map(textHex), quorum: BigInt(cfg.oracle.quorum) },
     claimGraceMs: BigInt(cfg.claimGraceDays) * DAY_MS,
+    saleGuard: saleGuard(BigInt(cfg.saleGuard.waitingPeriodMinutes) * 60_000n, BigInt(cfg.saleGuard.maxPriceAgeMinutes) * 60_000n),
   };
 }
 
@@ -138,7 +145,7 @@ export function decodeCoverDatum(cbor: string): { kind: "Pool"; pool: PoolDatum 
     };
   }
   const [p] = constrOf(outer as unknown as D, 1);
-  const [policyId, productId, asset, coverage, premium, start, expiry, trigger, midnightCommitment] = constrOf(p, 0);
+  const [policyId, productId, asset, coverage, premium, start, expiry, trigger, midnightCommitment, refundTo] = constrOf(p, 0);
   const [ap, an] = constrOf(asset, 0) as unknown as string[];
   const [ca, th, w] = constrOf(trigger, 0) as unknown as [string, bigint, bigint];
   return {
@@ -153,6 +160,35 @@ export function decodeCoverDatum(cbor: string): { kind: "Pool"; pool: PoolDatum 
       expiry: expiry as unknown as bigint,
       trigger: { coveredAsset: ca, thresholdBps: th, windowMs: w },
       midnightCommitment: midnightCommitment as unknown as string,
+      refundTo: decodeAddress(refundTo),
     },
   };
+}
+
+function decodeCredential(d: D) {
+  const c = d as unknown as { index: number; fields: string[] };
+  return { type: c.index === 0 ? ("Key" as const) : ("Script" as const), hash: c.fields[0] };
+}
+
+function decodeAddress(d: D): Address {
+  const [payment, stake] = constrOf(d, 0);
+  const s = stake as unknown as { index: number; fields: D[] };
+  if (s.index !== 0) return { payment: decodeCredential(payment) };
+  const [inline] = constrOf(s.fields[0], 0);
+  return { payment: decodeCredential(payment), stake: decodeCredential(inline) };
+}
+
+/** Plutus view of a bech32 address (what `PolicyDatum.refund_to` stores). */
+export function plutusAddress(bech32: string): Address {
+  const det = getAddressDetails(bech32);
+  if (!det.paymentCredential) throw new Error(`${bech32} has no payment credential`);
+  const cred = (c: { type: "Key" | "Script"; hash: string }) => ({ type: c.type, hash: c.hash });
+  return det.stakeCredential
+    ? { payment: cred(det.paymentCredential), stake: cred(det.stakeCredential) }
+    : { payment: cred(det.paymentCredential) };
+}
+
+/** Bech32 form of a Plutus address, to pay an Expire refund. */
+export function bech32Address(network: Network, a: Address): string {
+  return credentialToAddress(network, a.payment, a.stake);
 }

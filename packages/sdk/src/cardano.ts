@@ -68,6 +68,13 @@ export interface ProductTerms {
 
 export interface OracleConfig { policyId: string; feeds: string[]; quorum: bigint }
 
+/**
+ * Sale circuit-breaker (Aiken `SaleGuard`). Every Buy must land at least
+ * `waitingPeriodMs` before the policy starts, and must reference a quorum of
+ * healthy-peg feeds (price >= trigger threshold) no older than `maxPriceAgeMs`.
+ */
+export interface SaleGuard { waitingPeriodMs: bigint; maxPriceAgeMs: bigint }
+
 export interface CoverParams {
   seed: OutputReference;
   /** One tranche per entry, in order. Distinct, 1..=256 entries. */
@@ -75,7 +82,13 @@ export interface CoverParams {
   product: ProductTerms;
   oracle: OracleConfig;
   claimGraceMs: bigint;
+  saleGuard: SaleGuard;
 }
+
+/** A payment or stake credential (Aiken `VerificationKey(hash)` / `Script(hash)`). */
+export interface Credential { type: "Key" | "Script"; hash: string }
+/** A Cardano address as Plutus sees it. Stake pointers are not supported. */
+export interface Address { payment: Credential; stake?: Credential }
 
 /** One tranche's ledger (Aiken `Tranche`). Its capital is the pool UTxO's quantity of the tranche asset. */
 export interface Tranche { totalShares: bigint; activeCover: bigint }
@@ -93,6 +106,8 @@ export interface PolicyDatum {
   expiry: bigint;
   trigger: Trigger;
   midnightCommitment: string;
+  /** Receives the reference UTxO's min-ada when the policy is expired. */
+  refundTo: Address;
 }
 
 export interface OracleDatum { coveredAsset: string; priceBps: bigint; windowStart: bigint; windowEnd: bigint }
@@ -130,6 +145,13 @@ export const oracleConfigData = (o: OracleConfig) =>
 
 export const assetTermsData = (a: AssetTerms) => constr(0, [assetClassData(a.asset), int(a.minPremium)]);
 
+export const saleGuardData = (g: SaleGuard) => constr(0, [int(g.waitingPeriodMs), int(g.maxPriceAgeMs)]);
+
+export const credentialData = (c: Credential) => constr(c.type === "Key" ? 0 : 1, [bytes(c.hash)]);
+/** Plutus `Address { payment_credential, stake_credential: Option<Inline(cred)> }`. */
+export const addressData = (a: Address) =>
+  constr(0, [credentialData(a.payment), a.stake ? constr(0, [constr(0, [credentialData(a.stake)])]) : constr(1)]);
+
 export const coverParamsData = (c: CoverParams) =>
   constr(0, [
     outputReferenceData(c.seed),
@@ -137,6 +159,7 @@ export const coverParamsData = (c: CoverParams) =>
     productTermsData(c.product),
     oracleConfigData(c.oracle),
     int(c.claimGraceMs),
+    saleGuardData(c.saleGuard),
   ]);
 
 export const trancheData = (t: Tranche) => constr(0, [int(t.totalShares), int(t.activeCover)]);
@@ -153,6 +176,7 @@ export const policyDatumData = (d: PolicyDatum) =>
     int(d.expiry),
     triggerData(d.trigger),
     bytes(d.midnightCommitment),
+    addressData(d.refundTo),
   ]);
 
 export const coverDatumData = (d: CoverDatum) =>
@@ -364,6 +388,28 @@ export function chainPremium(
   return quoted > floor ? quoted : floor;
 }
 
+/**
+ * Default sale guard: cover starts at least 24h after the purchase lands, and
+ * the healthy-peg readings a Buy references are at most 2h old. A deployment
+ * can pick shorter values (Preview uses a 1h wait so drills stay quick).
+ */
+export const DEFAULT_SALE_GUARD: SaleGuard = { waitingPeriodMs: DAY_MS, maxPriceAgeMs: 2n * 3_600_000n };
+
+export const saleGuard = (waitingPeriodMs: bigint = DEFAULT_SALE_GUARD.waitingPeriodMs, maxPriceAgeMs: bigint = DEFAULT_SALE_GUARD.maxPriceAgeMs): SaleGuard => {
+  if (waitingPeriodMs < 0n) throw new Error("waiting period cannot be negative");
+  if (maxPriceAgeMs <= 0n) throw new Error("max price age must be positive: the healthy-peg check is mandatory");
+  return { waitingPeriodMs, maxPriceAgeMs };
+};
+
+/** Off-chain mirror of `oracle.attests_peg`: would this reading let a Buy landing by `saleBy` through? */
+export const isHealthyReading = (d: OracleDatum, trigger: Trigger, guard: SaleGuard, saleBy: bigint) =>
+  d.coveredAsset.toLowerCase() === trigger.coveredAsset.toLowerCase() &&
+  d.priceBps >= trigger.thresholdBps &&
+  d.windowEnd >= saleBy - guard.maxPriceAgeMs;
+
+/** Earliest policy start for a Buy whose validity upper bound is `saleBy`. */
+export const earliestStart = (guard: SaleGuard, saleBy: bigint) => saleBy + guard.waitingPeriodMs;
+
 /** Default depeg trigger, matching PRODUCTS.depeg ("TWAP below 0.95 for 24h"). */
 export const depegTrigger = (coveredAssetHex: string): Trigger => ({
   coveredAsset: coveredAssetHex,
@@ -410,6 +456,8 @@ export function buildPolicyDatum(args: {
   start: bigint;
   days: bigint;
   midnightCommitment: string;
+  /** Where Expire returns the reference UTxO's min-ada (normally the buyer's own address). */
+  refundTo: Address;
 }): PolicyDatum {
   if (!/^[0-9a-f]{64}$/i.test(args.midnightCommitment)) throw new Error("midnightCommitment must be 32 bytes hex");
   return {
@@ -422,5 +470,6 @@ export function buildPolicyDatum(args: {
     expiry: args.start + args.days * DAY_MS,
     trigger: args.terms.trigger,
     midnightCommitment: args.midnightCommitment.toLowerCase(),
+    refundTo: args.refundTo,
   };
 }

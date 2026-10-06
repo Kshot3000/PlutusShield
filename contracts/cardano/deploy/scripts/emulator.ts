@@ -5,10 +5,11 @@
  *   1  mint mock tUSDCx            (deployer native script)
  *   2  InitPool                     [ada, tUSDCx] tranches, pool NFT
  *   3  Deposit ada, Deposit tUSDCx  separate LP tokens lp00 / lp01
- *   4  Buy USDC policy, Buy ada policy (premium paid in the policy's asset)
- *   5  oracle publishes 2-of-3 depeg feeds
+ *   4  oracle attests a healthy peg, then Buy USDC + Buy ada policies
+ *      (premium paid in the policy's asset, cover starts after the waiting period)
+ *   5  oracle publishes 2-of-3 depeg feeds; a new Buy is refused (circuit-breaker)
  *   6  Settle the USDC policy       payout in tUSDCx from the USDC tranche
- *   7  Expire the ada policy        after expiry + grace
+ *   7  Expire the ada policy        submitted by a third party, deposit refunded to the buyer
  *   8  Withdraw part of each tranche
  *
  * Every step asserts the on-chain pool state against @plutusshield/sdk.
@@ -79,14 +80,25 @@ const held = (unit: string, utxos = lp) => utxos.reduce((n, u) => n + (u.assets[
 assert.equal(held(d.policyId + lpTokenName(1)), 500_000n * U);
 assert.ok(held(d.policyId + lpTokenName(0)) > 0n);
 
-// 4. buyer buys a USDC policy and an ada policy
+// 4. oracle attests a healthy peg (2 of 3 feeds at ~1.00 over the last 24h),
+//    then the buyer buys a USDC policy and an ada policy
+const oracleFeeds = async () =>
+  (await lucid.utxosAt(oracle.address)).filter((u) => Object.keys(u.assets).some((k) => k.startsWith(oraclePolicy.policyId)));
+const covered = textHex(cfg.product.coveredAsset);
+as(oracleAcct);
+const pegNow = BigInt(emulator.now());
+await submit("oracle attests healthy peg", await act.publishFeeds(lucid, { ...oraclePolicy, keyHash: oracle.keyHash }, oracle.address, [
+  { name: "feed-a", datum: { coveredAsset: covered, priceBps: 9_990n, windowStart: pegNow - DAY_MS, windowEnd: pegNow } },
+  { name: "feed-b", datum: { coveredAsset: covered, priceBps: 10_005n, windowStart: pegNow - DAY_MS, windowEnd: pegNow } },
+]), oracle.privateKey);
 as(buyerAcct);
 const commitment = "c0441700".repeat(8);
 const usdBefore = held(usdcUnit, await lucid.wallet().getUtxos());
-const bUsd = await act.buy(lucid, d, { asset: USDC, coverage: 10_000n * U, days: 30n, midnightCommitment: commitment, now: emulator.now() });
+const bUsd = await act.buy(lucid, d, { asset: USDC, coverage: 10_000n * U, days: 30n, midnightCommitment: commitment, now: emulator.now(), feeds: await oracleFeeds() });
 await submit(`Buy 10k tUSDCx cover, premium ${bUsd.premium}`, bUsd.tx);
 assert.equal(held(usdcUnit, await lucid.wallet().getUtxos()), usdBefore - bUsd.premium, "premium paid in tUSDCx");
-const bAda = await act.buy(lucid, d, { asset: ADA, coverage: 5_000n * U, days: 14n, midnightCommitment: commitment, now: emulator.now() });
+assert.ok(bUsd.policy.start >= BigInt(emulator.now()) + params.saleGuard.waitingPeriodMs - 60_000n, "cover starts after the waiting period");
+const bAda = await act.buy(lucid, d, { asset: ADA, coverage: 5_000n * U, days: 14n, midnightCommitment: commitment, now: emulator.now(), feeds: await oracleFeeds() });
 await submit(`Buy 5k ADA cover, premium ${bAda.premium}`, bAda.tx);
 pool = await act.readPool(lucid, d);
 assert.equal(pool.datum.tranches[1].activeCover, 10_000n * U);
@@ -103,8 +115,17 @@ await submit("oracle publishes feed-a, feed-b", await act.publishFeeds(lucid, { 
   { name: "feed-a", datum: feedDatum(9_100n) },
   { name: "feed-b", datum: feedDatum(9_150n) },
 ]), oracle.privateKey);
-const feeds = (await lucid.utxosAt(oracle.address)).filter((u) => Object.keys(u.assets).some((k) => k.startsWith(oraclePolicy.policyId)));
+const feeds = (await oracleFeeds()).filter((u) => (act.readOracleDatum(u)?.priceBps ?? 10_000n) < 9_500n);
 assert.equal(feeds.length, 2);
+
+// 5b. circuit-breaker: with the depeg on record (and the peg readings stale),
+//     nobody can buy new cover
+as(buyerAcct);
+await assert.rejects(
+  act.buy(lucid, d, { asset: USDC, coverage: 1_000n * U, days: 14n, midnightCommitment: commitment, now: emulator.now(), feeds: await oracleFeeds() }),
+  /circuit-breaker/,
+);
+log("✓ Buy during the depeg refused (no fresh healthy-peg quorum)");
 
 // 6. settle the USDC policy: payout in tUSDCx, ada tranche untouched
 as(buyerAcct);
@@ -118,12 +139,18 @@ assert.equal(pool.capitals[0], before.capitals[0]);
 assert.equal(pool.datum.tranches[1].activeCover, 0n);
 assert.equal(held(usdcUnit, await lucid.wallet().getUtxos()), usdHeld + 10_000n * U, "holder paid 10,000 tUSDCx");
 
-// 7. the ada policy expires unclaimed; anyone can release its capacity
+// 7. the ada policy expires unclaimed; anyone can release its capacity, and
+//    the reference UTxO's min-ada goes back to the buyer, not the submitter
 emulator.awaitSlot(Math.ceil((Number(bAda.policy.expiry + BigInt(cfg.claimGraceDays) * DAY_MS) - emulator.now()) / 1000) + 60);
+const buyerAda = async () => (await lucid.utxosAt(buyerAcct.address)).reduce((n, u) => n + u.assets.lovelace, 0n);
+const buyerAdaBefore = await buyerAda();
 as(deployerAcct);
-await submit("Expire ada policy after grace", (await act.expire(lucid, d, bAda.policy.policyId, emulator.now())).tx);
+const ex = await act.expire(lucid, d, bAda.policy.policyId, emulator.now());
+assert.equal(ex.refundTo, buyerAcct.address);
+await submit(`Expire ada policy (refund ${ex.refund} to buyer)`, ex.tx);
 pool = await act.readPool(lucid, d);
 assert.equal(pool.datum.tranches[0].activeCover, 0n);
+assert.equal(await buyerAda(), buyerAdaBefore + ex.refund, "deposit refunded to the buyer");
 
 // 8. LPs withdraw from each tranche at the current share price
 const wUsd = await act.withdraw(lucid, d, USDC, 100_000n * U);

@@ -133,8 +133,9 @@ export default function HowCoverWorksPage() {
                 <>
                   Once the validity range starts after <C>expiry + claim_grace_ms</C>, <Strong>anyone</Strong> can
                   burn the reference token to retire the policy. Capital stays in the pool, and the tranche&apos;s{" "}
-                  <C>active_cover</C> drops by the coverage, which frees capacity. The user token can be burned in
-                  the same transaction or later with <C>BurnUserTokens</C>.
+                  <C>active_cover</C> drops by the coverage, which frees capacity. The reference UTxO&apos;s
+                  min-ada deposit must go back to the buyer&apos;s <C>refund_to</C> address, whoever submits. The
+                  user token can be burned in the same transaction or later with <C>BurnUserTokens</C>.
                 </>
               ),
             },
@@ -175,7 +176,16 @@ PoolAction = Deposit { tranche } | Withdraw { tranche, shares } | Buy | Settle |
             <C>max_days</C>.
           </li>
           <li>
-            No backdating: the transaction&apos;s validity upper bound must be <C>≤ start</C>.
+            <Strong>Waiting period.</Strong> The transaction&apos;s validity upper bound plus{" "}
+            <C>sale_guard.waiting_period_ms</C> must be <C>≤ start</C>. That rules out backdating, and a depeg
+            that begins during the wait is never covered, because trigger windows must start at or after{" "}
+            <C>start</C>.
+          </li>
+          <li>
+            <Strong>Circuit-breaker.</Strong> At least <C>quorum</C> distinct allowlisted oracle feeds, passed as
+            reference inputs, report the covered asset at or above the trigger threshold, with a{" "}
+            <C>window_end</C> no older than <C>sale_guard.max_price_age_ms</C>. If the depeg is already under way,
+            or the readings are stale, nothing can be sold.
           </li>
           <li>
             The capacity caps hold against the tranche&apos;s pre-purchase capital, and the premium paid (the
@@ -197,6 +207,7 @@ PoolAction = Deposit { tranche } | Withdraw { tranche, shares } | Buy | Settle |
   start, expiry:       Int        -- POSIX ms, expiry = start + days * 86_400_000
   trigger:             Trigger    -- { covered_asset, threshold_bps, window_ms }
   midnight_commitment: ByteArray  -- 32-byte Midnight coverage commitment
+  refund_to:           Address    -- gets the reference UTxO's min-ada back on Expire
 }`}</Formula>
         <P>
           <C>packages/sdk</C> builds this datum (<C>buildPolicyDatum</C>), derives ids and token names, and

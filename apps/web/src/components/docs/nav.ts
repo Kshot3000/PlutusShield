@@ -40,7 +40,7 @@ export const DOC_PAGES: DocPage[] = [
   {
     slug: "settlement",
     title: "Settlement & claims",
-    summary: "Oracle-quorum depeg settlement on Cardano and the assessed claim flow on Midnight.",
+    summary: "Oracle-quorum depeg settlement, the sale circuit-breaker, and the assessed claim flow on Midnight.",
     tag: "Claims",
     tone: "accent",
   },
@@ -93,7 +93,7 @@ export const SOURCE_DOCS = [
 export const SOURCE_CODE = [
   { label: "validators/cover.ak", href: src("contracts/cardano/validators/cover.ak"), note: "Cardano validator (mint + spend)" },
   { label: "lib/plutusshield/pricing.ak", href: src("contracts/cardano/lib/plutusshield/pricing.ak"), note: "On-chain premium floor" },
-  { label: "lib/plutusshield/oracle.ak", href: src("contracts/cardano/lib/plutusshield/oracle.ak"), note: "Oracle auth + trigger" },
+  { label: "lib/plutusshield/oracle.ak", href: src("contracts/cardano/lib/plutusshield/oracle.ak"), note: "Oracle auth, trigger, sale breaker" },
   { label: "lib/plutusshield/types.ak", href: src("contracts/cardano/lib/plutusshield/types.ak"), note: "Params, datums, redeemers" },
   { label: "src/policy-cover.compact", href: src("contracts/midnight/src/policy-cover.compact"), note: "Midnight private registry" },
   { label: "packages/sdk/src", href: `${REPO}/tree/main/packages/sdk/src`, note: "Quote engine, pool ledger, codecs" },

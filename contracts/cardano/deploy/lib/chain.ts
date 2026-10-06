@@ -56,5 +56,6 @@ export function reviveParams(p: CoverParams): CoverParams {
     },
     oracle: { ...p.oracle, quorum: b(p.oracle.quorum) },
     claimGraceMs: b(p.claimGraceMs),
+    saleGuard: { waitingPeriodMs: b(p.saleGuard.waitingPeriodMs), maxPriceAgeMs: b(p.saleGuard.maxPriceAgeMs) },
   };
 }

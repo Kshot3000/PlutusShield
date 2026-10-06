@@ -12,6 +12,8 @@ import {
 } from "@lucid-evolution/lucid";
 import {
   buildPolicyDatum,
+  earliestStart,
+  isHealthyReading,
   coverDatumData,
   initialPoolDatum,
   lpTokenName,
@@ -32,7 +34,7 @@ import {
   type PolicyDatum,
 } from "../../../../packages/sdk/src/cardano.ts";
 import { deposit as depositStep, withdraw as withdrawStep } from "../../../../packages/sdk/src/pool.ts";
-import { capitalsOf, decodeCoverDatum, unitOf, type Deployment } from "./cover.ts";
+import { bech32Address, capitalsOf, decodeCoverDatum, plutusAddress, unitOf, type Deployment } from "./cover.ts";
 import { PREVIEW_MOCK_USDC_ASSET_NAME } from "../../../../packages/sdk/src/assets.ts";
 
 const inline = (cbor: string) => ({ kind: "inline" as const, value: cbor });
@@ -147,27 +149,77 @@ export async function withdraw(lucid: LucidEvolution, d: Deployment, asset: Asse
 
 // ---------------------------------------------------------------- policies
 
+/** Decode an oracle feed UTxO's inline datum, if it has the `OracleDatum` shape. */
+export function readOracleDatum(u: UTxO): OracleDatum | undefined {
+  try {
+    const c = Data.from(u.datum!) as unknown as { index: number; fields: unknown[] };
+    const [coveredAsset, priceBps, windowStart, windowEnd] = c.fields as [string, bigint, bigint, bigint];
+    if (c.index !== 0 || typeof priceBps !== "bigint") return undefined;
+    return { coveredAsset, priceBps, windowStart, windowEnd };
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Feed UTxOs that pass the Buy circuit-breaker for a tx landing by `saleBy`:
+ * allowlisted, exactly one feed token, healthy peg, fresh. One per feed name.
+ */
+export function healthyFeeds(d: Deployment, candidates: UTxO[], saleBy: number): UTxO[] {
+  const o = d.params.oracle;
+  const byName = new Map<string, UTxO>();
+  for (const u of candidates) {
+    const names = Object.entries(u.assets).filter(([k]) => k.startsWith(o.policyId));
+    if (names.length !== 1 || names[0][1] !== 1n) continue;
+    const name = names[0][0].slice(o.policyId.length);
+    if (!o.feeds.includes(name) || byName.has(name)) continue;
+    const datum = readOracleDatum(u);
+    if (datum && isHealthyReading(datum, d.params.product.trigger, d.params.saleGuard, BigInt(saleBy))) byName.set(name, u);
+  }
+  return [...byName.values()];
+}
+
 export async function buy(
   lucid: LucidEvolution,
   d: Deployment,
-  args: { asset: AssetClass; coverage: bigint; days: bigint; midnightCommitment: string; now: number },
+  args: {
+    asset: AssetClass;
+    coverage: bigint;
+    days: bigint;
+    midnightCommitment: string;
+    now: number;
+    /** Candidate oracle feed UTxOs; the healthy, fresh ones become reference inputs. */
+    feeds: UTxO[];
+    /** Expire refund address; defaults to the buying wallet. */
+    refundTo?: string;
+  },
 ) {
   const pool = await readPool(lucid, d);
   const t = trancheOf(d.params.assets, args.asset);
   const tr = pool.datum.tranches[t];
   const capital = pool.capitals[t];
   const premium = requiredPremium(premiumTerms(d.params.product, d.params.assets[t]), args.coverage, args.days, capital, tr.activeCover);
-  // Cover starts exactly at the tx's upper validity bound (no backdating).
+  // The tx must land by `upper`; cover starts after the waiting period.
   const upper = slotAligned(lucid, args.now + 10 * 60_000);
+  const peg = healthyFeeds(d, args.feeds, upper);
+  if (peg.length < Number(d.params.oracle.quorum)) {
+    throw new Error(
+      `sale circuit-breaker: need ${d.params.oracle.quorum} fresh healthy-peg feeds (price >= ${d.params.product.trigger.thresholdBps} bps, ` +
+        `window_end within ${Number(d.params.saleGuard.maxPriceAgeMs) / 60_000} min), found ${peg.length}. ` +
+        `Publish fresh readings (Preview: \`pnpm preview peg\`) or wait for the depeg to clear.`,
+    );
+  }
+  const start = slotAligned(lucid, Number(earliestStart(d.params.saleGuard, BigInt(upper))));
   const policy = buildPolicyDatum({
     poolRef: { txHash: pool.utxo.txHash, outputIndex: pool.utxo.outputIndex },
     terms: d.params.product,
     asset: args.asset,
     coverage: args.coverage,
     premium,
-    start: BigInt(upper),
+    start: BigInt(start),
     days: args.days,
     midnightCommitment: args.midnightCommitment,
+    refundTo: plutusAddress(args.refundTo ?? (await lucid.wallet().address())),
   });
   const ref = d.policyId + refTokenName(policy.policyId);
   const user = d.policyId + userTokenName(policy.policyId);
@@ -178,6 +230,7 @@ export async function buy(
     .attach.SpendingValidator(d.script)
     .pay.ToContract(d.address, inline(poolDatumCbor(setTranche(pool.datum, t, tr.totalShares, tr.activeCover + args.coverage))), nextValue(d, pool, t, capital + premium))
     .pay.ToContract(d.address, inline(policyDatumCbor(policy)), { lovelace: POLICY_REF_LOVELACE, [ref]: 1n })
+    .readFrom(peg)
     .validFrom(args.now - 60_000)
     .validTo(upper)
     .complete();
@@ -235,10 +288,13 @@ export async function expire(lucid: LucidEvolution, d: Deployment, policyId: str
     .mintAssets({ [d.policyId + refTokenName(policyId)]: -1n }, VIA_POOL)
     .attach.SpendingValidator(d.script)
     .pay.ToContract(d.address, inline(poolDatumCbor(setTranche(pool.datum, t, tr.totalShares, tr.activeCover - policy.coverage))), pool.utxo.assets)
+    // The reference UTxO's min-ada goes back to the buyer's refund address,
+    // whoever submits this.
+    .pay.ToAddress(bech32Address(d.network, policy.refundTo), { lovelace: policyUtxo.assets.lovelace })
     .validFrom(now)
     .validTo(now + 10 * 60_000)
     .complete();
-  return { tx };
+  return { tx, refundTo: bech32Address(d.network, policy.refundTo), refund: policyUtxo.assets.lovelace };
 }
 
 export { Data };

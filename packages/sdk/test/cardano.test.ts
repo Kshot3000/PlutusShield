@@ -25,6 +25,10 @@ import {
   userTokenName,
   utilizationMultiplierBps,
   withinCapacity,
+  addressData,
+  earliestStart,
+  isHealthyReading,
+  saleGuard,
   type CoverParams,
 } from "../src/cardano.ts";
 import { USDCX_MAINNET, USDCX_PREPROD, currencyAsset } from "../src/assets.ts";
@@ -38,6 +42,8 @@ const T0 = 1_800_000_000_000n;
 const terms = productTerms("depeg", "B", depegTrigger(textHex("USDM")));
 const ASSETS = [assetTerms(ADA), assetTerms(USDCX_MAINNET)];
 const adaPricing = premiumTerms(terms, ASSETS[0]);
+// cover.ak `holder`: refund_to = address.from_verification_key(holder)
+const HOLDER = { payment: { type: "Key" as const, hash: "4011de".repeat(9) + "40" } };
 
 test("blake2b-256 matches the RFC 7693 empty-input vector", () => {
   assert.equal(
@@ -67,11 +73,12 @@ test("PolicyDatum / PoolDatum / redeemer CBOR match Aiken", () => {
     start: T0,
     days: 30n,
     midnightCommitment: "c0441700".repeat(8),
+    refundTo: HOLDER,
   });
   assert.equal(policy.expiry, T0 + 30n * DAY_MS);
   assert.equal(
     toCborHex(coverDatumData({ kind: "Policy", policy })),
-    "d87a9fd8799f5820b189a9907d60e630671d5d1cf94f41a33aca2203ae5aa8926722bd65312868ed456465706567d8799f4040ff1b00000002540be4001a02625a001b000001a3185c50001b000001a3b2db1800d8799f445553444d19251c1a05265c00ff5820c0441700c0441700c0441700c0441700c0441700c0441700c0441700c0441700ffff",
+    "d87a9fd8799f5820b189a9907d60e630671d5d1cf94f41a33aca2203ae5aa8926722bd65312868ed456465706567d8799f4040ff1b00000002540be4001a02625a001b000001a3185c50001b000001a3b2db1800d8799f445553444d19251c1a05265c00ff5820c0441700c0441700c0441700c0441700c0441700c0441700c0441700c0441700d8799fd8799f581c4011de4011de4011de4011de4011de4011de4011de4011de4011de40ffd87a80ffffff",
   );
   const usdPolicy = buildPolicyDatum({
     poolRef: POOL_REF,
@@ -82,10 +89,11 @@ test("PolicyDatum / PoolDatum / redeemer CBOR match Aiken", () => {
     start: T0,
     days: 30n,
     midnightCommitment: "c0441700".repeat(8),
+    refundTo: HOLDER,
   });
   assert.equal(
     toCborHex(coverDatumData({ kind: "Policy", policy: usdPolicy })),
-    "d87a9fd8799f5820b189a9907d60e630671d5d1cf94f41a33aca2203ae5aa8926722bd65312868ed456465706567d8799f581c1f3aec8bfe7ea4fe14c5f121e2a92e301afe414147860d557cac7e34455553444378ff1b00000002540be4001a010da10a1b000001a3185c50001b000001a3b2db1800d8799f445553444d19251c1a05265c00ff5820c0441700c0441700c0441700c0441700c0441700c0441700c0441700c0441700ffff",
+    "d87a9fd8799f5820b189a9907d60e630671d5d1cf94f41a33aca2203ae5aa8926722bd65312868ed456465706567d8799f581c1f3aec8bfe7ea4fe14c5f121e2a92e301afe414147860d557cac7e34455553444378ff1b00000002540be4001a010da10a1b000001a3185c50001b000001a3b2db1800d8799f445553444d19251c1a05265c00ff5820c0441700c0441700c0441700c0441700c0441700c0441700c0441700c0441700d8799fd8799f581c4011de4011de4011de4011de4011de4011de4011de4011de4011de40ffd87a80ffffff",
   );
   assert.equal(
     toCborHex(
@@ -112,10 +120,11 @@ test("productTerms derives the validator parameters used in the Aiken tests", ()
     product: terms,
     oracle: { policyId: "0aac1e".repeat(9) + "0a", feeds: ["feed-a", "feed-b", "feed-c"].map(textHex), quorum: 2n },
     claimGraceMs: 3n * DAY_MS,
+    saleGuard: saleGuard(DAY_MS, 2n * 3_600_000n),
   };
   assert.equal(
     toCborHex(coverParamsData(params)),
-    "d8799fd8799f58205eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed00ff9fd8799fd8799f4040ff1a004c4b40ffd8799fd8799f581c1f3aec8bfe7ea4fe14c5f121e2a92e301afe414147860d557cac7e34455553444378ff1a004c4b40ffffd8799f456465706567d8799f445553444d19251c1a05265c00ff18c81927100e19016d1903e8192328ffd8799f581c0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0a9f46666565642d6146666565642d6246666565642d63ff02ff1a0f731400ff",
+    "d8799fd8799f58205eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed00ff9fd8799fd8799f4040ff1a004c4b40ffd8799fd8799f581c1f3aec8bfe7ea4fe14c5f121e2a92e301afe414147860d557cac7e34455553444378ff1a004c4b40ffffd8799f456465706567d8799f445553444d19251c1a05265c00ff18c81927100e19016d1903e8192328ffd8799f581c0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0a9f46666565642d6146666565642d6246666565642d63ff02ff1a0f731400d8799f1a05265c001a006ddd00ffff",
   );
 });
 
@@ -200,4 +209,23 @@ test("USDC quotes clear the USDC tranche floor the same way ada quotes do", () =
       assert.ok(pay >= requiredPremium(pt, ...args));
     }
   }
+});
+
+test("Address encodes like Aiken's Address (key, script, with stake)", () => {
+  assert.equal(toCborHex(addressData(HOLDER)), "d8799fd8799f581c" + "4011de".repeat(9) + "40ffd87a80ff");
+  const withStake = addressData({ payment: { type: "Script", hash: "ab".repeat(28) }, stake: { type: "Key", hash: "cd".repeat(28) } });
+  assert.equal(toCborHex(withStake), "d8799fd87a9f581c" + "ab".repeat(28) + "ffd8799fd8799fd8799f581c" + "cd".repeat(28) + "ffffffff");
+});
+
+test("sale guard mirrors the validator's circuit-breaker", () => {
+  const g = saleGuard(DAY_MS, 2n * 3_600_000n);
+  const saleBy = T0 - DAY_MS;
+  assert.equal(earliestStart(g, saleBy), T0);
+  const reading = (priceBps: bigint, windowEnd: bigint) => ({ coveredAsset: textHex("USDM"), priceBps, windowStart: windowEnd - DAY_MS, windowEnd });
+  assert.equal(isHealthyReading(reading(9_990n, saleBy - 1_800_000n), terms.trigger, g, saleBy), true);
+  assert.equal(isHealthyReading(reading(9_500n, saleBy), terms.trigger, g, saleBy), true, "at threshold is healthy");
+  assert.equal(isHealthyReading(reading(9_100n, saleBy), terms.trigger, g, saleBy), false, "depeg under way");
+  assert.equal(isHealthyReading(reading(10_000n, saleBy - 3n * 3_600_000n), terms.trigger, g, saleBy), false, "stale");
+  assert.throws(() => saleGuard(0n, 0n));
+  assert.throws(() => saleGuard(-1n));
 });

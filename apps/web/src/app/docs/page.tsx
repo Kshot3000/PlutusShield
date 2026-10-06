@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 const status = [
-  { k: "Cardano validators", v: "Aiken, Plutus V3 · ADA + USDC tranches · 72 tests passing" },
+  { k: "Cardano validators", v: "Aiken, Plutus V3 · ADA + USDC tranches · sale circuit-breaker · 89 tests passing" },
   { k: "Midnight registry", v: "Compact 0.31.1 · 6 circuits · 18 tests passing" },
   { k: "Deployment", v: "None yet. Preview tooling ready and emulator-tested, awaiting a funded deployer" },
   { k: "Audit", v: "Not audited" },

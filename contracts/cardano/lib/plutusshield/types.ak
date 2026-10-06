@@ -11,6 +11,7 @@
 //// that asset. Tranches never price against each other, so no FX oracle is
 //// needed and one tranche's claims can never drain another's capital.
 
+use cardano/address.{Address}
 use cardano/assets.{AssetName, PolicyId}
 use cardano/transaction.{OutputReference}
 
@@ -66,6 +67,21 @@ pub type AssetTerms {
   min_premium: Int,
 }
 
+/// Sale circuit-breaker. Stops buyers from purchasing cover into a depeg that
+/// is already under way (adverse selection).
+pub type SaleGuard {
+  /// Minimum gap between the latest moment a `Buy` can land (its validity
+  /// upper bound) and the policy's `start`. A depeg that begins inside this
+  /// gap is never covered, because trigger windows must start at or after
+  /// `start`. 0 disables the waiting period.
+  waiting_period_ms: Int,
+  /// A `Buy` must reference at least `oracle.quorum` distinct allowlisted
+  /// feeds reporting a healthy peg (`price_bps >= trigger.threshold_bps`)
+  /// whose `window_end` is no older than this, measured from the Buy's
+  /// validity upper bound. Must be > 0: the check is always on.
+  max_price_age_ms: Int,
+}
+
 /// Validator parameters. Applied once at deployment; there is no admin key.
 pub type CoverParams {
   /// UTxO consumed to mint the unique pool NFT (one-shot).
@@ -78,6 +94,8 @@ pub type CoverParams {
   /// After expiry, how long a holder still has to submit a claim for a
   /// trigger window that ended on or before expiry.
   claim_grace_ms: Int,
+  /// Circuit-breaker applied to every `Buy`.
+  sale_guard: SaleGuard,
 }
 
 /// Ledger of one tranche. Its capital is the quantity of the tranche asset
@@ -112,6 +130,11 @@ pub type PolicyDatum {
   /// 32-byte Midnight coverage commitment (persistentCommit(amount, salt)),
   /// mirrored into `policy-cover.compact` by `registerPolicy`.
   midnight_commitment: ByteArray,
+  /// Who gets the policy reference UTxO's min-ada back when the policy is
+  /// retired by `Expire`. Set by the buyer at purchase (normally their own
+  /// wallet address). `Expire` can be submitted by anyone, but must pay this
+  /// address at least the reference UTxO's lovelace.
+  refund_to: Address,
 }
 
 pub type CoverDatum {
@@ -144,10 +167,12 @@ pub type PoolAction {
   /// subject to the tranche's capital lock.
   Withdraw { tranche: Int, shares: Int }
   /// Buyer pays the premium, in the policy's asset, into that tranche and
-  /// mints a policy (ref + user token).
+  /// mints a policy (ref + user token). Needs a fresh healthy-peg oracle
+  /// quorum and respects the waiting period (`CoverParams.sale_guard`).
   Buy
   /// Holder burns the policy and receives `coverage` from its tranche.
   Settle
   /// Anyone retires a policy after expiry + grace, unlocking its capital.
+  /// The reference UTxO's min-ada goes back to `PolicyDatum.refund_to`.
   Expire
 }

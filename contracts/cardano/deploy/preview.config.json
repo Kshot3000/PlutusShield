@@ -13,5 +13,10 @@
     "quorum": 2
   },
   "claimGraceDays": 3,
+  "saleGuard": {
+    "$comment": "Sale circuit-breaker. Cover starts waitingPeriodMinutes after the Buy can last land, and the Buy must reference a quorum of healthy-peg feed readings no older than maxPriceAgeMinutes. Preview uses a 60 min wait so drills stay quick; the SDK default (and mainnet target) is 24h / 120 min.",
+    "waitingPeriodMinutes": 60,
+    "maxPriceAgeMinutes": 120
+  },
   "poolMinLovelace": 3000000
 }

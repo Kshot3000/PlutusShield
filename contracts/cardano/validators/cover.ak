@@ -32,8 +32,8 @@ use plutusshield/pricing.{bps, day_ms}
 use plutusshield/types.{
   AssetClass, AssetTerms, BurnUserTokens, Buy, CoverDatum, CoverParams, Deposit,
   Expire, InitPool, MintAction, OracleConfig, OracleDatum, Policy, PolicyDatum,
-  Pool, PoolAction, PoolDatum, ProductTerms, Settle, Tranche, Trigger, ViaPool,
-  Withdraw,
+  Pool, PoolAction, PoolDatum, ProductTerms, SaleGuard, Settle, Tranche, Trigger,
+  ViaPool, Withdraw,
 }
 
 validator cover(params: CoverParams) {
@@ -149,6 +149,9 @@ pub fn params_ok(params: CoverParams) -> Bool {
     p.max_single_policy_bps <= p.max_utilization_bps,
     p.max_utilization_bps <= bps,
     params.claim_grace_ms >= 0,
+    params.sale_guard.waiting_period_ms >= 0,
+    // The healthy-peg check at purchase is mandatory.
+    params.sale_guard.max_price_age_ms > 0,
   }
 }
 
@@ -269,7 +272,8 @@ fn validate_pool(
 
     Expire -> {
       expect [Pair(r, rq), ..rest] = minted
-      let (_, p) = policy_input(self.inputs, own, r)
+      let (policy_in, p) = policy_input(self.inputs, own, r)
+      let deposit = assets.lovelace_of(policy_in.output.value)
       let t = tranche_of(ts, p.asset)
       let (tr, capital, out_capital) = touch(t)
       and {
@@ -278,6 +282,14 @@ fn validate_pool(
         // The holder's user token may be burned in the same tx, or later.
         rest == [] || rest == [Pair(user_name(p.policy_id), -1)],
         lower_bound(self.validity_range) > p.expiry + params.claim_grace_ms,
+        // Whoever submits the expiry, the reference UTxO's min-ada goes back
+        // to the address the buyer chose at purchase.
+        list.any(
+          self.outputs,
+          fn(o) {
+            o.address == p.refund_to && assets.lovelace_of(o.value) >= deposit
+          },
+        ),
         out_capital == capital,
         next.tranches == set_at(
           pool.tranches,
@@ -303,6 +315,7 @@ fn validate_buy(
   self: Transaction,
 ) -> Bool {
   let product = params.product
+  let guard = params.sale_guard
   let id = policy_id_from(pool_in.output_reference)
   let r = ref_name(id)
   expect [ref_out] = outputs_with(self.outputs, own, r)
@@ -315,6 +328,7 @@ fn validate_buy(
   let premium = out_capital - capital
   let duration = p.expiry - p.start
   let days = duration / day_ms
+  let sale_by = upper_bound(self.validity_range)
   and {
     ref_out.address.payment_credential == Script(own),
     assets.without_lovelace(ref_out.value) == assets.from_asset(own, r, 1),
@@ -330,8 +344,18 @@ fn validate_buy(
     duration % day_ms == 0,
     days >= product.min_days,
     days <= product.max_days,
-    // No backdating: cover starts no earlier than the tx can land.
-    upper_bound(self.validity_range) <= p.start,
+    // No backdating, plus the waiting period: cover starts no earlier than
+    // `waiting_period_ms` after the latest moment the tx can land.
+    sale_by + guard.waiting_period_ms <= p.start,
+    // Circuit-breaker: no sales into a depeg. A quorum of allowlisted feeds
+    // must report the covered asset at or above the trigger threshold, with
+    // readings at most `max_price_age_ms` old when the tx lands.
+    oracle.healthy(
+      self.reference_inputs,
+      params.oracle,
+      product.trigger,
+      sale_by - guard.max_price_age_ms,
+    ),
     // Capacity and price are per tranche: a USDC policy is backed by USDC
     // capital only, an ada policy by ada capital only.
     pricing.within_capacity(
@@ -551,9 +575,16 @@ const test_params =
       quorum: 2,
     },
     claim_grace_ms: 3 * 86_400_000,
+    sale_guard: SaleGuard {
+      waiting_period_ms: 86_400_000,
+      max_price_age_ms: 2 * 3_600_000,
+    },
   }
 
 const t0 = 1_800_000_000_000
+
+/// Policies in these tests start at t0, so a Buy must land by t0 - 24h.
+const sale_by = t0 - 86_400_000
 
 const expiry = t0 + 30 * 86_400_000
 
@@ -680,6 +711,7 @@ fn policy_in_asset(
     expiry: end,
     trigger: depeg_trigger,
     midnight_commitment: commitment,
+    refund_to: address.from_verification_key(holder),
   }
 }
 
@@ -1070,10 +1102,23 @@ test usdc_withdraw_respects_usdc_capital_lock() fail {
 
 // ---------------------------------------------------------------- buy (ada)
 
+/// Two fresh healthy-peg readings, 30 minutes old at `sale_by`.
+fn peg_feeds(price: Int, window_end: Int) -> List<Input> {
+  [
+    feed("feed-a", oracle_policy, price, window_end - 86_400_000, window_end),
+    feed("feed-b", oracle_policy, price, window_end - 86_400_000, window_end),
+  ]
+}
+
+fn healthy_feeds() -> List<Input> {
+  peg_feeds(9_990, sale_by - 1_800_000)
+}
+
 fn buy_tx(p: PolicyDatum, valid_until: Int) -> Transaction {
   Transaction {
     ..transaction.placeholder,
     inputs: [pool_in(capital, shares, active)],
+    reference_inputs: healthy_feeds(),
     outputs: [
       pool_out(capital + p.premium, shares, active + p.coverage),
       policy_out(p),
@@ -1089,27 +1134,27 @@ test buy_cover_pays_premium_and_mints_policy() {
   // on-chain floor for 10k ada / 30 days at 30% -> 31% utilization is
   // 18.228493 ada (SDK quote: 18.23); paying exactly the floor is accepted
   let p = policy(coverage, 18_228_493, t0, expiry)
-  let tx = buy_tx(p, t0)
+  let tx = buy_tx(p, sale_by)
   spend_pool(base_pool(), Buy, tx) && cover.mint(test_params, ViaPool, own, tx)
 }
 
 test buy_underpriced_premium_fails() fail {
   // one lovelace under the floor
   let p = policy(coverage, 18_228_492, t0, expiry)
-  spend_pool(base_pool(), Buy, buy_tx(p, t0))
+  spend_pool(base_pool(), Buy, buy_tx(p, sale_by))
 }
 
 test buy_above_single_policy_cap_fails() fail {
   // 10% of 1M ada = 100k; ask for 150k with a generous premium
   let p = policy(150_000_000_000, 10_000_000_000, t0, expiry)
-  spend_pool(base_pool(), Buy, buy_tx(p, t0))
+  spend_pool(base_pool(), Buy, buy_tx(p, sale_by))
 }
 
 test buy_beyond_utilization_cap_fails() fail {
   let near_full = ada_book(shares, 850_000_000_000)
   let p = policy(90_000_000_000, 10_000_000_000, t0, expiry)
   let tx = Transaction {
-    ..buy_tx(p, t0),
+    ..buy_tx(p, sale_by),
     inputs: [pool_in(capital, shares, 850_000_000_000)],
     outputs: [
       pool_out(capital + p.premium, shares, 850_000_000_000 + p.coverage),
@@ -1125,25 +1170,104 @@ test buy_backdated_start_fails() fail {
   spend_pool(base_pool(), Buy, buy_tx(p, t0 + 3_600_000))
 }
 
+// ---------------------------------------------------------------- sale guard
+
+test buy_inside_waiting_period_fails() fail {
+  // lands 1h before start: 23h short of the 24h waiting period
+  let p = policy(coverage, 40_000_000, t0, expiry)
+  spend_pool(base_pool(), Buy, buy_tx(p, t0 - 3_600_000))
+}
+
+test buy_with_longer_wait_than_required_ok() {
+  // buying two days ahead of the start is fine
+  let p = policy(coverage, 18_228_493, t0, expiry)
+  spend_pool(base_pool(), Buy, buy_tx(p, t0 - 2 * 86_400_000))
+}
+
+test buy_during_active_depeg_fails() fail {
+  // both feeds already show 0.91: the circuit-breaker refuses the sale
+  let p = policy(coverage, 40_000_000, t0, expiry)
+  let tx = Transaction {
+    ..buy_tx(p, sale_by),
+    reference_inputs: peg_feeds(9_100, sale_by - 1_800_000),
+  }
+  spend_pool(base_pool(), Buy, tx)
+}
+
+test buy_with_one_feed_depegged_fails() fail {
+  let p = policy(coverage, 40_000_000, t0, expiry)
+  let tx = Transaction {
+    ..buy_tx(p, sale_by),
+    reference_inputs: [
+      feed("feed-a", oracle_policy, 10_000, sale_by - 86_400_000, sale_by),
+      feed("feed-b", oracle_policy, 9_200, sale_by - 86_400_000, sale_by),
+    ],
+  }
+  spend_pool(base_pool(), Buy, tx)
+}
+
+test buy_with_stale_peg_reading_fails() fail {
+  // readings ended 3h before the tx can land; max age is 2h
+  let p = policy(coverage, 40_000_000, t0, expiry)
+  let tx = Transaction {
+    ..buy_tx(p, sale_by),
+    reference_inputs: peg_feeds(10_000, sale_by - 3 * 3_600_000),
+  }
+  spend_pool(base_pool(), Buy, tx)
+}
+
+test buy_without_oracle_readings_fails() fail {
+  let p = policy(coverage, 40_000_000, t0, expiry)
+  let tx = Transaction { ..buy_tx(p, sale_by), reference_inputs: [] }
+  spend_pool(base_pool(), Buy, tx)
+}
+
+test buy_with_forged_peg_feed_fails() fail {
+  // second healthy reading is from an unlisted oracle policy
+  let p = policy(coverage, 40_000_000, t0, expiry)
+  let tx = Transaction {
+    ..buy_tx(p, sale_by),
+    reference_inputs: [
+      feed("feed-a", oracle_policy, 10_000, sale_by - 86_400_000, sale_by),
+      feed(
+        "feed-b",
+        #"bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0",
+        10_000,
+        sale_by - 86_400_000,
+        sale_by,
+      ),
+    ],
+  }
+  spend_pool(base_pool(), Buy, tx)
+}
+
+test init_pool_rejects_disabled_price_check() fail {
+  let bad = CoverParams {
+    ..test_params,
+    sale_guard: SaleGuard { waiting_period_ms: 0, max_price_age_ms: 0 },
+  }
+  cover.mint(bad, InitPool, own, init_tx(True))
+}
+
 test buy_with_custom_trigger_fails() fail {
   // buyer tries a 99.9% threshold that would trigger on noise
   let p = PolicyDatum {
     ..policy(coverage, 40_000_000, t0, expiry),
     trigger: Trigger { ..depeg_trigger, threshold_bps: 9_990 },
   }
-  spend_pool(base_pool(), Buy, buy_tx(p, t0))
+  spend_pool(base_pool(), Buy, buy_tx(p, sale_by))
 }
 
 test buy_term_shorter_than_product_minimum_fails() fail {
   let p = policy(coverage, 40_000_000, t0, t0 + 7 * 86_400_000)
-  spend_pool(base_pool(), Buy, buy_tx(p, t0))
+  spend_pool(base_pool(), Buy, buy_tx(p, sale_by))
 }
 
 // ---------------------------------------------------------------- buy (USDC)
 
 fn usd_buy_tx(p: PolicyDatum, ada_premium: Int, usd_premium: Int) -> Transaction {
   Transaction {
-    ..buy_tx(p, t0),
+    ..buy_tx(p, sale_by),
     outputs: [
       pool_out_v(
         capital + ada_premium,
@@ -1529,7 +1653,11 @@ fn expire_tx(at: Int, mint: Assets) -> Transaction {
       pool_in(capital, shares, active),
       Input { output_reference: policy_ref, output: policy_out(p) },
     ],
-    outputs: [pool_out(capital, shares, active - p.coverage)],
+    outputs: [
+      pool_out(capital, shares, active - p.coverage),
+      // the reference UTxO's 2 ADA deposit, back to the buyer
+      wallet_out(assets.from_lovelace(2_000_000)),
+    ],
     mint,
     validity_range: interval.between(at, at + 600_000),
   }
@@ -1547,6 +1675,46 @@ test expire_after_grace_releases_capital() {
     policy_ref,
     tx,
   )
+}
+
+fn expired_at() -> Int {
+  expiry + 3 * 86_400_000 + 1
+}
+
+fn burn_ref() -> Assets {
+  assets.from_asset(own, ref_name(bought_id()), -1)
+}
+
+test expire_by_third_party_still_refunds_buyer() {
+  // a keeper (not the buyer) submits; the deposit output goes to refund_to
+  let tx = expire_tx(expired_at(), burn_ref())
+  spend_pool(base_pool(), Expire, tx)
+}
+
+test expire_keeping_deposit_fails() fail {
+  // submitter pockets the 2 ADA: no output pays refund_to
+  let tx = Transaction {
+    ..expire_tx(expired_at(), burn_ref()),
+    outputs: [
+      pool_out(capital, shares, active - coverage),
+      Output {
+        ..wallet_out(assets.from_lovelace(2_000_000)),
+        address: address.from_verification_key(#"5e1f"),
+      },
+    ],
+  }
+  spend_pool(base_pool(), Expire, tx)
+}
+
+test expire_short_refund_fails() fail {
+  let tx = Transaction {
+    ..expire_tx(expired_at(), burn_ref()),
+    outputs: [
+      pool_out(capital, shares, active - coverage),
+      wallet_out(assets.from_lovelace(1_999_999)),
+    ],
+  }
+  spend_pool(base_pool(), Expire, tx)
 }
 
 test expire_during_grace_fails() fail {
@@ -1570,6 +1738,7 @@ test expire_releases_only_the_policy_tranche() fail {
         usd_capital,
         usd_book(usd_shares, usd_active - coverage),
       ),
+      wallet_out(assets.from_lovelace(2_000_000)),
     ],
   }
   spend_pool(base_pool(), Expire, tx)
@@ -1615,11 +1784,11 @@ test sdk_golden_vectors() {
   let params_data: Data = test_params
   and {
     bought_id() == #"b189a9907d60e630671d5d1cf94f41a33aca2203ae5aa8926722bd65312868ed",
-    cbor.serialise(policy_data) == #"d87a9fd8799f5820b189a9907d60e630671d5d1cf94f41a33aca2203ae5aa8926722bd65312868ed456465706567d8799f4040ff1b00000002540be4001a02625a001b000001a3185c50001b000001a3b2db1800d8799f445553444d19251c1a05265c00ff5820c0441700c0441700c0441700c0441700c0441700c0441700c0441700c0441700ffff",
-    cbor.serialise(usd_policy_data) == #"d87a9fd8799f5820b189a9907d60e630671d5d1cf94f41a33aca2203ae5aa8926722bd65312868ed456465706567d8799f581c1f3aec8bfe7ea4fe14c5f121e2a92e301afe414147860d557cac7e34455553444378ff1b00000002540be4001a010da10a1b000001a3185c50001b000001a3b2db1800d8799f445553444d19251c1a05265c00ff5820c0441700c0441700c0441700c0441700c0441700c0441700c0441700c0441700ffff",
+    cbor.serialise(policy_data) == #"d87a9fd8799f5820b189a9907d60e630671d5d1cf94f41a33aca2203ae5aa8926722bd65312868ed456465706567d8799f4040ff1b00000002540be4001a02625a001b000001a3185c50001b000001a3b2db1800d8799f445553444d19251c1a05265c00ff5820c0441700c0441700c0441700c0441700c0441700c0441700c0441700c0441700d8799fd8799f581c4011de4011de4011de4011de4011de4011de4011de4011de4011de40ffd87a80ffffff",
+    cbor.serialise(usd_policy_data) == #"d87a9fd8799f5820b189a9907d60e630671d5d1cf94f41a33aca2203ae5aa8926722bd65312868ed456465706567d8799f581c1f3aec8bfe7ea4fe14c5f121e2a92e301afe414147860d557cac7e34455553444378ff1b00000002540be4001a010da10a1b000001a3185c50001b000001a3b2db1800d8799f445553444d19251c1a05265c00ff5820c0441700c0441700c0441700c0441700c0441700c0441700c0441700c0441700d8799fd8799f581c4011de4011de4011de4011de4011de4011de4011de4011de4011de40ffd87a80ffffff",
     cbor.serialise(pool_data) == #"d8799fd8799f9fd8799f1b000000e8d4a510001b00000045d964b800ffd8799f1b000000746a5288001b000000174876e800ffffffff",
     cbor.serialise(withdraw_data) == #"d87a9f011b000000174876e800ff",
     cbor.serialise(deposit_data) == #"d8799f01ff",
-    cbor.serialise(params_data) == #"d8799fd8799f58205eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed00ff9fd8799fd8799f4040ff1a004c4b40ffd8799fd8799f581c1f3aec8bfe7ea4fe14c5f121e2a92e301afe414147860d557cac7e34455553444378ff1a004c4b40ffffd8799f456465706567d8799f445553444d19251c1a05265c00ff18c81927100e19016d1903e8192328ffd8799f581c0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0a9f46666565642d6146666565642d6246666565642d63ff02ff1a0f731400ff",
+    cbor.serialise(params_data) == #"d8799fd8799f58205eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed00ff9fd8799fd8799f4040ff1a004c4b40ffd8799fd8799f581c1f3aec8bfe7ea4fe14c5f121e2a92e301afe414147860d557cac7e34455553444378ff1a004c4b40ffffd8799f456465706567d8799f445553444d19251c1a05265c00ff18c81927100e19016d1903e8192328ffd8799f581c0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0a9f46666565642d6146666565642d6246666565642d63ff02ff1a0f731400d8799f1a05265c001a006ddd00ffff",
   }
 }

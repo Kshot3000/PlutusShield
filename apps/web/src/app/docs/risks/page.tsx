@@ -42,7 +42,7 @@ export default function RisksPage() {
             ["Buying cover", "Closed. /cover is a quote preview"],
             ["Underwriting", "Closed. /pool is a simulator"],
             ["Real funds", "None. The protocol holds no money"],
-            ["Tests", "Cardano: 72 Aiken checks passing. Midnight: 18 simulation tests passing, full ZK compile OK"],
+            ["Tests", "Cardano: 89 Aiken checks passing. Midnight: 18 simulation tests passing, full ZK compile OK"],
           ]}
         />
         <P>
@@ -84,6 +84,12 @@ export default function RisksPage() {
             validator doesn&apos;t require the windows to match.
           </li>
           <li>There is no on-chain dispute or challenge period for oracle data.</li>
+          <li>
+            The same feeds gate <Strong>sales</Strong>. A Buy needs a quorum of fresh healthy-peg readings, so if
+            feeds go stale or offline, new cover can&apos;t be sold (existing policies are unaffected). A feed
+            that lags a real depeg could still let someone buy, but the waiting period means the depeg must last
+            past the policy&apos;s start and a full trigger window after it.
+          </li>
           <li>
             The oracle relay service that would publish feeds is <Strong>planned, not built</Strong>, and no
             production feed set or quorum has been chosen.
@@ -146,6 +152,14 @@ export default function RisksPage() {
           <li>
             The user token is a bearer asset. Whoever holds it can claim. If you lose the wallet, you lose the
             claim right.
+          </li>
+          <li>
+            Cover doesn&apos;t start the moment you buy. It starts after the waiting period (24h by default, 60
+            min on Preview), and an event that begins before <C>start</C> isn&apos;t covered.
+          </li>
+          <li>
+            If the policy expires unclaimed, the ~2.5 ADA reference deposit is returned to the address you set as{" "}
+            <C>refund_to</C> at purchase, even if you later transfer the user token.
           </li>
         </List>
       </Section>

@@ -6,7 +6,7 @@ PlutusShield spans two chains and one application surface.
 - **Midnight** — private policy terms, claims evidence, and underwriter positions. Compact circuits prove eligibility and claim validity without publishing sensitive data.
 - **App + API** — quotes, wallet connect, policy management, and claims UX.
 
-> Status: pre-testnet. The Cardano validators (`contracts/cardano`, Aiken, 72 tests, multi-asset ADA + USDC tranches, end-to-end emulator run; Preview runbook in `contracts/cardano/deploy`) and the Midnight policy registry (`contracts/midnight`, Compact) compile and pass local tests. Nothing is deployed or audited.
+> Status: pre-testnet. The Cardano validators (`contracts/cardano`, Aiken, 89 tests, multi-asset ADA + USDC tranches, sale circuit-breaker, end-to-end emulator run; Preview runbook in `contracts/cardano/deploy`) and the Midnight policy registry (`contracts/midnight`, Compact) compile and pass local tests. Nothing is deployed or audited.
 
 ## System overview
 

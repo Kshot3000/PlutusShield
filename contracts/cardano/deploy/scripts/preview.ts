@@ -6,13 +6,14 @@
  *   pnpm preview init                                  InitPool with the planned seed
  *   pnpm preview deposit <ada|usdc> <amount>           whole units
  *   pnpm preview withdraw <ada|usdc> <shares>          whole share units
- *   pnpm preview buy <ada|usdc> <coverage> <days>      premium = validator floor
+ *   pnpm preview peg [priceBps=10000] [feed-a,feed-b]  test oracle: fresh healthy-peg readings (needed before buy)
+ *   pnpm preview buy <ada|usdc> <coverage> <days>      premium = validator floor; refund address = deployer
  *   pnpm preview feeds <priceBps> <startMs> <endMs> [feed-a,feed-b]
  *   pnpm preview settle <policyId>
  *   pnpm preview expire <policyId>
  */
 import { randomBytes } from "node:crypto";
-import { ADA, textHex, type AssetClass } from "../../../../packages/sdk/src/cardano.ts";
+import { ADA, DAY_MS, textHex, type AssetClass } from "../../../../packages/sdk/src/cardano.ts";
 import { deployment, loadConfig, unitOf } from "../lib/cover.ts";
 import { loadKey, sigPolicy } from "../lib/keys.ts";
 import { previewLucid, readDeploymentFile, reviveParams, toJson, writeDeploymentFile } from "../lib/chain.ts";
@@ -36,6 +37,11 @@ const needPlan = () => {
 };
 const assetArg = (s: string): AssetClass =>
   s === "ada" ? ADA : s === "usdc" ? { policyId: usdcPolicy.policyId, assetName: file.mockUsdc.assetName } : (() => { throw new Error("asset must be ada|usdc"); })();
+
+// Feed UTxOs live at the oracle key's address, never in the deployer wallet,
+// so coin selection can't merge or spend them by accident.
+const oracleFeeds = async () =>
+  (await lucid.utxosAt(oracle.address)).filter((u) => Object.keys(u.assets).some((k) => k.startsWith(oraclePolicy.policyId)));
 
 async function submit(label: string, tx: TxSignBuilder, ...extra: string[]) {
   let s = tx.sign.withWallet();
@@ -99,9 +105,21 @@ switch (cmd) {
       days: BigInt(args[2] ?? "14"),
       midnightCommitment: randomBytes(32).toString("hex"),
       now: Date.now(),
+      feeds: await oracleFeeds(),
     });
     console.log(toJson({ policyId: r.policy.policyId, premium: r.premium, asset: unitOf(asset), start: r.policy.start, expiry: r.policy.expiry }));
     await submit(`Buy ${args[1]} ${args[0]} cover`, r.tx);
+    break;
+  }
+  case "peg": {
+    const [price = "10000", names = "feed-a,feed-b"] = args;
+    const now = BigInt(Date.now());
+    const feeds = names.split(",").map((name) => ({
+      name,
+      datum: { coveredAsset: textHex(cfg.product.coveredAsset), priceBps: BigInt(price), windowStart: now - DAY_MS, windowEnd: now },
+    }));
+    await submit(`oracle peg ${price}bps ${names}`, await act.publishFeeds(lucid, { ...oraclePolicy, keyHash: oracle.keyHash }, oracle.address, feeds), oracle.privateKey);
+    console.log(`fresh for ${cfg.saleGuard.maxPriceAgeMinutes} min: run \`pnpm preview buy …\` now`);
     break;
   }
   case "feeds": {
@@ -110,20 +128,21 @@ switch (cmd) {
       name,
       datum: { coveredAsset: textHex(cfg.product.coveredAsset), priceBps: BigInt(price), windowStart: BigInt(start), windowEnd: BigInt(end) },
     }));
-    await submit(`oracle feeds ${names}`, await act.publishFeeds(lucid, { ...oraclePolicy, keyHash: oracle.keyHash }, deployer.address, feeds), oracle.privateKey);
+    await submit(`oracle feeds ${names}`, await act.publishFeeds(lucid, { ...oraclePolicy, keyHash: oracle.keyHash }, oracle.address, feeds), oracle.privateKey);
     break;
   }
   case "settle": {
     const d = needPlan();
-    const feeds = (await lucid.utxosAt(deployer.address)).filter((u) => Object.keys(u.assets).some((k) => k.startsWith(oraclePolicy.policyId)));
-    const r = await act.settle(lucid, d, args[0], feeds, Date.now());
+    const r = await act.settle(lucid, d, args[0], await oracleFeeds(), Date.now());
     await submit(`Settle ${args[0].slice(0, 12)}`, r.tx);
     break;
   }
   case "expire": {
-    await submit(`Expire ${args[0].slice(0, 12)}`, (await act.expire(lucid, needPlan(), args[0], Date.now())).tx);
+    const r = await act.expire(lucid, needPlan(), args[0], Date.now());
+    console.log(`refunding ${r.refund} lovelace deposit to ${r.refundTo}`);
+    await submit(`Expire ${args[0].slice(0, 12)}`, r.tx);
     break;
   }
   default:
-    console.log("usage: pnpm preview <status|mint-usdc|init|deposit|withdraw|buy|feeds|settle|expire> …");
+    console.log("usage: pnpm preview <status|mint-usdc|init|deposit|withdraw|peg|buy|feeds|settle|expire> …");
 }

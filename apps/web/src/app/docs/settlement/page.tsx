@@ -85,6 +85,24 @@ datum.window_end     ≤ policy.expiry`}</Formula>
         </P>
       </Section>
 
+      <Section id="sale-guard" title="The same feeds gate sales">
+        <P>
+          A parametric pool is only fair if nobody can buy cover after the event has started. Every{" "}
+          <C>Buy</C> runs a circuit-breaker against the same allowlisted feeds, with a waiting period on top:
+        </P>
+        <Formula label="attests_peg (oracle.ak) and validate_buy (cover.ak)">{`datum.covered_asset == trigger.covered_asset
+datum.price_bps      ≥ trigger.threshold_bps            -- healthy peg
+datum.window_end     ≥ tx_upper_bound − max_price_age_ms  -- fresh
+-- at least quorum distinct feeds, and
+policy.start         ≥ tx_upper_bound + waiting_period_ms`}</Formula>
+        <P>
+          If any feed already reports a depeg, or the readings are stale, the quorum fails and no cover can be
+          sold. A depeg that begins during the waiting period is never covered, because a trigger window must
+          start at or after <C>policy.start</C>. Defaults: 24h waiting period, readings at most 2h old. Preview
+          uses 60 min and 2h so test drills stay quick.
+        </P>
+      </Section>
+
       <Section id="settle-rules" title="Settle transaction rules">
         <Steps
           items={[
@@ -134,9 +152,9 @@ datum.window_end     ≤ policy.expiry`}</Formula>
       </Section>
 
       <Section id="tested" title="Attack cases tested">
-        <P>The Aiken test suite (72 checks) includes these settlement cases:</P>
+        <P>The Aiken test suite (89 checks) includes these settlement and sale cases:</P>
         <Table
-          caption="Settlement test coverage"
+          caption="Settlement and sale test coverage"
           head={["Case", "Expected"]}
           rows={[
             ["Quorum of 2 allowlisted feeds, depeg to 0.91 for 26h", "Pays"],
@@ -153,6 +171,10 @@ datum.window_end     ≤ policy.expiry`}</Formula>
             ["Replay a claim after the policy UTxO is gone", "Rejected"],
             ["USDC policy settles from the USDC tranche", "Pays"],
             ["USDC policy paid out of the ADA tranche", "Rejected"],
+            ["Buy while 2 feeds show 0.91, or 1 of 2 feeds depegged", "Sale refused"],
+            ["Buy with peg readings older than the max age, or none at all", "Sale refused"],
+            ["Buy landing inside the waiting period", "Sale refused"],
+            ["Expire that keeps the buyer's deposit, or refunds 1 lovelace short", "Rejected"],
           ]}
         />
       </Section>
