@@ -6,7 +6,8 @@
   "description": "Shared PlutusShield types, the cover quote engine, and Cardano datum/redeemer helpers",
   "exports": {
     ".": "./src/index.ts",
-    "./cardano": "./src/cardano.ts"
+    "./cardano": "./src/cardano.ts",
+    "./pool": "./src/pool.ts"
   },
   "scripts": {
     "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts"

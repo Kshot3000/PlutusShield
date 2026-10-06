@@ -160,7 +160,7 @@ export const poolActionData = (a: PoolAction): PlutusData => {
 /** CBOR encoding identical to the Plutus `serialiseData` builtin (and Aiken `cbor.serialise`). */
 export function encodePlutusData(d: PlutusData): Uint8Array {
   const out: number[] = [];
-  const head = (major: number, n: bigint) => {
+  const head = (major: number, n: bigint): void => {
     const m = major << 5;
     if (n < 24n) out.push(m | Number(n));
     else if (n < 0x100n) out.push(m | 24, Number(n));
@@ -187,8 +187,11 @@ export function encodePlutusData(d: PlutusData): Uint8Array {
       out.push(0xff);
     }
   };
-  const list = (xs: PlutusData[]) => {
-    if (xs.length === 0) return out.push(0x80);
+  const list = (xs: PlutusData[]): void => {
+    if (xs.length === 0) {
+      out.push(0x80);
+      return;
+    }
     out.push(0x9f);
     xs.forEach(go);
     out.push(0xff);
