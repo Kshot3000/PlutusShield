@@ -1,7 +1,7 @@
 {
   "network": "Preview",
-  "status": "awaiting-funding",
-  "generatedAt": "2026-10-06T03:43:12.199Z",
+  "status": "initialised",
+  "generatedAt": "2026-10-06T13:40:42.211Z",
   "deployer": {
     "address": "addr_test1vr0zk5tv56j2xaaefl4qrzzgxtdvcr6hhssa94fwh72fd5ccklyuz",
     "keyHash": "de2b516ca6a4a377b94fea01884832dacc0f57bc21d2d52ebf9496d3"
@@ -23,5 +23,85 @@
     "ticker": "tUSDCx",
     "decimals": 6
   },
-  "assets": []
+  "assets": [
+    {
+      "tranche": 0,
+      "asset": "lovelace",
+      "lpToken": "4e5423fefc28871aef53bd2ee85722c19af742e6b7a99d507e0ce2ac6c7000",
+      "minPremium": "5000000"
+    },
+    {
+      "tranche": 1,
+      "asset": "e5c5ae166089e4d907cabf8456dea8aebb76a2d5c65458c8e1e632ef.745553444378",
+      "lpToken": "4e5423fefc28871aef53bd2ee85722c19af742e6b7a99d507e0ce2ac6c7001",
+      "minPremium": "5000000"
+    }
+  ],
+  "txs": {
+    "2026-10-06T13:40:23.959Z mint tUSDCx": "5aa901119aeeda96d2075380ae0fc91c4907c217fefcca246452f9570eebf3e6",
+    "2026-10-06T13:41:00.000Z InitPool": "fc2a3ca252051a41589f58b612e08427b512a2cf17e0b3fa5a53500f162ca236",
+    "2026-10-06T13:44:01.910Z Deposit 2000 ada (+2000000000 lp0)": "8002098a63f31d84634e089115448ced37b811db099a4bb22acba98b8eecbe84",
+    "2026-10-06T13:45:08.940Z Deposit 100000 usdc (+100000000000 lp1)": "681108c18b5f07e22f4e19049cd1553cb7395e3ee75720dca443b97fc41fff90",
+    "2026-10-06T13:45:35.206Z oracle peg 10000bps feed-a,feed-b,feed-c": "09f85199086d46dc5954d8a4e6ac83e43cdaf09eb1a82e6ded8d7ca9eb73c899",
+    "2026-10-06T13:46:02.204Z Buy 1000 usdc cover": "3410e2db0efdd83fbc8cd5c6d5aff7314e34b5c9bb5c61697e1df8be4a208f84",
+    "2026-10-06T13:46:28.276Z Buy 150 ada cover": "9c3a98093f3bd850d84da815233d5c6145bf9a7226267cae9b102a55828d97eb"
+  },
+  "script": {
+    "hash": "4e5423fefc28871aef53bd2ee85722c19af742e6b7a99d507e0ce2ac",
+    "address": "addr_test1wp89ggl7ls5gwxh02w7ja6zhytqe4a6zu6m6n82s0cxw9tq4j5tgr",
+    "poolNft": "4e5423fefc28871aef53bd2ee85722c19af742e6b7a99d507e0ce2ac706f6f6c",
+    "paramsCbor": "d8799fd8799f58205aa901119aeeda96d2075380ae0fc91c4907c217fefcca246452f9570eebf3e601ff9fd8799fd8799f4040ff1a004c4b40ffd8799fd8799f581ce5c5ae166089e4d907cabf8456dea8aebb76a2d5c65458c8e1e632ef46745553444378ff1a004c4b40ffffd8799f456465706567d8799f445553444d19251c1a05265c00ff18c81927100e19016d1903e8192328ffd8799f581cd8365e107288ee8c1e313505cf2c754386eef7c95b2cd75b1fa1dd939f46666565642d6146666565642d6246666565642d63ff02ff1a0f731400d8799f1a0036ee801a006ddd00ffff",
+    "seed": "5aa901119aeeda96d2075380ae0fc91c4907c217fefcca246452f9570eebf3e6#1",
+    "aikenApplyMatches": true
+  },
+  "params": {
+    "seed": {
+      "txHash": "5aa901119aeeda96d2075380ae0fc91c4907c217fefcca246452f9570eebf3e6",
+      "outputIndex": 1
+    },
+    "assets": [
+      {
+        "asset": {
+          "policyId": "",
+          "assetName": ""
+        },
+        "minPremium": "5000000"
+      },
+      {
+        "asset": {
+          "policyId": "e5c5ae166089e4d907cabf8456dea8aebb76a2d5c65458c8e1e632ef",
+          "assetName": "745553444378"
+        },
+        "minPremium": "5000000"
+      }
+    ],
+    "product": {
+      "productId": "6465706567",
+      "trigger": {
+        "coveredAsset": "5553444d",
+        "thresholdBps": "9500",
+        "windowMs": "86400000"
+      },
+      "baseRateBps": "200",
+      "riskMultBps": "10000",
+      "minDays": "14",
+      "maxDays": "365",
+      "maxSinglePolicyBps": "1000",
+      "maxUtilizationBps": "9000"
+    },
+    "oracle": {
+      "policyId": "d8365e107288ee8c1e313505cf2c754386eef7c95b2cd75b1fa1dd93",
+      "feeds": [
+        "666565642d61",
+        "666565642d62",
+        "666565642d63"
+      ],
+      "quorum": "2"
+    },
+    "claimGraceMs": "259200000",
+    "saleGuard": {
+      "waitingPeriodMs": "3600000",
+      "maxPriceAgeMs": "7200000"
+    }
+  }
 }

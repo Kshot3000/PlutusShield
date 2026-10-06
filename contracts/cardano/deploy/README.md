@@ -5,7 +5,7 @@ Scripts to take the `cover` validator from `plutus.json` to a live pool on the
 runs without funds, except one human step: funding the deployer address
 from the faucet.
 
-> **Status:** the full flow (mint mock USDC, InitPool, deposits, healthy-peg attestation, ADA and USDC buys, a buy refused during the depeg, oracle feeds, settle, expire with deposit refund, withdraw) passes in the Lucid Emulator against the real applied validator (`pnpm emulator`). The deployer and oracle keys have been generated and the plan dry run works. **Nothing is on Preview yet.** The deployer still has to be funded. Not audited. Test value only.
+> **Status:** **live on Cardano Preview.** Pool at `addr_test1wp89ggl7ls5gwxh02w7ja6zhytqe4a6zu6m6n82s0cxw9tq4j5tgr` (script `4e5423fefc28871aef53bd2ee85722c19af742e6b7a99d507e0ce2ac`), InitPool `fc2a3ca252051a41589f58b612e08427b512a2cf17e0b3fa5a53500f162ca236`. Seeded with 2,000 ADA + 100,000 tUSDCx; first ADA and USDC buys landed. Emulator e2e still the CI check. Not audited. Test value only.
 
 ## What gets deployed
 
@@ -54,13 +54,13 @@ Run from `contracts/cardano/deploy` (or use the root aliases `pnpm preview:keyge
 
 - [x] **0. Build + test.** `aiken check && aiken build` in `contracts/cardano` (92 tests), then `pnpm test:sdk` and `pnpm emulator` from here.
 - [x] **1. Keys.** `pnpm keygen` creates `.keys/deployer.sk` and `.keys/oracle.sk` (mode 600, gitignored), then writes the deployer address, the mock tUSDCx policy, and the oracle policy to `deployments/preview.json`. Running it again reuses the existing keys.
-- [ ] **2. 🧍 HUMAN STEP: fund the deployer.** Open <https://docs.cardano.org/cardano-testnets/tools/faucet>, choose **Preview**, and paste the deployer address. One faucet drip (about 10,000 tADA) is plenty. The faucet has a captcha, so this step can't be scripted. Then check with `pnpm preview status`.
-- [ ] **3. Mock USDC.** `pnpm preview mint-usdc 1000000` mints 1,000,000 tUSDCx to the deployer. Do this **before** planning, so the seed UTxO is never spent by an unrelated transaction.
-- [ ] **4. Parameterise.** `pnpm plan` picks a pure-ada deployer UTxO as the seed and applies `CoverParams`: the oracle allowlist and quorum from `preview.config.json`, plus `[ada, tUSDCx]` tranches with a 5-unit premium floor each. It checks that Lucid's applied hash equals `aiken blueprint apply`'s, then writes `deployments/preview.{json,env,plutus.json}`. Don't spend the seed before step 5. If you do, run `pnpm plan` again.
-- [ ] **5. Mint the pool NFT.** `pnpm preview init` submits `InitPool`. It consumes the seed, mints `<hash>.706f6f6c` ("pool"), and locks 3 ADA with `PoolDatum { tranches: [{0,0},{0,0}] }`.
-- [ ] **6. Publish addresses.** Commit `deployments/preview.json` and `deployments/preview.env`. Copy the env values into the web build (`apps/web/.env.local` or the Pages workflow env) so `/cover` shows the real tUSDCx policy.
-- [ ] **7. Seed capital.** Run `pnpm preview deposit ada 2000` and `pnpm preview deposit usdc 100000`. Each tranche mints its own LP token (`lp00`, `lp01`).
-- [ ] **8. First buy.** The circuit-breaker needs fresh healthy-peg readings first: `pnpm preview peg` publishes `feed-a` and `feed-b` at 1.00 for the last 24h to the oracle key's address (fresh for 120 min). Then `pnpm preview buy usdc 1000 14` buys 1,000 tUSDCx of cover for 14 days. The premium is the validator floor, paid in tUSDCx. Then `pnpm preview buy ada 150 14` (at most 10% of the 2,000 ADA tranche). Each prints the `policyId`. Cover starts 60 min after the buy (waiting period), and the expiry refund address is the deployer.
+- [x] **2. 🧍 HUMAN STEP: fund the deployer.** Open <https://docs.cardano.org/cardano-testnets/tools/faucet>, choose **Preview**, and paste the deployer address. One faucet drip (about 10,000 tADA) is plenty. The faucet has a captcha, so this step can't be scripted. Then check with `pnpm preview status`.
+- [x] **3. Mock USDC.** `pnpm preview mint-usdc 1000000` mints 1,000,000 tUSDCx to the deployer. Do this **before** planning, so the seed UTxO is never spent by an unrelated transaction.
+- [x] **4. Parameterise.** `pnpm plan` picks a pure-ada deployer UTxO as the seed and applies `CoverParams`: the oracle allowlist and quorum from `preview.config.json`, plus `[ada, tUSDCx]` tranches with a 5-unit premium floor each. It checks that Lucid's applied hash equals `aiken blueprint apply`'s, then writes `deployments/preview.{json,env,plutus.json}`. Don't spend the seed before step 5. If you do, run `pnpm plan` again.
+- [x] **5. Mint the pool NFT.** `pnpm preview init` submits `InitPool`. It consumes the seed, mints `<hash>.706f6f6c` ("pool"), and locks 3 ADA with `PoolDatum { tranches: [{0,0},{0,0}] }`.
+- [x] **6. Publish addresses.** Commit `deployments/preview.json` and `deployments/preview.env`. Copy the env values into the web build (`apps/web/.env.local` or the Pages workflow env) so `/cover` shows the real tUSDCx policy.
+- [x] **7. Seed capital.** Run `pnpm preview deposit ada 2000` and `pnpm preview deposit usdc 100000`. Each tranche mints its own LP token (`lp00`, `lp01`).
+- [x] **8. First buy.** The circuit-breaker needs fresh healthy-peg readings first: `pnpm preview peg` publishes `feed-a` and `feed-b` at 1.00 for the last 24h to the oracle key's address (fresh for 120 min). Then `pnpm preview buy usdc 1000 14` buys 1,000 tUSDCx of cover for 14 days. The premium is the validator floor, paid in tUSDCx. Then `pnpm preview buy ada 150 14` (at most 10% of the 2,000 ADA tranche). Each prints the `policyId`. Cover starts 60 min after the buy (waiting period), and the expiry refund address is the deployer.
 - [ ] **9. (Optional) Claim drill.** `pnpm preview feeds 9100 <startMs> <endMs> feed-a,feed-b` publishes a depeg inside the policy term (window ≥ 24h). Then run `pnpm preview settle <policyId>`. Or let the policy run out and use `pnpm preview expire <policyId>` after expiry plus 3 days. The 2.5 ADA deposit goes back to the buyer's `refund_to` address, whoever submits. Feed UTxOs live at the oracle key's address, so wallet coin selection never touches them.
 
 `.env` example for the web app (`deployments/preview.env` after step 4):
@@ -74,7 +74,7 @@ NEXT_PUBLIC_PREVIEW_USDC_POLICY_ID=e5c5ae166089e4d907cabf8456dea8aebb76a2d5c6545
 NEXT_PUBLIC_PREVIEW_ORACLE_POLICY_ID=d8365e107288ee8c1e313505cf2c754386eef7c95b2cd75b1fa1dd93
 ```
 
-Provider: Koios (`https://preview.koios.rest/api/v1`, no key) by default. Set `BLOCKFROST_PROJECT_ID` to use Blockfrost, or `KOIOS_URL` to use another Koios instance. Set `PLUTUSSHIELD_KEYS_DIR` to keep keys somewhere other than `.keys/`.
+Provider: Koios (`https://preview.koios.rest/api/v1`, no key) by default. `pnpm preview` falls back to raw `/tx_info` when Lucid's `awaitTx` hits a Koios schema quirk (`collateral_output.asset_list` as the string `"[]"`). Set `BLOCKFROST_PROJECT_ID` to use Blockfrost, or `KOIOS_URL` to use another Koios instance. Set `PLUTUSSHIELD_KEYS_DIR` to keep keys somewhere other than `.keys/`.
 
 ## Known gaps before this is more than a testnet demo
 

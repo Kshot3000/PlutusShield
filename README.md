@@ -6,7 +6,7 @@ PlutusShield is protection you can verify on-chain, with privacy where it actual
 
 **Live site:** [kshot3000.github.io/PlutusShield](https://kshot3000.github.io/PlutusShield/) — static export of `apps/web`, deployed to GitHub Pages on every push to `main`.
 
-> **Status: pre-testnet.** This repo holds the product vision and docs, a Next.js site and app shell (`apps/web`) with a working cover quote calculator, the shared quote engine and Cardano datum codecs (`packages/sdk`), the Cardano validators for parametric depeg cover (`contracts/cardano`, Aiken: underwriting pool, policy NFTs, oracle-quorum settlement, ADA + USDC (USDCx) tranches, a sale circuit-breaker against buying into a depeg; 92 passing tests, plus an end-to-end emulator run and a Preview deploy runbook), and the Midnight Compact policy registry (`contracts/midnight`, passes off-chain simulation tests). Nothing is deployed or audited, no pools are live, and no policies are on sale yet. Quote figures use model parameters against an example pool.
+> **Status: Preview testnet live.** Cardano Preview pool is initialised at `addr_test1wp89ggl7ls5gwxh02w7ja6zhytqe4a6zu6m6n82s0cxw9tq4j5tgr` (see `contracts/cardano/deploy/deployments/preview.json`). Seeded ADA + tUSDCx capital and first buys are on-chain. This repo also holds the product vision and docs, a Next.js site (`apps/web`), the shared quote engine and Cardano datum codecs (`packages/sdk`), the Cardano validators (`contracts/cardano`, 92 Aiken tests + Lucid emulator e2e), and the Midnight Compact policy registry (`contracts/midnight`). Not audited. Test value only; browser buy still goes through the CLI.
 
 ---
 
@@ -169,7 +169,7 @@ See [contracts/cardano/README.md](contracts/cardano/README.md) for validators, d
 - [x] Parametric trigger: multi-oracle stablecoin depeg (on-chain quorum check)
 - [x] Multi-asset pools: ADA + USDC (USDCx) tranches, premiums and payouts per policy currency
 - [x] Preview deploy tooling + runbook, full flow verified in the Lucid Emulator
-- [ ] Testnet deployment (Preview): fund deployer, init pool, first buy (see runbook)
+- [x] Testnet deployment (Preview): fund deployer, init pool, first buy (see runbook)
 - [ ] Real oracle feed integration
 - [x] Sale circuit-breaker: no buys into an active depeg (every allowlisted feed must report a fresh healthy peg, plus a waiting period)
 - [x] Expiry returns the policy deposit to the buyer, not the submitter
