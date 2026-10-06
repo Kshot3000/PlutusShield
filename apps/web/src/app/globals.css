@@ -24,7 +24,7 @@
   /* Text */
   --text: #eef1f8;
   --text-muted: #9aa3b9;
-  --text-dim: #626b84;
+  --text-dim: #7c86a0; /* ≥ 4.7:1 on every surface (WCAG AA for small text) */
   --text-inverse: #05060b;
 
   /* Brand — the shield sits between the two chains */
@@ -234,6 +234,13 @@
     -webkit-backdrop-filter: blur(20px) saturate(140%);
     box-shadow: var(--shadow-float);
     isolation: isolate;
+  }
+
+  /* Full-screen overlays need legible text even where backdrop blur is unsupported. */
+  .glass-panel.menu-solid {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0) 45%),
+      var(--bg-elevated);
   }
 
   .glass-panel::before {

@@ -158,6 +158,7 @@ export function CoverTypes() {
             className="text-text-muted underline decoration-white/20 underline-offset-4 transition-colors hover:text-text hover:decoration-white/50"
           >
             PRODUCT.md
+            <span className="sr-only"> (opens in a new tab)</span>
           </a>
           .
         </p>

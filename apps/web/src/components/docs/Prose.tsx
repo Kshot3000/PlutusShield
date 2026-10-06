@@ -61,7 +61,12 @@ export function Formula({ children, label }: { children: string; label?: string 
           {label}
         </figcaption>
       ) : null}
-      <pre className="overflow-x-auto px-4 py-4 font-mono text-[12.5px] leading-[1.7] text-text">
+      {/* Focusable so keyboard users can scroll long lines (WCAG 2.1.1). */}
+      <pre
+        tabIndex={0}
+        aria-label={label ? `${label} (code)` : "Code"}
+        className="overflow-x-auto px-4 py-4 font-mono text-[12.5px] leading-[1.7] text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+      >
         <code>{children}</code>
       </pre>
     </figure>
@@ -78,7 +83,13 @@ export function Table({
   caption?: string;
 }) {
   return (
-    <div className="glass overflow-x-auto rounded-2xl">
+    <div>
+    <div
+      className="glass overflow-x-auto rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      tabIndex={0}
+      role="region"
+      aria-label={caption ?? "Table"}
+    >
       <table className="w-full min-w-[32rem] border-collapse text-left text-[13.5px]">
         {caption ? <caption className="sr-only">{caption}</caption> : null}
         <thead>
@@ -102,6 +113,12 @@ export function Table({
           ))}
         </tbody>
       </table>
+    </div>
+    {head.length > 2 ? (
+      <p className="mt-1.5 text-right font-mono text-[10px] text-text-dim sm:hidden" aria-hidden="true">
+        Swipe for more →
+      </p>
+    ) : null}
     </div>
   );
 }
@@ -138,6 +155,7 @@ export function DocLink({ href, children }: { href: string; children: ReactNode 
     return (
       <a href={href} target="_blank" rel="noopener noreferrer" className={cls}>
         {children}
+        <span className="sr-only"> (opens in a new tab)</span>
       </a>
     );
   }

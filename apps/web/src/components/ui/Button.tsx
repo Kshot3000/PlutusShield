@@ -55,6 +55,7 @@ export function Button({
           className={classes}
         >
           {children}
+          <span className="sr-only"> (opens in a new tab)</span>
         </a>
       );
     }

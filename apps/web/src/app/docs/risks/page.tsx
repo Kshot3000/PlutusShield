@@ -42,7 +42,7 @@ export default function RisksPage() {
             ["Buying cover", "Closed. /cover is a quote preview"],
             ["Underwriting", "Closed. /pool is a simulator"],
             ["Real funds", "None. The protocol holds no money"],
-            ["Tests", "Cardano: 89 Aiken checks passing. Midnight: 18 simulation tests passing, full ZK compile OK"],
+            ["Tests", "Cardano: 92 Aiken checks passing. Midnight: 18 simulation tests passing, full ZK compile OK"],
           ]}
         />
         <P>
@@ -85,10 +85,17 @@ export default function RisksPage() {
           </li>
           <li>There is no on-chain dispute or challenge period for oracle data.</li>
           <li>
-            The same feeds gate <Strong>sales</Strong>. A Buy needs a quorum of fresh healthy-peg readings, so if
-            feeds go stale or offline, new cover can&apos;t be sold (existing policies are unaffected). A feed
-            that lags a real depeg could still let someone buy, but the waiting period means the depeg must last
-            past the policy&apos;s start and a full trigger window after it.
+            The same feeds gate <Strong>sales</Strong>. A Buy needs a fresh healthy-peg reading from every
+            allowlisted feed, so if any feed goes stale, offline, or reports a depeg, new cover can&apos;t be sold
+            (existing policies are unaffected). A feed that lags a real depeg could still let someone buy, but
+            the waiting period means the depeg must last past the policy&apos;s start and a full trigger window
+            after it.
+          </li>
+          <li>
+            Each oracle reading is its own UTxO, so an older healthy reading stays usable for a Buy until it is
+            past the max price age (2h by default), even after a newer reading reports a depeg. The reference
+            client always uses the newest reading per feed; closing this on-chain needs a state-thread oracle
+            with one live UTxO per feed.
           </li>
           <li>
             The oracle relay service that would publish feeds is <Strong>planned, not built</Strong>, and no

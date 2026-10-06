@@ -1,6 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { ChoiceGroup, CurrencyMark } from "@/components/ui/ChoiceGroup";
+import { AmountField, parseAmount } from "@/components/ui/AmountField";
+import { PreviewFlow } from "@/components/PreviewFlow";
+import { useInView } from "@/lib/useInView";
 import { CURRENCIES, UTILIZATION_KINK, MAX_UTILIZATION, type Currency, type RiskTier } from "@plutusshield/sdk";
 import { depegTrigger, productTerms, textHex } from "@plutusshield/sdk/cardano";
 import {
@@ -44,7 +48,9 @@ function Slider({
   max,
   step,
   onChange,
+  hint,
 }: {
+  hint?: string;
   id: string;
   label: string;
   value: number;
@@ -68,8 +74,10 @@ function Slider({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
+        aria-valuetext={display}
         className="mt-2 w-full accent-[var(--accent)]"
       />
+      {hint && <p className="mt-1 text-[11px] text-text-dim">{hint}</p>}
     </div>
   );
 }
@@ -105,7 +113,16 @@ function UtilizationBar({ before, after }: { before: number; after: number }) {
 }
 
 export function UnderwriterSimulator() {
-  const [amount, setAmount] = useState(50_000);
+  const [rawAmount, setRawAmount] = useState("50000");
+  const parsed = parseAmount(rawAmount);
+  const amount = Number.isFinite(parsed) ? parsed : 0;
+  const amountError = !Number.isFinite(parsed)
+    ? "Enter an amount to deposit."
+    : parsed < 1
+      ? "Deposit at least 1 unit."
+      : null;
+  const resultRef = useRef<HTMLDivElement>(null);
+  const resultInView = useInView(resultRef);
   const [tier, setTier] = useState<RiskTier>("B");
   const [utilization, setUtilization] = useState(0.6);
   const [claimRate, setClaimRate] = useState(0);
@@ -117,6 +134,7 @@ export function UnderwriterSimulator() {
   const terms = useMemo(() => productTerms("depeg", tier, depegTrigger(textHex("USDM"))), [tier]);
 
   const sim = useMemo(() => {
+    if (amountError) return { ok: false as const, reason: amountError };
     const lovelace = BigInt(Math.max(0, Math.floor(amount))) * UNIT;
     const step = depositStep(EXAMPLE_POOL, lovelace);
     if (!step.ok) return { ok: false as const, reason: step.reason };
@@ -142,69 +160,74 @@ export function UnderwriterSimulator() {
       uAfter: Number(utilizationBps(after)) / 10_000,
       projection,
     };
-  }, [amount, tier, utilization, claimRate, horizon, terms, EXAMPLE_POOL]);
+  }, [amount, amountError, tier, utilization, claimRate, horizon, terms, EXAMPLE_POOL]);
+  const lpToken = currency === "ADA" ? "lp00" : "lp01";
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-      <div className="glass-panel relative p-6 sm:p-8">
-        <p className="font-mono-label text-[10px] text-text-dim">1 · Deposit</p>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Tranche currency">
-          {(Object.keys(CURRENCIES) as Currency[]).map((c) => (
-            <button
-              key={c}
-              type="button"
-              role="radio"
-              aria-checked={c === currency}
-              onClick={() => setCurrency(c)}
-              className={`rounded-lg border px-3 py-2 text-left text-xs transition-colors ${
-                c === currency
-                  ? "border-[color-mix(in_srgb,var(--accent)_55%,var(--border))] bg-[var(--accent-glow)] text-text"
-                  : "border-border text-text-muted hover:border-border-strong"
-              }`}
-            >
-              <span className="font-semibold">{CURRENCIES[c].symbol} tranche</span>
-            </button>
-          ))}
+    <div className="grid gap-6 pb-20 lg:grid-cols-[1.2fr_1fr] lg:pb-0">
+      <div className="glass-panel relative space-y-8 p-5 sm:p-8">
+        <div>
+          <ChoiceGroup<Currency>
+            name="tranche"
+            legend="1 · Choose a tranche"
+            value={currency}
+            onChange={setCurrency}
+            className="grid-cols-2"
+            options={(Object.keys(CURRENCIES) as Currency[]).map((c) => ({
+              value: c,
+              label: `${CURRENCIES[c].symbol} tranche`,
+              hint: c === "ADA" ? "LP token lp00" : "LP token lp01",
+              icon: <CurrencyMark currency={c} />,
+            }))}
+          />
+          <dl className="mt-3 grid grid-cols-3 gap-px overflow-hidden rounded-xl border border-[var(--hairline)] bg-[var(--hairline)] text-[11px]">
+            {[
+              ["Tranche capital", `${fmt(toAda(EXAMPLE_POOL.capital), 0)} ${sym}`],
+              ["Active cover", `${fmt(toAda(EXAMPLE_POOL.activeCover), 0)} ${sym}`],
+              ["Share price", `${(Number(EXAMPLE_POOL.capital) / Number(EXAMPLE_POOL.totalShares)).toFixed(4)}`],
+            ].map(([k, v]) => (
+              <div key={k} className="bg-bg-muted px-3 py-2.5">
+                <dt className="text-text-dim">{k}</dt>
+                <dd className="mt-0.5 font-mono text-text">{v}</dd>
+              </div>
+            ))}
+          </dl>
+          <div className="mt-5">
+            <AmountField
+              id="lp-amount"
+              label={`Capital to underwrite (${sym})`}
+              raw={rawAmount}
+              onRaw={setRawAmount}
+              suffix={sym}
+              chips={[
+                { label: "10k", value: 10_000 },
+                { label: "50k", value: 50_000 },
+                { label: "100k", value: 100_000 },
+                { label: "250k", value: 250_000 },
+              ]}
+              error={amountError}
+              hint={`Your capital only backs ${sym} policies. Claims in the other tranche can't touch it.`}
+            />
+          </div>
         </div>
-        <label className="mt-4 block text-sm text-text-muted" htmlFor="lp-amount">
-          Capital to underwrite ({sym})
-        </label>
-        <input
-          id="lp-amount"
-          type="number"
-          min={1}
-          step={1_000}
-          value={amount}
-          onChange={(e) => setAmount(Number(e.target.value))}
-          className="mt-1.5 h-11 w-full rounded-lg border border-border-strong bg-bg-muted px-3 font-mono text-text outline-none focus:border-accent"
+
+        <ChoiceGroup<RiskTier>
+          name="pool-tier"
+          legend="2 · Pool risk tier"
+          value={tier}
+          onChange={setTier}
+          compact
+          options={(["A", "B", "C"] as RiskTier[]).map((t) => ({ value: t, label: `Tier ${t}`, hint: tierCopy[t] }))}
         />
 
-        <p className="mt-8 font-mono-label text-[10px] text-text-dim">2 · Pool risk tier</p>
-        <div className="mt-3 grid gap-2 sm:grid-cols-3">
-          {(["A", "B", "C"] as RiskTier[]).map((t) => (
-            <button
-              key={t}
-              type="button"
-              aria-pressed={t === tier}
-              onClick={() => setTier(t)}
-              className={`rounded-lg border px-3 py-2.5 text-left text-xs transition-colors ${
-                t === tier
-                  ? "border-[color-mix(in_srgb,var(--accent)_55%,var(--border))] text-text"
-                  : "border-border text-text-muted hover:border-border-strong"
-              }`}
-            >
-              <span className="font-semibold">Tier {t}</span>
-              <span className="mt-0.5 block text-text-dim">{tierCopy[t]}</span>
-            </button>
-          ))}
-        </div>
-
-        <p className="mt-8 font-mono-label text-[10px] text-text-dim">3 · Scenario</p>
+        <div>
+        <p className="font-mono-label text-[10px] text-text-dim">3 · Scenario</p>
         <Slider
           id="util"
-          label="Average utilization"
+          label="Assumed average utilization"
           value={utilization}
           display={pct(utilization, 0)}
+          hint="Share of capital backing live cover over the horizon. Premium income scales with it."
           min={0}
           max={MAX_UTILIZATION}
           step={0.01}
@@ -235,9 +258,11 @@ export function UnderwriterSimulator() {
           earns more per unit of cover as it fills up. A depeg that triggers the oracle quorum pays
           each affected policy its full coverage from pool capital, shared pro rata by LPs.
         </p>
+        </div>
       </div>
 
-      <div className="glass-panel relative flex flex-col p-6 sm:p-8" aria-live="polite">
+      <div ref={resultRef} id="lp-result" className="glass-panel relative flex flex-col p-5 sm:p-8 lg:self-start">
+        <div aria-live="polite">
         {sim.ok ? (
           <>
             <p className="font-mono-label text-[10px] text-text-dim">Projected net return</p>
@@ -284,18 +309,55 @@ export function UnderwriterSimulator() {
             {sim.reason}
           </p>
         )}
-        <button
-          type="button"
-          disabled
-          className="mt-8 h-11 w-full rounded-full bg-[linear-gradient(180deg,#ffffff_0%,#dde3f6_100%)] text-sm font-medium text-[var(--text-inverse)] opacity-40"
-        >
-          Deposits open on testnet
-        </button>
-        <p className="mt-3 text-center text-[11px] text-text-dim">
-          Share math and capital lock mirror the Aiken validator exactly. Income is a model
-          scenario on an example pool, not a forecast.
+        </div>
+        <PreviewFlow
+          cta="See how depositing will work"
+          heading={`Underwriting the ${sym} tranche on Cardano Preview`}
+          next={{ href: "/docs/underwriting-pool", label: "How the pool works" }}
+          steps={[
+            {
+              title: "Connect a Cardano wallet",
+              body: `Any CIP-30 wallet on the Preview testnet, holding test ${currency === "ADA" ? "ADA" : "tUSDCx (Preview's mock USDC)"}.`,
+            },
+            {
+              title: `Deposit ${sym}, receive ${lpToken}`,
+              body: `The validator mints LP shares at the current share price: exactly amount × shares ÷ capital, the same math shown here.`,
+            },
+            {
+              title: "Earn premiums",
+              body: `Every ${sym} policy pays its premium into this tranche, which raises the share price for all ${lpToken} holders.`,
+            },
+            {
+              title: "Back claims, pro rata",
+              body: `If a quorum of oracles confirms a depeg, covered ${sym} policies are paid from this tranche, and every LP shares the loss by ownership.`,
+            },
+            {
+              title: "Withdraw any time",
+              body: "Burn shares for your pro-rata capital, down to the capital lock that keeps active cover under 90% of the tranche.",
+            },
+          ]}
+        />
+        <p className="mt-4 text-center text-[11px] text-text-dim">
+          Share math and the capital lock mirror the Aiken validator exactly. Income is a model scenario on an
+          example tranche, not a forecast.
         </p>
       </div>
+
+      {/* Mobile: keep the projection visible while editing inputs. */}
+      <a
+        href="#lp-result"
+        aria-hidden={resultInView}
+        tabIndex={resultInView ? -1 : 0}
+        className={`glass fixed inset-x-3 bottom-3 z-40 flex items-center justify-between rounded-full py-2.5 pl-5 pr-2 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.9)] transition-[transform,opacity] duration-500 lg:hidden ${
+          resultInView ? "pointer-events-none translate-y-4 opacity-0" : "translate-y-0 opacity-100"
+        }`}
+      >
+        <span className="min-w-0">
+          <span className="block font-mono-label text-[9px] text-text-dim">Projected net · {horizon}d</span>
+          <span className="font-mono text-sm text-text">{sim.ok ? `${signed(sim.projection.net)} ${sym}` : "—"}</span>
+        </span>
+        <span className="rounded-full bg-white/[0.08] px-3.5 py-2 text-xs text-text">View result ↓</span>
+      </a>
     </div>
   );
 }

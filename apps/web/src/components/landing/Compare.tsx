@@ -5,7 +5,7 @@ const rows = [
   { dim: "Chain", aegis: "Cardano", us: "Cardano + Midnight" },
   { dim: "Cover model", aegis: "Parametric", us: "Parametric and evidence-based exploit cover" },
   { dim: "Privacy", aegis: "Public policy / pool surface", us: "Private terms, evidence, and underwriter books via ZK" },
-  { dim: "Status", aegis: "Mainnet parametric protocol", us: "Scaffold / design preview (this site)" },
+  { dim: "Status", aegis: "Mainnet parametric protocol", us: "Validators built and tested · Preview testnet next" },
 ];
 
 const commitments = [
@@ -41,6 +41,7 @@ export function Compare() {
                 className="text-text underline decoration-white/25 underline-offset-4 hover:decoration-white/60"
               >
                 Aegis
+                <span className="sr-only"> (opens in a new tab)</span>
               </a>{" "}
               as the current Cardano parametric bar. Our job is to clear a higher bar on privacy and
               cover breadth — and to be clear about where we are today.

@@ -99,7 +99,8 @@ export default function HowCoverWorksPage() {
                   The buyer picks a currency (ADA or USDC) and pays the premium in it, into that tranche. The
                   transaction mints one reference token, locked at the script with a <C>PolicyDatum</C>, and one
                   user token for the buyer. That tranche&apos;s <C>active_cover</C> grows by the coverage
-                  amount.
+                  amount. The buy must reference a fresh healthy-peg reading from every oracle feed, and cover starts
+                  only after the waiting period. See <DocLink href="#buy-rules">the purchase rules</DocLink>.
                 </>
               ),
             },
@@ -182,10 +183,11 @@ PoolAction = Deposit { tranche } | Withdraw { tranche, shares } | Buy | Settle |
             <C>start</C>.
           </li>
           <li>
-            <Strong>Circuit-breaker.</Strong> At least <C>quorum</C> distinct allowlisted oracle feeds, passed as
-            reference inputs, report the covered asset at or above the trigger threshold, with a{" "}
-            <C>window_end</C> no older than <C>sale_guard.max_price_age_ms</C>. If the depeg is already under way,
-            or the readings are stale, nothing can be sold.
+            <Strong>Circuit-breaker.</Strong> Every allowlisted oracle feed, passed as a reference input, reports
+            the covered asset at or above the trigger threshold, with a <C>window_end</C> no older than{" "}
+            <C>sale_guard.max_price_age_ms</C>. All feeds, not a quorum: the buyer picks the reference inputs, so
+            a quorum rule would let them leave out the feed that already shows a depeg. If any feed is depegged,
+            stale, or missing, nothing can be sold.
           </li>
           <li>
             The capacity caps hold against the tranche&apos;s pre-purchase capital, and the premium paid (the

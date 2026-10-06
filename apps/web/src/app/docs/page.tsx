@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 const status = [
-  { k: "Cardano validators", v: "Aiken, Plutus V3 · ADA + USDC tranches · sale circuit-breaker · 89 tests passing" },
+  { k: "Cardano validators", v: "Aiken, Plutus V3 · ADA + USDC tranches · sale circuit-breaker · 92 tests passing" },
   { k: "Midnight registry", v: "Compact 0.31.1 · 6 circuits · 18 tests passing" },
   { k: "Deployment", v: "None yet. Preview tooling ready and emulator-tested, awaiting a funded deployer" },
   { k: "Audit", v: "Not audited" },
@@ -86,6 +86,7 @@ export default function DocsPage() {
                 <h3 className="mt-4 font-display text-[1.4rem] leading-tight text-text">
                   {doc.title}
                   <span className="ml-2 text-text-dim" aria-hidden="true">↗</span>
+                  <span className="sr-only"> (opens in a new tab)</span>
                 </h3>
                 <p className="mt-2 text-sm leading-relaxed text-text-muted">{doc.summary}</p>
               </a>
@@ -107,6 +108,7 @@ export default function DocsPage() {
                 <span className="font-mono text-[13px] text-text">{s.label}</span>
                 <span className="text-[13px] text-text-muted">
                   {s.note} <span aria-hidden="true" className="text-text-dim">↗</span>
+                  <span className="sr-only"> (opens in a new tab)</span>
                 </span>
               </a>
             </li>

@@ -6,7 +6,7 @@ const columns = [
   {
     title: "Product",
     links: [
-      { href: "/cover", label: "Cover" },
+      { href: "/cover", label: "Quote cover" },
       { href: "/pool", label: "Underwrite" },
       { href: "/app", label: "App" },
     ],
@@ -15,28 +15,22 @@ const columns = [
     title: "Docs",
     links: [
       { href: "/docs", label: "Overview" },
+      { href: "/docs/how-cover-works", label: "How cover works" },
+      { href: "/docs/settlement", label: "Settlement" },
+      { href: "/docs/risks", label: "Risks & disclosures" },
       {
         href: "https://github.com/Kshot3000/PlutusShield/blob/main/docs/ARCHITECTURE.md",
         label: "Architecture",
         external: true,
       },
-      {
-        href: "https://github.com/Kshot3000/PlutusShield/blob/main/docs/PRODUCT.md",
-        label: "Product",
-        external: true,
-      },
-      {
-        href: "https://github.com/Kshot3000/PlutusShield/blob/main/docs/COMPETITIVE.md",
-        label: "Competitive",
-        external: true,
-      },
     ],
   },
   {
-    title: "Chains",
+    title: "Ecosystem",
     links: [
       { href: "https://cardano.org", label: "Cardano", external: true },
       { href: "https://midnight.network", label: "Midnight", external: true },
+      { href: "https://github.com/Kshot3000/PlutusShield", label: "GitHub", external: true },
     ],
   },
 ];
@@ -46,15 +40,15 @@ export function Footer() {
     <footer className="relative mt-auto overflow-hidden">
       <div className="hairline-x absolute inset-x-0 top-0" aria-hidden="true" />
       <Container className="relative pb-10 pt-20">
-        <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
-          <div className="max-w-sm">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+          <div className="col-span-2 max-w-sm md:col-span-1">
             <Logo />
             <p className="mt-4 text-sm leading-relaxed text-text-muted">
               DeFi insurance for Cardano and Midnight — settlement you can audit,
               privacy where it matters.
             </p>
             <p className="mt-4 font-mono-label text-[10px] text-text-dim">
-              Design preview · No live cover yet
+              Preview build · No live cover yet
             </p>
           </div>
           {columns.map((col) => (
@@ -71,6 +65,8 @@ export function Footer() {
                         className="text-[14px] text-text-muted transition-colors duration-300 hover:text-text"
                       >
                         {link.label}
+                        <span aria-hidden="true" className="ml-1 text-text-dim">↗</span>
+                        <span className="sr-only"> (opens in a new tab)</span>
                       </a>
                     ) : (
                       <Link
@@ -95,7 +91,7 @@ export function Footer() {
         <div className="mt-10 flex flex-col gap-3 border-t border-[var(--hairline)] pt-6 text-xs text-text-dim sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} PlutusShield. MIT licensed.</p>
           <p className="max-w-md sm:text-right">
-            Not an offer of insurance or investment advice. Pre-release software under active design.
+            Not an offer of insurance or investment advice. Pre-release software, not audited.
           </p>
         </div>
       </Container>

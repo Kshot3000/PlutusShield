@@ -11,7 +11,7 @@ const steps: { title: string; body: string; layers: Layer[] }[] = [
   },
   {
     title: "Buy on Cardano",
-    body: "Premium settles on-chain. A policy NFT is minted and its state tracked by validators. Wallet-native, CIP-30.",
+    body: "Premium settles on-chain and a policy NFT is minted to your wallet. Sales pause automatically if any oracle feed reports a depeg, so the pool can't be gamed.",
     layers: ["cardano"],
   },
   {
@@ -21,7 +21,7 @@ const steps: { title: string; body: string; layers: Layer[] }[] = [
   },
   {
     title: "Claim with disclosure",
-    body: "Parametric triggers pay automatically. Exploit claims submit private evidence; assessors see only what proofs allow.",
+    body: "Depeg cover pays on an oracle quorum, with no adjuster. Exploit claims submit private evidence, and assessors see only what the proofs allow.",
     layers: ["midnight", "cardano"],
   },
 ];

@@ -7,10 +7,10 @@ import { Button } from "./ui/Button";
 import { Logo } from "./Logo";
 
 const nav = [
-  { href: "/#cover", label: "Cover" },
-  { href: "/#dual-chain", label: "Architecture" },
+  { href: "/cover", label: "Buy cover" },
+  { href: "/pool", label: "Underwrite" },
   { href: "/#how-it-works", label: "How it works" },
-  { href: "/#compare", label: "Why us" },
+  { href: "/#dual-chain", label: "Architecture" },
   { href: "/docs", label: "Docs" },
 ];
 
@@ -30,10 +30,33 @@ export function Header() {
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
-    return () => {
+    if (!open) return () => {
       document.body.style.overflow = "";
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onKey);
+    };
   }, [open]);
+
+  // Close the menu whenever the route changes (e.g. browser back).
+  const [lastPath, setLastPath] = useState(pathname);
+  if (lastPath !== pathname) {
+    setLastPath(pathname);
+    setOpen(false);
+  }
+
+  const cta = pathname.startsWith("/cover")
+    ? { href: "/app", label: "Your shield" }
+    : inApp
+      ? { href: "/cover", label: "Get a quote" }
+      : { href: "/app", label: "Launch app" };
+
+  const isActive = (href: string) => !href.startsWith("/#") && (pathname === href || pathname.startsWith(`${href}/`));
 
   return (
     <header className="sticky top-0 z-50 px-3 pt-3 sm:px-5">
@@ -51,7 +74,10 @@ export function Header() {
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-full px-3.5 py-2 text-[13.5px] text-text-muted transition-colors duration-300 hover:bg-white/[0.04] hover:text-text"
+              aria-current={isActive(item.href) ? "page" : undefined}
+              className={`rounded-full px-3.5 py-2 text-[13.5px] transition-colors duration-300 hover:bg-white/[0.04] hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                isActive(item.href) ? "text-text" : "text-text-muted"
+              }`}
             >
               {item.label}
             </Link>
@@ -68,8 +94,8 @@ export function Header() {
             <GitHubIcon />
             GitHub
           </Button>
-          <Button href={inApp ? "/cover" : "/app"} size="sm">
-            {inApp ? "Get a quote" : "Launch app"}
+          <Button href={cta.href} size="sm">
+            {cta.label}
           </Button>
         </div>
 
@@ -100,10 +126,10 @@ export function Header() {
         id="mobile-nav"
         className={`fixed inset-x-3 top-[4.75rem] bottom-3 z-40 origin-top overflow-y-auto rounded-[1.75rem] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] lg:hidden ${
           open
-            ? "glass-panel pointer-events-auto translate-y-0 opacity-100"
+            ? "glass-panel pointer-events-auto translate-y-0 opacity-100 menu-solid"
             : "pointer-events-none -translate-y-2 opacity-0"
         }`}
-        aria-hidden={!open}
+        inert={!open}
       >
         <nav className="flex h-full flex-col p-6" aria-label="Mobile">
           <ul className="flex flex-col">
@@ -111,7 +137,7 @@ export function Header() {
               <li key={item.href} className="border-b border-[var(--hairline)]">
                 <Link
                   href={item.href}
-                  tabIndex={open ? 0 : -1}
+                  aria-current={isActive(item.href) ? "page" : undefined}
                   className="flex items-baseline justify-between py-4 font-display text-3xl text-text"
                   onClick={() => setOpen(false)}
                 >
@@ -122,8 +148,11 @@ export function Header() {
             ))}
           </ul>
           <div className="mt-auto flex flex-col gap-2.5 pt-8">
-            <Button href="/app" size="lg" className="w-full">
-              Launch app
+            <Button href="/cover" size="lg" className="w-full">
+              Get a quote
+            </Button>
+            <Button href="/app" variant="secondary" size="lg" className="w-full">
+              Open the app
             </Button>
             <Button
               href="https://github.com/Kshot3000/PlutusShield"
@@ -135,7 +164,7 @@ export function Header() {
               View on GitHub
             </Button>
             <p className="mt-3 text-center font-mono-label text-[10px] text-text-dim">
-              Design preview · No live cover yet
+              Preview build · No live cover yet
             </p>
           </div>
         </nav>

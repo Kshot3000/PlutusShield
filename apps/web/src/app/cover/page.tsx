@@ -4,7 +4,7 @@ import { QuoteCalculator } from "@/components/cover/QuoteCalculator";
 
 export const metadata: Metadata = {
   title: "Cover",
-  description: "Quote PlutusShield depeg, exploit, and SLA cover for Cardano and Midnight.",
+  description: "Quote PlutusShield stablecoin depeg cover in ADA or USDC, plus model quotes for exploit and SLA cover.",
 };
 
 export default function CoverPage() {
@@ -12,7 +12,7 @@ export default function CoverPage() {
     <AppShell
       active="cover"
       title="Cover"
-      description="Price depeg, exploit, and SLA cover in ADA or USDC (USDCx) with the PlutusShield quote engine. Not live: purchases open on Cardano Preview once the pool is deployed."
+      description="Price stablecoin depeg cover in ADA or USDC and see exactly what the validator would accept: premium, waiting period, and payout. Purchases open on Cardano Preview once the pool is deployed."
     >
       <QuoteCalculator />
     </AppShell>

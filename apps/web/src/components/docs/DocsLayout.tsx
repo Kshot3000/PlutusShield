@@ -78,6 +78,7 @@ export function DocsLayout({
                     >
                       {p}
                       <span aria-hidden="true" className="text-text-dim">↗</span>
+                      <span className="sr-only"> (opens in a new tab)</span>
                     </a>
                   </li>
                 ))}

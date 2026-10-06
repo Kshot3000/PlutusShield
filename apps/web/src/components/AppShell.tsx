@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { Badge } from "./ui/Badge";
 import { Button } from "./ui/Button";
 import { Container } from "./ui/Container";
-import { ShieldMark } from "./Logo";
 
 const tabs = [
   { href: "/app", label: "Overview" },
@@ -37,7 +36,7 @@ export function AppShell({
             <div>
               <Badge variant="gold" className="animate-rise mb-5">
                 <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-gold text-gold" aria-hidden="true" />
-                Design preview · Testnet soon
+                Preview build · Testnet next
               </Badge>
               <h1 className="animate-rise delay-1 font-display text-[2.6rem] leading-[1.02] text-text sm:text-6xl">
                 {title}
@@ -79,57 +78,6 @@ export function AppShell({
         </Container>
       </div>
       <Container className="flex-1 pb-20 pt-8 sm:pb-28 sm:pt-10">{children}</Container>
-    </div>
-  );
-}
-
-export function ComingSoonPanel({
-  title,
-  body,
-}: {
-  title: string;
-  body: string;
-}) {
-  return (
-    <div className="glass-panel relative mx-auto max-w-lg p-8 text-center sm:p-12">
-      <div
-        className="relative mx-auto flex h-14 w-14 items-center justify-center"
-        aria-hidden="true"
-      >
-        <span className="absolute inset-0 rounded-full bg-accent opacity-25 blur-xl" />
-        <ShieldMark size={44} className="relative" />
-      </div>
-      <h2 className="mt-6 font-display text-[1.9rem] leading-tight text-text">{title}</h2>
-      <p className="mt-2 text-sm leading-relaxed text-text-muted">{body}</p>
-      <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
-        <Button href="/docs" size="sm">
-          Read docs
-        </Button>
-        <Button
-          href="https://github.com/Kshot3000/PlutusShield"
-          external
-          variant="secondary"
-          size="sm"
-        >
-          GitHub
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-export function PlaceholderMetric({
-  label,
-  hint = "Coming soon",
-}: {
-  label: string;
-  hint?: string;
-}) {
-  return (
-    <div className="glass-panel relative rounded-[1.4rem] p-6">
-      <p className="font-mono-label text-[9.5px] text-text-dim">{label}</p>
-      <p className="mt-4 font-display text-4xl text-text-muted">—</p>
-      <p className="mt-1 text-xs text-text-dim">{hint}</p>
     </div>
   );
 }
