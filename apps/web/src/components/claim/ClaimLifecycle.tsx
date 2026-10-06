@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/Button";
 import { MirroredOnMidnight } from "@/components/midnight/LiveContractActivity";
 import { explorerTx } from "@/lib/preview";
 import { MIDNIGHT_PREPROD as M, shortHash } from "@/lib/midnightPreprod";
+import { EXPLOIT_PREVIEW, adaOf, exploitPayoutFor } from "@/lib/exploitPreview";
 
 const steps = [
   {
@@ -37,7 +38,21 @@ function Hash({ h, block }: { h: string; block: number }) {
 
 /** How a filed commitment gets resolved, plus the live claims drill on Midnight Preprod. */
 export function ClaimLifecycle() {
-  const drill = M.claimsDrill;
+  // Midnight claims drill rows, plus each exploit-pool policy whose claim was resolved on Midnight.
+  const drill = [
+    ...M.claimsDrill,
+    ...EXPLOIT_PREVIEW.policies
+      .filter((p) => p.midnight?.resolveClaim && p.midnight.fileClaim?.txHash)
+      .filter((p) => !M.claimsDrill.some((d) => d.policyId === p.policyId))
+      .map((p) => ({
+        policyId: p.policyId,
+        cardanoBuyTx: p.buyTx,
+        cover: `Exploit cover · ${adaOf(p.coverage)}`,
+        evidenceCommitment: p.midnight!.evidence,
+        fileClaim: { txHash: p.midnight!.fileClaim!.txHash!, block: p.midnight!.fileClaim!.block ?? 0 },
+        resolveClaim: p.midnight!.resolveClaim!,
+      })),
+  ];
   return (
     <section aria-labelledby="claim-lifecycle-title" className="glass-panel relative mt-10 overflow-hidden p-6 sm:p-8">
       <div
@@ -78,6 +93,7 @@ export function ClaimLifecycle() {
                 <th className="px-4 py-2.5 font-normal">fileClaim</th>
                 <th className="px-4 py-2.5 font-normal">resolveClaim</th>
                 <th className="px-4 py-2.5 font-normal">Status now</th>
+                <th className="px-4 py-2.5 font-normal">Cardano payout</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--hairline)]">
@@ -112,6 +128,31 @@ export function ClaimLifecycle() {
                   <td className="px-4 py-3 align-top">
                     <MirroredOnMidnight policyId={d.policyId} />
                   </td>
+                  <td className="px-4 py-3 align-top">
+                    {(() => {
+                      const paid = exploitPayoutFor(d.policyId);
+                      if (paid)
+                        return (
+                          <>
+                            <span className="text-[11px] text-success">Paid on Cardano Preview</span>
+                            <a
+                              href={explorerTx(paid.settleTx!)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-0.5 block font-mono text-[10.5px] text-text-dim underline decoration-dotted underline-offset-4 hover:text-text"
+                            >
+                              Settle {shortHash(paid.settleTx!)} ↗
+                            </a>
+                            <span className="mt-0.5 block text-[10.5px] text-text-dim">{adaOf(paid.payout)}, assessor-signed</span>
+                          </>
+                        );
+                      return (
+                        <span className="text-[11px] text-text-dim">
+                          {d.resolveClaim.approved ? "None: depeg pool (oracle-only settle)" : "None: rejected"}
+                        </span>
+                      );
+                    })()}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -124,15 +165,15 @@ export function ClaimLifecycle() {
         </p>
       </div>
 
-      <div className="relative mt-5 rounded-2xl border border-gold/25 bg-gold/[0.06] p-4 text-xs leading-relaxed text-text-muted">
+      <div className="relative mt-5 rounded-2xl border border-success/25 bg-success/[0.05] p-4 text-xs leading-relaxed text-text-muted">
         <p>
-          <span className="text-[var(--gold)]">Not wired yet: the payout.</span> An approved claim is PAID on Midnight, but
-          the Cardano Preview pool only settles parametric depeg claims (an oracle quorum has to attest the trigger), and its
-          parameters are fixed, with no admin key. Paying assessed exploit claims needs a new exploit product deployment
-          on Cardano with an assessor-approved settle path. Until then no ADA or USDC moves for an approved exploit claim.{" "}
-          <Link href="/docs/settlement#assessed" className="underline underline-offset-4 hover:text-text">
-            What&apos;s missing
-          </Link>
+          <span className="text-success">Payout wired for exploit cover.</span> The depeg pool still settles only on an oracle
+          quorum (its parameters are fixed, no admin key), so approved claims on depeg policies stay unpaid on Cardano. Exploit
+          policies live in a separate exploit-cover pool whose Settle needs the assessor&apos;s signature, so an approved
+          Midnight claim there is paid in ADA or USDC on Cardano Preview.{" "}
+          <a href="#exploit-payout-title" className="underline underline-offset-4 hover:text-text">
+            See the payout
+          </a>
           .
         </p>
       </div>

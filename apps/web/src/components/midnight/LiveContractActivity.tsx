@@ -176,7 +176,7 @@ const statusCopy: Record<MidnightPolicyStatus, { label: string; title: string; t
   },
   PAID: {
     label: "Claim approved · PAID on Midnight",
-    title: "The assessor approved the claim (resolveClaim) on Midnight Preprod: the record is PAID and keeps its evidence commitment. Paying it out of the Cardano pool is not wired yet: the Preview validator only settles parametric depeg claims.",
+    title: "The assessor approved the claim (resolveClaim) on Midnight Preprod: the record is PAID and keeps its evidence commitment. Exploit-pool policies are then paid on Cardano Preview by an assessor-signed Settle; depeg-pool policies settle only on an oracle quorum.",
     tone: "text-success",
     dot: "bg-success",
   },

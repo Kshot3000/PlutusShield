@@ -38,6 +38,9 @@
  *            the commitment the ledger holds for the policy (verifyEvidence);
  *            only then resolveClaim(policyId, approved). Approve -> PAID,
  *            reject -> ACTIVE with the evidence cleared.
+ * `--register-first` lets `--claim` take a policy that isn't mirrored yet
+ * (e.g. a new exploit-cover pool's Buy): registerPolicy + proveCover from the
+ * local holder key, then fileClaim, all in the same wallet sync.
  * Preflight (ledger state, keys, Cardano datum, sealing) runs before the wallet
  * syncs, so a bad request fails in seconds, not after the dust sync; add
  * `--dry-run` to stop after it (no wallet, no proof, no tx).
@@ -90,6 +93,7 @@ const PUBLIC_RECORD = env('PLUTUSSHIELD_PUBLIC_RECORD', '');
 const ALL = process.argv.includes('--all');
 const ARGV = process.argv.slice(2);
 const CLAIM_MODE = ARGV.includes('--claim') || ARGV.includes('--resolve');
+const REGISTER_FIRST = ARGV.includes('--register-first');
 const KEY_DIRS = env('PLUTUSSHIELD_POLICY_KEY_DIRS', [path.join(SECRETS, 'policy-keys'), path.join(REPO, 'contracts/cardano/deploy/.keys/policy-keys')].join(','))
   .split(',')
   .filter(Boolean);
@@ -228,7 +232,9 @@ async function main() {
     for (const op of claimOps) {
       const now = planned.get(op.policyId) ?? claimView(l0, op.policyId)?.status ?? 'NONE';
       if (op.kind === 'claim') {
-        if (now !== 'ACTIVE') throw new Error(`--claim ${op.policyId.slice(0, 16)}…: policy is ${now} on Midnight, not ACTIVE`);
+        // --register-first: a policy not yet mirrored is registered (issuer) + proven (holder) in the same sync.
+        const register = now === 'NONE' && REGISTER_FIRST;
+        if (now !== 'ACTIVE' && !register) throw new Error(`--claim ${op.policyId.slice(0, 16)}…: policy is ${now} on Midnight, not ACTIVE${now === 'NONE' ? ' (add --register-first to mirror it in this run)' : ''}`);
         const local = keys.get(op.policyId);
         if (!local) throw new Error(`--claim ${op.policyId.slice(0, 16)}…: no holder policy key in ${KEY_DIRS.join(', ')}`);
         const c = await checkKey(fs.readFileSync(local.file, 'utf8'));
@@ -237,7 +243,7 @@ async function main() {
         const sealed = await Claims.sealEvidenceFile(path.resolve(op.evidence), op.policyId);
         const files = Claims.saveSealed(SECRETS, sealed);
         log(`sealed evidence for ${op.policyId.slice(0, 16)}…: commitment ${sealed.commitment.slice(0, 16)}… (fresh salt; envelope + key file in ${path.dirname(files.envelope)})`);
-        prepared.push({ op, key: c.key, cardano: { network: 'preview', buyTx: c.key.txHash, policyDatum: c.outRef }, sealed });
+        prepared.push({ op, key: c.key, cardano: { network: 'preview', buyTx: c.key.txHash, policyDatum: c.outRef }, sealed, register, midnightCommitment: c.policy.midnightCommitment });
         planned.set(op.policyId, 'CLAIM_PENDING');
       } else {
         if (now !== 'CLAIM_PENDING') throw new Error(`--resolve ${op.policyId.slice(0, 16)}…: policy is ${now}, no pending claim`);
@@ -328,7 +334,7 @@ async function main() {
       jsonOut(DEPLOY_RECORD, record);
       log('DEPLOYED', address, 'tx', record.deployTxId, 'block', record.blockHeight);
       issuer = deployed;
-    } else if (!CLAIM_MODE) {
+    } else if (!CLAIM_MODE || prepared.some((p) => p.register)) {
       log('joining', address);
       issuer = await findDeployedContract(providers, { compiledContract: compiled, contractAddress: address, privateStateId: 'plutusshieldIssuer', initialPrivateState: issuerState });
     }
@@ -393,6 +399,15 @@ async function main() {
         const { op } = p;
         const id = op.policyId;
         if (op.kind === 'claim') {
+          if (p.register && !(await readLedger()).policies.member(u8(id))) {
+            await relayOne({
+              policyId: id,
+              args: Holder.registerPolicyArgs(p.key),
+              holderKey: p.key,
+              cardano: { ...p.cardano, midnightCommitment: p.midnightCommitment, coverage: p.key.coverage, expiry: p.key.expiry },
+              source: 'key',
+            });
+          }
           const before = claimView(await readLedger(), id);
           if (before?.status !== 'ACTIVE') throw new Error(`fileClaim ${id.slice(0, 16)}…: policy is ${before?.status ?? 'NONE'} now; not filing`);
           const holderState = { sk: p.key.holderSecret, openings: { [id]: { amount: p.key.coverage, salt: p.key.coverageSalt } } };

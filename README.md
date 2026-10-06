@@ -6,7 +6,7 @@ PlutusShield is protection you can verify on-chain, with privacy where it actual
 
 **Live site:** [kshot3000.github.io/PlutusShield](https://kshot3000.github.io/PlutusShield/) — static export of `apps/web`, deployed to GitHub Pages on every push to `main`.
 
-> **Status: Preview testnet live.** Cardano Preview pool is initialised at `addr_test1wp89ggl7ls5gwxh02w7ja6zhytqe4a6zu6m6n82s0cxw9tq4j5tgr` (see `contracts/cardano/deploy/deployments/preview.json`). Seeded ADA + tUSDCx capital and first buys are on-chain. This repo also holds the product vision and docs, a Next.js site (`apps/web`), the shared quote engine and Cardano datum codecs (`packages/sdk`), the Cardano validators (`contracts/cardano`, 92 Aiken tests + Lucid emulator e2e), and the Midnight Compact policy registry (`contracts/midnight`). Not audited. Test value only. Buy, claim and release run from a CIP-30 wallet on `/cover`.
+> **Status: Preview testnet live.** Cardano Preview pool is initialised at `addr_test1wp89ggl7ls5gwxh02w7ja6zhytqe4a6zu6m6n82s0cxw9tq4j5tgr` (see `contracts/cardano/deploy/deployments/preview.json`). Seeded ADA + tUSDCx capital and first buys are on-chain. This repo also holds the product vision and docs, a Next.js site (`apps/web`), the shared quote engine and Cardano datum codecs (`packages/sdk`), the Cardano validators (`contracts/cardano`, 112 Aiken tests + Lucid emulator e2e), and the Midnight Compact policy registry (`contracts/midnight`). Not audited. Test value only. Buy, claim and release run from a CIP-30 wallet on `/cover`. **Exploit cover payout is live on Preview too:** a separate exploit-cover pool (`contracts/cardano/validators/exploit_cover.ak`, record in `contracts/cardano/deploy/deployments/preview-exploit.json`) pays an approved Midnight Preprod claim through an assessor-signed `Settle`; the assessor's signature is the cross-chain trust point.
 
 ---
 
@@ -178,7 +178,7 @@ See [contracts/cardano/README.md](contracts/cardano/README.md) for validators, d
 - [x] Midnight holder registration wired into Buy: per-policy key made in the browser, its commitment in the Cardano datum, `registerPolicy` bound to it, key backup / export / restore in My policies (`packages/sdk/src/midnight.ts`)
 - [x] Cardano → Midnight batch relay: every Buy publishes a public registration ticket (tx metadata 7731); `policy-cover-preprod.mjs --all` mirrors every live Preview policy whose ticket or holder key opens its datum, idempotently; `pnpm midnight:relay:plan` dry run; per-policy mirror state on `/cover` and `/app` (`packages/sdk/src/relay.ts`, `contracts/midnight/relay`)
 - [x] Private evidence vault for exploit claims: canonical bundle, in-browser AES-256-GCM, evidence commitment matching the Midnight contract, assessor verification (`/claim/evidence`, `packages/sdk/src/evidence.ts`)
-- [ ] Exploit claims flow end to end: `fileClaim` on a deployed Midnight registry, assessor resolution, approved payout from the Cardano pool
+- [x] Exploit claims flow end to end: `fileClaim` on the Midnight Preprod registry, assessor resolution, approved payout from the Cardano Preview exploit-cover pool (assessor-signed `Settle`)
 - [x] Marketing site + app shell (`apps/web`)
 - [x] Web app: interactive quote on `/cover`
 - [x] Web app: claim checker on `/claim` (oracle quorum, TWAP trigger, claim window, sale circuit-breaker)

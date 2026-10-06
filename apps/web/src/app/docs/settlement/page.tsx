@@ -227,17 +227,35 @@ policy.start         ≥ tx_upper_bound + waiting_period_ms`}</Formula>
           rejected the other (back to ACTIVE, commitment cleared). Tx hashes are on the{" "}
           <DocLink href="/claim/evidence">evidence vault page</DocLink> and in the public deployment record.
         </P>
+        <P>
+          <Strong>Payout on Cardano.</Strong> Exploit cover has its own pool and validator,{" "}
+          <C>validators/exploit_cover.ak</C>, parameterised with the same <C>CoverParams</C> plus an assessor key hash.
+          Its <C>Settle</C> has no oracle path: it requires the assessor&apos;s signature, a validity range inside
+          [policy start, expiry + grace], both policy tokens burned, exactly the coverage paid from the policy&apos;s
+          tranche, and active cover released. <C>Buy</C> keeps the pricing, capacity, and waiting period, without the
+          peg circuit-breaker (there is no peg). The depeg validator is untouched, so the live depeg pool keeps its
+          script hash.
+        </P>
+        <Table
+          caption="Exploit Settle (exploit_cover.ak)"
+          head={["Attempt", "Result"]}
+          rows={[
+            ["Assessor-signed, inside the claim window, pays exactly the coverage", "Paid"],
+            ["Missing assessor signature, or signed by another key", "Rejected"],
+            ["Pays one lovelace more or less than the coverage", "Rejected"],
+            ["After expiry + grace, or before cover starts", "Rejected"],
+            ["Keeps active cover, or keeps the user token", "Rejected"],
+          ]}
+        />
         <Callout tone="planned">
           <p>
-            Paying an approved Midnight claim from the Cardano pool isn&apos;t wired yet, and the drill moved no ADA or
-            USDC. What&apos;s missing on Cardano: the validator&apos;s only payout redeemer, <C>Settle</C>, requires an
-            oracle quorum to attest a parametric trigger; <C>CoverParams</C> has no assessor credential; the Preview
-            pool is parameterised for the depeg product only (and <C>Buy</C> requires the policy&apos;s product to match),
-            with no admin key, so it can&apos;t gain a new path. Cardano also can&apos;t read Midnight state, so the
-            approval has to arrive as an assessor signature (or, later, a bridge proof). The fix is a separate exploit
-            product deployment with an assessor-signed settle path. A governance-rotatable assessor (or committee) is
-            also planned. The oracle relay&apos;s core (<C>services/oracle-relay</C>) already computes feed datums and
-            re-checks them against the on-chain rules; venue adapters and a long-running publisher are next.
+            Trust model: Cardano can&apos;t read Midnight state, so the assessor&apos;s signature is the bridge. The
+            assessor signs only after the Midnight registry shows the claim resolved APPROVED (PAID), and the Settle
+            carries the Midnight claim id, evidence commitment, and <C>resolveClaim</C> tx as metadata (label 7732),
+            covered by the signed tx body. It runs on Cardano Preview with one demo policy paid end to end (links on
+            the <DocLink href="/claim/evidence">evidence vault page</DocLink>). The assessor is a single Preview key
+            today; a rotatable committee (or a bridge proof) is planned. Depeg policies still settle only on an oracle
+            quorum, so an approved Midnight claim on a depeg policy isn&apos;t paid on Cardano.
           </p>
         </Callout>
       </Section>

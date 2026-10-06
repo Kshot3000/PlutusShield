@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { UnderwriterSimulator } from "@/components/pool/UnderwriterSimulator";
 import { LivePool } from "@/components/pool/LivePool";
+import { ExploitPayout } from "@/components/claim/ExploitPayout";
 
 export const metadata: Metadata = {
   title: "Pool",
@@ -37,6 +38,7 @@ export default function PoolPage() {
       description="Back stablecoin depeg cover in ADA or USDC and earn its premiums. See the live Preview pool on-chain, deposit or withdraw with a signed wallet transaction, then simulate a position with the same share math as the validator, down to the lovelace."
     >
       <LivePool />
+      <ExploitPayout compact />
       <UnderwriterSimulator />
       <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {rules.map((r) => (

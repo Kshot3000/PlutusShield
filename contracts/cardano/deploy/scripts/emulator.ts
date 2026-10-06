@@ -12,6 +12,10 @@
  *   6  Settle the USDC policy       payout in tUSDCx from the USDC tranche
  *   7  Expire the ada policy        submitted by a third party, deposit refunded to the buyer
  *   8  Withdraw part of each tranche
+ *   9  exploit-cover pool (exploit_cover.ak): InitPool, Deposit, Buy with no
+ *      oracle feeds, Settle refused without the assessor (wrong key, missing
+ *      witness), then the assessor-signed Settle pays the holder exactly the
+ *      coverage and carries the Midnight resolution as tx metadata (label 7732)
  *
  * Every step asserts the on-chain pool state against @plutusshield/sdk.
  */
@@ -19,7 +23,9 @@ import assert from "node:assert/strict";
 import { CML, Emulator, Lucid, generateEmulatorAccountFromPrivateKey, type LucidEvolution, type TxSignBuilder } from "@lucid-evolution/lucid";
 import { ADA, DAY_MS, lpTokenName, textHex } from "../../../../packages/sdk/src/cardano.ts";
 import { PREVIEW_MOCK_USDC_ASSET_NAME } from "../../../../packages/sdk/src/assets.ts";
-import { buildParams, deployment, loadConfig, unitOf } from "../lib/cover.ts";
+import { buildParams, deployment, exploitDeployment, loadConfig, unitOf } from "../lib/cover.ts";
+import { assetTerms, productTerms, type CoverParams } from "../../../../packages/sdk/src/cardano.ts";
+import { EXPLOIT_PAYOUT_LABEL, buildExploitSettle } from "../../../../apps/web/src/lib/tx/exploit.ts";
 import { keyInfo, sigPolicy } from "../lib/keys.ts";
 import * as act from "../lib/actions.ts";
 import { listWalletPolicies } from "../../../../apps/web/src/lib/tx/cover.ts";
@@ -222,4 +228,48 @@ console.log("\nfinal pool:", {
   usdc: { capital: pool.capitals[1], ...pool.datum.tranches[1] },
   unit: unitOf(USDC),
 });
+
+// 9. exploit-cover pool: assessed payout, no oracle
+const assessorAcct = generateEmulatorAccountFromPrivateKey({ lovelace: 0n });
+const assessor = keyInfo("assessor", assessorAcct.privateKey, network);
+as(deployerAcct);
+const [xSeed] = await lucid.wallet().getUtxos();
+const xParams: CoverParams = {
+  seed: { txHash: xSeed.txHash, outputIndex: xSeed.outputIndex },
+  assets: [assetTerms(ADA, U, 5), assetTerms(USDC, U, 5)],
+  product: productTerms("exploit", "B", { coveredAsset: textHex("cardano-defi-exploit"), thresholdBps: 10_000n, windowMs: 1n }),
+  oracle: { policyId: "", feeds: [], quorum: 0n },
+  claimGraceMs: 3n * DAY_MS,
+  saleGuard: { waitingPeriodMs: 10n * 60_000n, maxPriceAgeMs: 0n },
+};
+const x = exploitDeployment(network, xParams, assessor.keyHash);
+assert.notEqual(x.policyId, d.policyId);
+await submit("exploit InitPool", await act.initPool(lucid, x, BigInt(cfg.poolMinLovelace)));
+await submit("exploit Deposit 10,000 ADA", (await act.deposit(lucid, x, ADA, 10_000n * U)).tx);
+as(buyerAcct);
+const xb = await act.buy(lucid, x, { asset: ADA, coverage: 500n * U, days: 30n, holder, now: emulator.now(), feeds: [] });
+await submit(`exploit Buy 500 ADA cover, premium ${xb.premium}`, xb.tx);
+assert.equal(xb.tx.toTransaction().body().reference_inputs()?.len() ?? 0, 0, "exploit Buy references no oracle feeds");
+const xId = xb.policy.policyId;
+const midnight = { network: "preprod", contract: "d8".repeat(34), claim: xId, evidence: "ee".repeat(32), resolveTx: "cd".repeat(32) };
+await assert.rejects(buildExploitSettle(lucid, act.coverScriptOf(x), { policyId: xId, assessorKeyHash: assessor.keyHash, midnight, now: emulator.now() }), /can't settle before/);
+log("✓ exploit Settle refused before cover starts (waiting period)");
+emulator.awaitSlot(Math.ceil((Number(xb.policy.start) - emulator.now()) / 1000) + 120);
+await assert.rejects(buildExploitSettle(lucid, act.coverScriptOf(x), { policyId: xId, assessorKeyHash: deployer.keyHash, midnight, now: emulator.now() }));
+log("✓ exploit Settle refused when signed for a key that isn't the assessor (script fails)");
+const unsigned = await buildExploitSettle(lucid, act.coverScriptOf(x), { policyId: xId, assessorKeyHash: assessor.keyHash, midnight, now: emulator.now() });
+await assert.rejects(async () => (await unsigned.tx.sign.withWallet().complete()).submit());
+log("✓ exploit Settle refused without the assessor's witness");
+const xBefore = await act.readPool(lucid, x);
+const buyerAdaX = await buyerAda();
+const xs = await buildExploitSettle(lucid, act.coverScriptOf(x), { policyId: xId, assessorKeyHash: assessor.keyHash, midnight, now: emulator.now() });
+const md = xs.tx.toTransaction().auxiliary_data()?.metadata()?.get(BigInt(EXPLOIT_PAYOUT_LABEL));
+assert.ok(md && CML.decode_metadatum_to_json_str(md, CML.MetadataJsonSchema.BasicConversions).includes(midnight.resolveTx), "Settle names the Midnight resolveClaim tx");
+await submit("exploit Settle (assessor-signed)", xs.tx, assessor.privateKey);
+const xAfter = await act.readPool(lucid, x);
+assert.equal(xAfter.capitals[0], xBefore.capitals[0] - 500n * U, "tranche pays exactly the coverage");
+assert.equal(xAfter.datum.tranches[0].activeCover, 0n);
+assert.ok((await buyerAda()) > buyerAdaX + 500n * U - 2_000_000n, "holder received the 500 ADA payout (less fee)");
+log("✓ exploit payout: 500 ADA to the holder, active cover released");
+
 console.log("emulator run passed");

@@ -192,3 +192,42 @@ export function plutusAddress(bech32: string): Address {
 export function bech32Address(network: Network, a: Address): string {
   return credentialToAddress(network, a.payment, a.stake);
 }
+
+// ---------------------------------------------------------------- exploit cover
+
+/** Unapplied exploit_cover validator (validators/exploit_cover.ak). */
+export function unappliedExploitCode(blueprintPath = join(DEPLOY_DIR, "..", "plutus.json")): string {
+  const bp = JSON.parse(readFileSync(blueprintPath, "utf8"));
+  const v = bp.validators.find((x: { title: string }) => x.title === "exploit_cover.exploit_cover.mint");
+  if (!v) throw new Error("exploit_cover.exploit_cover.mint not in plutus.json; run `aiken build`");
+  return v.compiledCode;
+}
+
+export interface ExploitDeployment extends Deployment {
+  /** Key hash whose signature every exploit Settle needs (the claims assessor). */
+  assessorKeyHash: string;
+}
+
+/**
+ * An exploit-cover deployment: the same CoverParams encoding plus the
+ * assessor key hash as the validator's second parameter. Datums, redeemers
+ * and token names are identical to a depeg deployment's, so every builder in
+ * actions.ts (InitPool, Deposit, Withdraw, Buy, Expire) works on it unchanged.
+ */
+export function exploitDeployment(network: Network, params: CoverParams, assessorKeyHash: string): ExploitDeployment {
+  if (!/^[0-9a-f]{56}$/.test(assessorKeyHash)) throw new Error("assessor key hash must be 28 bytes hex");
+  const paramsCbor = toCborHex(coverParamsData(params));
+  const code = applyParamsToScript(applyDoubleCborEncoding(unappliedExploitCode()), [Data.from(paramsCbor), assessorKeyHash]);
+  const script: Script = { type: "PlutusV3", script: code };
+  const policyId = mintingPolicyToId(script);
+  return {
+    network,
+    params,
+    paramsCbor,
+    script,
+    policyId,
+    address: validatorToAddress(network, script),
+    poolNftUnit: policyId + POOL_NFT,
+    assessorKeyHash,
+  };
+}

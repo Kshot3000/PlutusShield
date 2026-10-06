@@ -61,6 +61,12 @@ export function coverScriptFrom(j: Parameters<typeof poolScriptFrom>[0] & { para
 }
 
 /** A Buy must land within this long of being built (its validity upper bound). */
+/** "exploit" as on-chain product id bytes (UTF-8 hex). */
+export const EXPLOIT_PRODUCT_HEX = "6578706c6f6974";
+
+/** Assessed exploit cover (validators/exploit_cover.ak) rather than parametric depeg cover. */
+export const isExploitProduct = (params: Pick<CoverParams, "product">) => params.product.productId === EXPLOIT_PRODUCT_HEX;
+
 export const BUY_WINDOW_MS = 10 * 60_000;
 /**
  * How far before `now` the validity interval opens. The validator ignores a
@@ -227,7 +233,9 @@ export async function buildBuy(lucid: LucidEvolution, c: CoverScript, a: BuyArgs
 
   // The tx must land by `upper`; cover starts after the waiting period.
   const upper = slotAligned(lucid, a.now + BUY_WINDOW_MS);
-  const { ok: peg, blocked } = saleFeeds(c.params, a.feeds, upper);
+  // Exploit-cover pools (exploit_cover.ak) have no peg, so no oracle circuit-breaker:
+  // only the waiting period guards the sale. Depeg pools need every feed healthy.
+  const { ok: peg, blocked } = isExploitProduct(c.params) ? { ok: [], blocked: [] } : saleFeeds(c.params, a.feeds, upper);
   if (blocked.length) throw new Error(circuitBreakerMessage(c.params, blocked));
 
   const start = slotAligned(lucid, Number(earliestStart(c.params.saleGuard, BigInt(upper))));
@@ -255,14 +263,15 @@ export async function buildBuy(lucid: LucidEvolution, c: CoverScript, a: BuyArgs
   const ref = c.scriptHash + refTokenName(policy.policyId);
   const user = c.scriptHash + userTokenName(policy.policyId);
   const value = { ...pool.utxo.assets, [unitOf(c.params.assets[t].asset)]: step.pool.capital };
-  const tx = await lucid
-    .newTx()
+  let b = lucid.newTx();
+  // Depeg pools reference one fresh healthy-peg reading per feed; exploit pools reference none.
+  if (peg.length) b = b.readFrom(peg);
+  const tx = await b
     .collectFrom([pool.utxo], toCborHex(poolActionData({ kind: "Buy" })))
     .mintAssets({ [ref]: 1n, [user]: 1n }, VIA_POOL)
     .attach.SpendingValidator(c.script)
     .pay.ToContract(c.address, inline(toCborHex(coverDatumData({ kind: "Pool", pool: setCover(pool.datum, t, step.pool.activeCover) }))), value)
     .pay.ToContract(c.address, inline(toCborHex(coverDatumData({ kind: "Policy", policy }))), { lovelace: POLICY_REF_LOVELACE, [ref]: 1n })
-    .readFrom(peg)
     // Public Midnight registration ticket (holder + coverage commitments, no secrets): lets the
     // issuer relay register this policy on Midnight from chain data alone. See @plutusshield/sdk/relay.
     .attachMetadata(MIDNIGHT_TICKET_LABEL, ticketMetadata(policyKey))
