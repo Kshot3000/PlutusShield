@@ -30,7 +30,7 @@ const EXAMPLE_TRANCHES: Record<Currency, PoolLedger> = {
 const toAda = (x: bigint) => Number(x) / Number(UNIT);
 const fmt = (n: number, d = 2) =>
   n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
-const pct = (n: number, d = 2) => `${(n * 100).toFixed(d)}%`;
+const pct = (n: number, d = 2) => `${n < 0 ? "−" : ""}${Math.abs(n * 100).toFixed(d)}%`;
 const signed = (n: number) => `${n >= 0 ? "+" : "−"}${fmt(Math.abs(n))}`;
 
 const tierCopy: Record<RiskTier, string> = {
@@ -164,7 +164,7 @@ export function UnderwriterSimulator() {
   const lpToken = currency === "ADA" ? "lp00" : "lp01";
 
   return (
-    <div className="grid gap-6 pb-20 lg:grid-cols-[1.2fr_1fr] lg:pb-0">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 pb-20 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:pb-0">
       <div className="glass-panel relative space-y-8 p-5 sm:p-8">
         <div>
           <ChoiceGroup<Currency>
@@ -262,6 +262,7 @@ export function UnderwriterSimulator() {
       </div>
 
       <div ref={resultRef} id="lp-result" className="glass-panel relative flex flex-col p-5 sm:p-8 lg:self-start">
+        <h2 className="sr-only">Projected return</h2>
         <div aria-live="polite">
         {sim.ok ? (
           <>
@@ -311,7 +312,7 @@ export function UnderwriterSimulator() {
         )}
         </div>
         <PreviewFlow
-          cta="See how depositing will work"
+          cta="How depositing will work"
           heading={`Underwriting the ${sym} tranche on Cardano Preview`}
           next={{ href: "/docs/underwriting-pool", label: "How the pool works" }}
           steps={[

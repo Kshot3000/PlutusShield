@@ -98,8 +98,10 @@ export default function RisksPage() {
             with one live UTxO per feed.
           </li>
           <li>
-            The oracle relay service that would publish feeds is <Strong>planned, not built</Strong>, and no
-            production feed set or quorum has been chosen.
+            The oracle relay <Strong>core</Strong> is built (median of venues, integer TWAP with a data-gap
+            guard, depeg-window search, every datum re-checked against the on-chain rules) and tested on
+            synthetic data only. Venue adapters and a long-running publisher are planned, and no production
+            feed set or quorum has been chosen.
           </li>
         </List>
       </Section>

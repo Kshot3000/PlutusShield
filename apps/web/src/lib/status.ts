@@ -41,7 +41,7 @@ export const MILESTONES: Milestone[] = [
   },
   {
     label: "Production oracle feeds",
-    detail: "Independent operators behind the quorum (for example Charli3 or Orcfax adapters).",
+    detail: "Relay core is built: venue median, TWAP, depeg-window search. Next: venue adapters, a publisher, and independent operators (for example Charli3 or Orcfax).",
     state: "planned",
   },
   {

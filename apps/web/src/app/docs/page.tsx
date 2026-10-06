@@ -14,6 +14,7 @@ export const metadata: Metadata = {
 const status = [
   { k: "Cardano validators", v: "Aiken, Plutus V3 · ADA + USDC tranches · sale circuit-breaker · 92 tests passing" },
   { k: "Midnight registry", v: "Compact 0.31.1 · 6 circuits · 18 tests passing" },
+  { k: "Oracle relay", v: "Core built: venue median, TWAP, depeg-window search · 6 tests on synthetic data · publisher planned" },
   { k: "Deployment", v: "None yet. Preview tooling ready and emulator-tested, awaiting a funded deployer" },
   { k: "Audit", v: "Not audited" },
   { k: "Purchases", v: "Closed. The quote calculator is a preview" },

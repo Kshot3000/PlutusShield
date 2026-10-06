@@ -55,7 +55,7 @@ export function DocsLayout({
           </div>
         </details>
 
-        <aside className="hidden lg:block">
+        <aside className="hidden lg:block" aria-label="Docs sidebar">
           <div className="sticky top-24">
             <PageNav slug={slug} />
           </div>
@@ -69,12 +69,12 @@ export function DocsLayout({
               <p className="font-mono-label text-[10px] text-text-dim">Grounded in</p>
               <ul className="mt-3 flex flex-wrap gap-2">
                 {sourcePaths.map((p) => (
-                  <li key={p}>
+                  <li key={p} className="min-w-0 max-w-full">
                     <a
                       href={src(p)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-full border border-[var(--hairline)] bg-white/[0.03] px-3 py-1.5 font-mono text-[11.5px] text-text-muted transition-colors hover:border-white/15 hover:text-text"
+                      className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[var(--hairline)] bg-white/[0.03] px-3 py-1.5 font-mono text-[11.5px] text-text-muted [overflow-wrap:anywhere] transition-colors hover:border-white/15 hover:text-text"
                     >
                       {p}
                       <span aria-hidden="true" className="text-text-dim">↗</span>
@@ -103,7 +103,7 @@ export function DocsLayout({
         </article>
 
         {toc.length > 0 ? (
-          <aside className="hidden xl:block">
+          <aside className="hidden xl:block" aria-label="Page contents">
             <div className="sticky top-24">
               <Toc items={toc} />
             </div>

@@ -34,7 +34,7 @@ const PREVIEW_TRANCHES: Record<Currency, { capital: number; activeCover: number 
 const PREVIEW_USDC_POLICY = process.env.NEXT_PUBLIC_PREVIEW_USDC_POLICY_ID ?? "";
 
 const currencyCopy: Record<Currency, string> = {
-  ADA: "Paid out in ada",
+  ADA: "Paid out in ADA",
   USDC: "Paid out in USDCx",
 };
 
@@ -111,7 +111,7 @@ export function QuoteCalculator() {
   const termChips = [14, 30, 90, 180, 365].filter((d) => d >= p.minDays && d <= p.maxDays);
 
   return (
-    <div className="grid gap-6 pb-20 lg:grid-cols-[1.2fr_1fr] lg:pb-0">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 pb-20 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:pb-0">
       <div className="glass-panel relative space-y-8 p-5 sm:p-8">
         <ChoiceGroup<ProductId>
           name="product"
@@ -220,6 +220,7 @@ export function QuoteCalculator() {
       </div>
 
       <div ref={resultRef} id="quote-result" className="glass-panel relative flex flex-col p-5 sm:p-8 lg:self-start">
+        <h2 className="sr-only">Your quote</h2>
         <div aria-live="polite">
           <p className="font-mono-label text-[10px] text-text-dim">Indicative premium</p>
           {result.ok && !amountError ? (
@@ -317,7 +318,7 @@ export function QuoteCalculator() {
         </div>
 
         <PreviewFlow
-          cta="See how buying will work"
+          cta="How buying will work"
           heading={`Buying ${cur.symbol} cover on Cardano Preview`}
           next={{ href: "/docs/how-cover-works", label: "How cover works" }}
           steps={[
@@ -336,7 +337,7 @@ export function QuoteCalculator() {
             },
             {
               title: "Automatic peg check",
-              body: "The dApp attaches fresh oracle readings. If the stablecoin is already depegging, the validator refuses the sale, so nobody buys into a known loss.",
+              body: "The dApp attaches a fresh reading from every oracle feed. If any feed shows the stablecoin depegging, the validator refuses the sale, so nobody buys into a known loss.",
             },
             {
               title: "Review and sign",

@@ -204,8 +204,9 @@ policy.start         ≥ tx_upper_bound + waiting_period_ms`}</Formula>
         <Callout tone="planned">
           <p>
             Paying an approved Midnight claim from the Cardano pool isn&apos;t wired yet. The Cardano validator
-            currently settles only parametric triggers. A governance-rotatable assessor (or committee) and the
-            oracle relay service that publishes feed datums are also planned, not built.
+            currently settles only parametric triggers. A governance-rotatable assessor (or committee) is also
+            planned. The oracle relay&apos;s core (<C>services/oracle-relay</C>) already computes feed datums and
+            re-checks them against the on-chain rules; venue adapters and a long-running publisher are next.
           </p>
         </Callout>
       </Section>

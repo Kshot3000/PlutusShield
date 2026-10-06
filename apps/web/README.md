@@ -2,7 +2,7 @@
 
 Marketing site and dApp shell for **PlutusShield** — DeFi insurance for Cardano and Midnight.
 
-> Design preview. No live TVL, policies, or claims. Placeholder routes mark features as coming soon.
+> Preview build. Nothing is deployed: no live TVL, policies, or claims. The quote calculator and pool simulator run the real SDK math (the same integer rules the Aiken validators enforce) against an example tranche, and every buy/deposit button opens a "Preview coming" flow with the exact steps instead of a dead end.
 
 ## Stack
 
@@ -14,11 +14,12 @@ Marketing site and dApp shell for **PlutusShield** — DeFi insurance for Cardan
 
 | Path | Purpose |
 |------|---------|
-| `/` | Landing — hero, problem, dual-chain, cover types, how it works, competitive honesty, CTA |
-| `/app` | dApp shell overview |
-| `/cover` | Cover marketplace placeholder |
-| `/pool` | Underwriting pool placeholder |
-| `/docs` | Links to repo docs (`ARCHITECTURE`, `PRODUCT`, `COMPETITIVE`) |
+| `/` | Landing: hero, problem, dual-chain, cover types, how it works, competitive honesty, CTA |
+| `/app` | "Your shield" dashboard: empty state, and the Road to Preview milestone tracker (`src/lib/status.ts`) |
+| `/cover` | Quote calculator: product, ADA/USDC tranche, amount and term with validation, tier, premium breakdown, policy timeline (waiting period / cover / claim grace), what goes on-chain, Preview buy steps |
+| `/pool` | Underwriter simulator: tranche, capital, tier, utilization and claims scenarios, LP shares and capital lock, Preview deposit steps |
+| `/docs` | Protocol docs hub plus six pages: how cover works, pricing, underwriting pool, settlement (incl. the sale circuit-breaker), privacy, risks |
+| `404` | Branded not-found page (GitHub Pages serves `404.html` for unknown paths) |
 
 ## Run locally
 
@@ -62,7 +63,7 @@ npm run dev
 **URL:** https://kshot3000.github.io/PlutusShield/
 
 - `next.config.ts` sets `output: "export"`, `trailingSlash: true`, and unoptimized images, so
-  every route (`/`, `/app`, `/cover`, `/pool`, `/docs`) is pre-rendered to plain HTML. The quote
+  every route (`/`, `/app`, `/cover`, `/pool`, `/docs/*`, `404`) is pre-rendered to plain HTML. The quote
   calculator and pool simulator run entirely client-side.
 - `basePath` / `assetPrefix` come from `NEXT_PUBLIC_BASE_PATH`. It is empty for local dev and
   set to `/PlutusShield` by the Pages workflow (from `actions/configure-pages`). If the site
@@ -92,7 +93,14 @@ python3 -m http.server 4200 -d /tmp/pages   # → http://localhost:4200/PlutusSh
 - Brand colors and typography live in `src/app/globals.css` (`:root` CSS variables).
 - Shared UI: `src/components/ui/*`, chrome: `Header`, `Footer`, `Logo`, `AppShell`.
 - Landing sections: `src/components/landing/*`.
-- Never invent live metrics — use “Coming soon” / em dashes.
+- Shared form primitives: `ChoiceGroup` (native radios in a fieldset, so arrow keys and screen
+  readers work), `AmountField` (string state, inline `aria-invalid` errors), `PreviewFlow`
+  (the "Preview coming" CTA, collapsed content is `inert`).
+- Accessibility bar: axe-core clean (WCAG 2.1 AA + best practice) on every route at 1280 and
+  390 px; visible focus rings; scrollable tables and code blocks are keyboard-focusable;
+  external links announce "opens in a new tab"; `--text-dim` meets AA contrast.
+- Never invent live metrics. Example tranches are labelled as examples; launch status comes
+  from `src/lib/status.ts`.
 
 ## Related docs
 

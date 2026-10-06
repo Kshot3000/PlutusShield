@@ -53,7 +53,7 @@ export function Footer() {
           </div>
           {columns.map((col) => (
             <div key={col.title}>
-              <h3 className="font-mono-label text-[9.5px] text-text-dim">{col.title}</h3>
+              <h2 className="font-mono-label text-[9.5px] text-text-dim">{col.title}</h2>
               <ul className="mt-5 space-y-3">
                 {col.links.map((link) => (
                   <li key={link.href}>
