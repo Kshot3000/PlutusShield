@@ -99,6 +99,30 @@ pnpm test           # --skip-zk compile, then node:test simulation via @midnight
   - `registerPolicy` rejects a swapped holder, an inflated coverage, a replay under another policy id, and a random (pre-wiring placeholder) datum commitment
   - a key restored from an encrypted backup still proves cover
 
+## Midnight Preprod
+
+`policy-cover` is deployed on **Midnight Preprod** (compactc 0.31.1, proof server 8.1.0), and the first real Cardano Preview policy is mirrored into it. Public record: [`deployments/preprod.json`](deployments/preprod.json).
+
+| | |
+|---|---|
+| Contract | `d84c618775ffa4d9c2e9283b6fe95319cecd708e84742c27ec4b6762925e8787` |
+| Deploy tx | `00503906dc2fbaab04afe697d7e1c8074e28106a5f40a8485beb973d9833cd6290` (block 2865271, 2026-10-06 17:57 UTC) |
+| Cardano Buy | Preview [`7c3365bb…1386d`](https://preview.cardanoscan.io/transaction/7c3365bb519dfdaca6e12a371b35e0c1b7ffd321bec42130021e22b47c31386d), 50 ADA cover, datum `midnight_commitment` `d9f979b5…6e62b` |
+| `registerPolicy` | tx hash `151a5ede0f1a87d784d1b2a541b9bfc3b00895a36db853ccf4df036be544300e` (block 2865275, `SucceedEntirely`) |
+| `proveCover(50 ADA)` | tx hash `dee4fe6cdd05eb59dd28e2787f66de2ae6198339d2f33cc4130cedd762247b6c` (block 2865279, `SucceedEntirely`) |
+| Ledger after | 1 active policy, 1 cover proof; the record holds only the holder and coverage commitments |
+
+The relay (`preprod/policy-cover-preprod.mjs`) trusts the chain, not the key file: it fetches the Buy tx from Blockfrost, decodes the policy datum with the SDK, takes policy id, coverage and expiry from the datum, and refuses a key that doesn't open the datum's `midnight_commitment`. The circuit re-checks that binding. The holder then proves cover with the secret from the same key file the `/cover` Buy saved, so the issuer never learns it. Success is only reported from finalized tx data.
+
+```bash
+PLUTUSSHIELD_REPO=$PWD/../.. PLUTUSSHIELD_SECRETS=<dir outside the repo> \
+POLICY_COVER_OUT=<compiled managed/policy-cover> MIDNIGHT_WALLET_FACADE=<wallet helper> \
+PRIVATE_STATE_PASSWORD=<local> BLOCKFROST_PREVIEW_ID=<id> PLUTUSSHIELD_POLICY_KEY=<policy key json> \
+node policy-cover-preprod.mjs
+```
+
+It needs a funded Preprod wallet (tNIGHT plus generated tDUST) and a local proof server on `:6300`. Set `MIDNIGHT_POLICY_COVER_ADDRESS` (or keep the deploy record) to reuse the contract instead of deploying again.
+
 ## Status
 
-Compiles and passes local simulation. Not deployed to any Midnight network, not audited. Expiry here is issuer-driven and mirrors the Cardano side, where `Expire` in `contracts/cardano` is time-locked (expiry + claim grace) and callable by anyone.
+Compiles, passes local simulation, and runs on Midnight Preprod (deploy, `registerPolicy`, `proveCover`). Registration is operator-run from the box today; next is relaying every Cardano Buy automatically. Not audited. Expiry here is issuer-driven and mirrors the Cardano side, where `Expire` in `contracts/cardano` is time-locked (expiry + claim grace) and callable by anyone.

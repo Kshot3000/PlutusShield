@@ -26,7 +26,7 @@ export const MILESTONES: Milestone[] = [
   },
   {
     label: "Midnight policy registry",
-    detail: "Compact contract with private holder proofs, claims, and key rotation. 21 simulation tests pass.",
+    detail: "Deployed on Midnight Preprod. The first Cardano Preview policy is mirrored into the private registry and its holder proved cover on-chain without revealing the amount. 26 simulation tests pass.",
     state: "done",
   },
   {
@@ -41,7 +41,7 @@ export const MILESTONES: Milestone[] = [
   },
   {
     label: "Production oracle feeds",
-    detail: "Relay core is built: venue median, TWAP, depeg-window search. Preview sales use an operator-run test oracle. Next: venue adapters, an automatic publisher, and independent operators (for example Charli3 or Orcfax).",
+    detail: "Live USDM venues (CoinGecko, Minswap, Kraken) feed a fail-closed publisher that refreshes the Preview peg every 20 minutes. Next: independent oracle operators (for example Charli3 or Orcfax).",
     state: "next",
   },
   {

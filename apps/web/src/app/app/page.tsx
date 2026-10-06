@@ -5,6 +5,7 @@ import { ShieldMark } from "@/components/Logo";
 import { Button } from "@/components/ui/Button";
 import { WalletStatusCard } from "@/components/wallet/WalletStatusCard";
 import { PoliciesCard } from "@/components/cover/PoliciesCard";
+import { MidnightPreprodPanel } from "@/components/midnight/MidnightPreprodPanel";
 import { MILESTONES, RUNBOOK, type MilestoneState } from "@/lib/status";
 
 export const metadata: Metadata = {
@@ -25,7 +26,7 @@ export default function AppPage() {
     <AppShell
       active="app"
       title="Your shield"
-      description="Your cover and underwriting on Cardano Preview. Buy depeg cover in ADA or USDC, provide liquidity, and check claims. The math matches the validator exactly."
+      description="Your cover and underwriting on Cardano Preview, with a private twin on Midnight Preprod. Buy depeg cover in ADA or USDC, provide liquidity, and check claims. The math matches the validator exactly."
     >
       <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
         <WalletStatusCard />
@@ -136,6 +137,8 @@ export default function AppPage() {
           </div>
         </section>
       </div>
+
+      <MidnightPreprodPanel />
     </AppShell>
   );
 }

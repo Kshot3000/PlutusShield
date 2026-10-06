@@ -58,7 +58,8 @@
     "2026-10-06T15:41:30.000Z browser-e2e Buy 25 ada cover 14d via LIVE Pages /cover (premium 5000000)": "a520325ddd4ec72cdfa27b50cee5e4cddb8c72c001669ddfd592a7a84b1824ca",
     "2026-10-06T15:42:54.746Z web-buy Buy 20 ada cover 14d (website builder, premium 5000000)": "abe6f27c3091d63090711c663141c5302dec11c4a8121be73fa55f3c85976ece",
     "2026-10-06T16:22:51.051Z oracle live peg 9994bps": "c433481b3573cd7c6884bb7aef57b0ec11af900a1e2c81152be67336fdbbd625",
-    "2026-10-06T17:23:42.806Z web-buy Buy 50 ada cover 14d (website builder, premium 5000000)": "7c3365bb519dfdaca6e12a371b35e0c1b7ffd321bec42130021e22b47c31386d"
+    "2026-10-06T17:23:42.806Z web-buy Buy 50 ada cover 14d (website builder, premium 5000000)": "7c3365bb519dfdaca6e12a371b35e0c1b7ffd321bec42130021e22b47c31386d",
+    "2026-10-06T17:36:38.315Z oracle live peg 9972bps": "f59ee716ffcdab969da5950d6fd0ce86c0e205f2a471fcb018d81756a69840ac"
   },
   "script": {
     "hash": "4e5423fefc28871aef53bd2ee85722c19af742e6b7a99d507e0ce2ac",

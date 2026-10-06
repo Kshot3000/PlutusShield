@@ -1,0 +1,50 @@
+{
+  "network": "midnight-preprod",
+  "contract": "contracts/midnight/src/policy-cover.compact",
+  "compiler": "compactc 0.31.1",
+  "contractAddress": "d84c618775ffa4d9c2e9283b6fe95319cecd708e84742c27ec4b6762925e8787",
+  "deployTxId": "00503906dc2fbaab04afe697d7e1c8074e28106a5f40a8485beb973d9833cd6290",
+  "blockHeight": 2865271,
+  "issuerCommitment": "8af35ef251ba98f591d5545aca8d70bdae90450a13dd52a768f9f424b58892e8",
+  "assessorCommitment": "4a82c7e6b80b2162a4f9e70555b4953d74c8c40b88c071c1a15137665497f31c",
+  "deployer": "mn_addr_preprod1ex8d8jusga4wpex65nc7uerarjhhfh0yl0z725h30vfcwnr3tztsujaew3",
+  "deployedAt": "2026-10-06T17:57:50.963Z",
+  "registrations": [
+    {
+      "policyId": "72512facd0a8eb5257888b8f3b0ee71b774862cc7f4c7d7cc4f124c6f6d745d0",
+      "cardano": {
+        "network": "preview",
+        "buyTx": "7c3365bb519dfdaca6e12a371b35e0c1b7ffd321bec42130021e22b47c31386d",
+        "policyDatum": "7c3365bb519dfdaca6e12a371b35e0c1b7ffd321bec42130021e22b47c31386d#1",
+        "midnightCommitment": "d9f979b5d5d1733745f319f8941d9aa3d593491907dea81bd7067a622516e62b",
+        "coverage": "50000000",
+        "expiry": "1792521141000"
+      },
+      "registerPolicy": {
+        "txId": "0085def9f2cb2c643f0873834365c4d6498b6edb972fe8e31af53f07b3a39973d1",
+        "txHash": "151a5ede0f1a87d784d1b2a541b9bfc3b00895a36db853ccf4df036be544300e",
+        "blockHeight": 2865275,
+        "blockHash": "42e7c7ec7149923d03fc70c9fdd36a91d41a0a087818858410663a7845e083ff",
+        "status": "SucceedEntirely"
+      },
+      "proveCover": {
+        "txId": "0049aeee57a3aba6c7599b583535c7a116ee3f6bb580e3e66642b081a8d868a7bc",
+        "txHash": "dee4fe6cdd05eb59dd28e2787f66de2ae6198339d2f33cc4130cedd762247b6c",
+        "blockHeight": 2865279,
+        "blockHash": "4401ab935c67a508734d24d4b43ca0c3b40c2c005ebee3de3e19e0c514067023",
+        "status": "SucceedEntirely",
+        "minCoverage": "50000000"
+      },
+      "ledger": {
+        "status": 1,
+        "holder": "9e951978ba75a8e6987c8047521ac4a9b560b8c71253fa5e3c00fb3faf4b2f67",
+        "coverage": "5f1c8915b8e1edef14ff1a6796d2f34a107698612e4c530b0f675818eb583c2b",
+        "activePolicies": "1",
+        "coverProofs": "1"
+      },
+      "bindingHolds": true,
+      "at": "2026-10-06T17:58:38.354Z"
+    }
+  ],
+  "_note": "Public Midnight Preprod data only (copied from the policy-cover-preprod.mjs run record). No keys, seeds or holder secrets."
+}

@@ -1,5 +1,7 @@
 // pnpm browser-e2e <deposit|withdraw> <amount> <tranche 0|1>
 // pnpm browser-e2e buy <coverage> <tranche 0|1> [days=14]
+//   E2E_DECLINE_SIGN=1: the wallet declines to sign (nothing is spent); checks the Midnight policy key
+//   was already saved to localStorage before the prompt.
 // pnpm browser-e2e policies                         My policies: per-policy claim / release action column
 //   E2E_POLICY_KEY=<policy key json> also restores that Midnight key into its row from the file,
 //   checks the row turns "On this device", and exports + inspects an encrypted backup.
@@ -35,7 +37,10 @@ await page.exposeFunction("__e2e", async (method, arg) => {
     for (const u of await w.getUtxos()) for (const [k, v] of Object.entries(u.assets)) total[k] = (total[k] ?? 0n) + v;
     return assetsToValue(total).to_cbor_hex();
   }
-  if (method === "signTx") return (await w.signTx(CML.Transaction.from_cbor_hex(arg))).to_cbor_hex();
+  if (method === "signTx") {
+    if (process.env.E2E_DECLINE_SIGN === "1") throw new Error("user declined to sign (E2E_DECLINE_SIGN)");
+    return (await w.signTx(CML.Transaction.from_cbor_hex(arg))).to_cbor_hex();
+  }
   if (method === "submitTx") {
     try {
       return await w.submitTx(arg);
@@ -155,6 +160,12 @@ if (mode === "buy") {
     done.waitFor({ timeout: 360000 }).then(() => "done"),
     err.first().waitFor({ timeout: 360000 }).then(async () => `error: ${await err.first().innerText()}`),
   ]);
+  const storedKeys = await page.evaluate(() => Object.values(JSON.parse(localStorage.getItem("plutusshield:policy-keys:v1") ?? "{}")).map((k) => ({ policyId: k.policyId, coverage: k.coverage, txHash: k.txHash ?? null, registrationCommitment: k.registrationCommitment })));
+  if (process.env.E2E_DECLINE_SIGN === "1") {
+    console.log(JSON.stringify({ res, quoted, storedKeys }));
+    await browser.close();
+    process.exit(res.startsWith("error") && storedKeys.length > 0 ? 0 : 1);
+  }
   const txLink = await page.locator('section[aria-labelledby=buy-title] a[href*="cardanoscan.io/transaction/"]').last().getAttribute("href").catch(() => null);
   // The confirmed tx triggers a chain re-read; wait for the new policy row.
   let rowsAfter = rowsBefore;
@@ -165,7 +176,8 @@ if (mode === "buy") {
   }
   await page.locator("#buy-title").scrollIntoViewIfNeeded();
   await page.screenshot({ path: "/tmp/plutusshield-buy-after.png", fullPage: true });
-  console.log(JSON.stringify({ res, quoted, txLink, rowsBefore, rowsAfter, oracle: oracle.replace(/\n/g, " | "), text: res === "done" ? await done.innerText() : null }));
+  const backup = res === "done" ? await page.locator("text=Midnight policy key").first().isVisible().catch(() => false) : null;
+  console.log(JSON.stringify({ res, quoted, txLink, rowsBefore, rowsAfter, storedKeys, backupPanel: backup, oracle: oracle.replace(/\n/g, " | "), text: res === "done" ? await done.innerText() : null }));
   console.log(logs.filter((l) => /error|warn/i.test(l)).slice(0, 15).join("\n"));
   await browser.close();
   process.exit(res === "done" ? 0 : 1);
