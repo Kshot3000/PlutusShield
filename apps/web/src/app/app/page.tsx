@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { ShieldMark } from "@/components/Logo";
 import { Button } from "@/components/ui/Button";
+import { WalletStatusCard } from "@/components/wallet/WalletStatusCard";
 import { MILESTONES, RUNBOOK, type MilestoneState } from "@/lib/status";
 
 export const metadata: Metadata = {
@@ -26,7 +27,7 @@ export default function AppPage() {
       description="Policies, claims, and LP positions will show up here once the Cardano Preview pool is live. Until then, price cover and stress-test the pool. The math matches the validator exactly."
     >
       <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
-        <StatusCard label="Wallet" value="Not connected" hint="CIP-30 wallets (Lace, Eternl) on Preview" />
+        <WalletStatusCard />
         <StatusCard label="Active policies" value="0" hint="Bought policies appear here with their timeline" />
         <StatusCard label="LP positions" value="0" hint="lp00 (ADA) and lp01 (USDC) shares" />
       </div>

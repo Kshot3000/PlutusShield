@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Instrument_Sans, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { WalletProvider } from "@/lib/wallet";
 import "./globals.css";
 
 const instrumentSans = Instrument_Sans({
@@ -73,11 +74,13 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        <Header />
-        <main id="main" className="flex flex-1 flex-col">
-          {children}
-        </main>
-        <Footer />
+        <WalletProvider>
+          <Header />
+          <main id="main" className="flex flex-1 flex-col">
+            {children}
+          </main>
+          <Footer />
+        </WalletProvider>
       </body>
     </html>
   );

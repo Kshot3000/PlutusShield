@@ -36,7 +36,7 @@ export const MILESTONES: Milestone[] = [
   },
   {
     label: "Browser buy & deposit",
-    detail: "CIP-30 wallet flow on /cover and /pool, priced against live tranche data.",
+    detail: "Wallet connect is live: any CIP-30 wallet shows its network, address, test ADA, tUSDCx and LP shares. Next: build and sign buy and deposit transactions against live tranche data.",
     state: "planned",
   },
   {
