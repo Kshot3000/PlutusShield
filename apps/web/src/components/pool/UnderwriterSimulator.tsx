@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { UTILIZATION_KINK, MAX_UTILIZATION, type RiskTier } from "@plutusshield/sdk";
+import { CURRENCIES, UTILIZATION_KINK, MAX_UTILIZATION, type Currency, type RiskTier } from "@plutusshield/sdk";
 import { depegTrigger, productTerms, textHex } from "@plutusshield/sdk/cardano";
 import {
   deposit as depositStep,
@@ -13,13 +13,14 @@ import {
   type PoolLedger,
 } from "@plutusshield/sdk/pool";
 
-const UNIT = 1_000_000n; // lovelace per ADA
-// Example pool for the preview (same as the /cover quote preview). Not live capital.
+const UNIT = 1_000_000n; // base units per ADA and per USDC(x): both 6 decimals
+// Example tranches for the preview (same as the /cover quote preview). Not live
+// capital. Each currency is its own tranche with its own LP token
+// ("lp" + tranche byte), capital lock, and utilization.
 // Shares < capital models premium already accrued to LPs (share price above 1).
-const EXAMPLE_POOL: PoolLedger = {
-  capital: 2_500_000n * UNIT,
-  totalShares: 2_400_000n * UNIT,
-  activeCover: 1_150_000n * UNIT,
+const EXAMPLE_TRANCHES: Record<Currency, PoolLedger> = {
+  ADA: { capital: 2_500_000n * UNIT, totalShares: 2_400_000n * UNIT, activeCover: 1_150_000n * UNIT },
+  USDC: { capital: 750_000n * UNIT, totalShares: 735_000n * UNIT, activeCover: 210_000n * UNIT },
 };
 
 const toAda = (x: bigint) => Number(x) / Number(UNIT);
@@ -109,6 +110,9 @@ export function UnderwriterSimulator() {
   const [utilization, setUtilization] = useState(0.6);
   const [claimRate, setClaimRate] = useState(0);
   const [horizon, setHorizon] = useState(365);
+  const [currency, setCurrency] = useState<Currency>("ADA");
+  const sym = CURRENCIES[currency].symbol;
+  const EXAMPLE_POOL = EXAMPLE_TRANCHES[currency];
 
   const terms = useMemo(() => productTerms("depeg", tier, depegTrigger(textHex("USDM"))), [tier]);
 
@@ -138,14 +142,32 @@ export function UnderwriterSimulator() {
       uAfter: Number(utilizationBps(after)) / 10_000,
       projection,
     };
-  }, [amount, tier, utilization, claimRate, horizon, terms]);
+  }, [amount, tier, utilization, claimRate, horizon, terms, EXAMPLE_POOL]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
       <div className="glass-panel relative p-6 sm:p-8">
         <p className="font-mono-label text-[10px] text-text-dim">1 · Deposit</p>
-        <label className="mt-3 block text-sm text-text-muted" htmlFor="lp-amount">
-          Capital to underwrite (ADA)
+        <div className="mt-3 grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Tranche currency">
+          {(Object.keys(CURRENCIES) as Currency[]).map((c) => (
+            <button
+              key={c}
+              type="button"
+              role="radio"
+              aria-checked={c === currency}
+              onClick={() => setCurrency(c)}
+              className={`rounded-lg border px-3 py-2 text-left text-xs transition-colors ${
+                c === currency
+                  ? "border-[color-mix(in_srgb,var(--accent)_55%,var(--border))] bg-[var(--accent-glow)] text-text"
+                  : "border-border text-text-muted hover:border-border-strong"
+              }`}
+            >
+              <span className="font-semibold">{CURRENCIES[c].symbol} tranche</span>
+            </button>
+          ))}
+        </div>
+        <label className="mt-4 block text-sm text-text-muted" htmlFor="lp-amount">
+          Capital to underwrite ({sym})
         </label>
         <input
           id="lp-amount"
@@ -224,7 +246,7 @@ export function UnderwriterSimulator() {
                 sim.projection.net >= 0 ? "text-text" : "text-[var(--danger)]"
               }`}
             >
-              {signed(sim.projection.net)} <span className="text-xl text-text-muted">ADA</span>
+              {signed(sim.projection.net)} <span className="text-xl text-text-muted">{sym}</span>
             </p>
             <p className="mt-1 text-sm text-text-muted">
               {pct(sim.projection.netApr)} net APR · {pct(sim.projection.premiumApr)} from premiums
@@ -233,12 +255,12 @@ export function UnderwriterSimulator() {
             <dl className="mt-6 space-y-2.5 border-t border-border pt-5 text-sm">
               {[
                 ["LP shares minted", fmt(toAda(sim.shares), 6)],
-                ["Share price", `${sim.sharePrice.toFixed(6)} ADA`],
+                ["Share price", `${sim.sharePrice.toFixed(6)} ${sym}`],
                 ["Pool ownership", pct(sim.projection.ownership, 3)],
-                ["Premium income", `${fmt(sim.projection.premiumIncome)} ADA`],
-                ["Claims share", sim.projection.claimLoss > 0 ? `−${fmt(sim.projection.claimLoss)} ADA` : "0.00 ADA"],
+                ["Premium income", `${fmt(sim.projection.premiumIncome)} ${sym}`],
+                ["Claims share", sim.projection.claimLoss > 0 ? `−${fmt(sim.projection.claimLoss)} ${sym}` : `0.00 ${sym}`],
                 ["Break-even claim rate", pct(sim.projection.breakEvenClaimRate)],
-                ["Withdrawable right away", `${fmt(sim.withdrawable)} ADA`],
+                ["Withdrawable right away", `${fmt(sim.withdrawable)} ${sym}`],
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between gap-4">
                   <dt className="text-text-dim">{k}</dt>
@@ -248,10 +270,10 @@ export function UnderwriterSimulator() {
             </dl>
 
             <div className="mt-6 border-t border-border pt-5">
-              <p className="mb-3 font-mono-label text-[10px] text-text-dim">Example pool utilization</p>
+              <p className="mb-3 font-mono-label text-[10px] text-text-dim">Example {sym} tranche utilization</p>
               <UtilizationBar before={sim.uBefore} after={sim.uAfter} />
               <p className="mt-3 text-xs leading-relaxed text-text-dim">
-                The validator keeps at least {fmt(sim.locked, 0)} ADA locked so active cover never
+                The validator keeps at least {fmt(sim.locked, 0)} {sym} locked so active cover never
                 exceeds {pct(MAX_UTILIZATION, 0)} of capital. Withdrawals past that line are
                 rejected on-chain.
               </p>

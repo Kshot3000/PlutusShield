@@ -12,7 +12,7 @@ export default function CoverPage() {
     <AppShell
       active="cover"
       title="Cover"
-      description="Price depeg, exploit, and SLA cover with the PlutusShield quote engine. Purchases open on testnet once the Cardano validators ship."
+      description="Price depeg, exploit, and SLA cover in ADA or USDC (USDCx) with the PlutusShield quote engine. Not live: purchases open on Cardano Preview once the pool is deployed."
     >
       <QuoteCalculator />
     </AppShell>
