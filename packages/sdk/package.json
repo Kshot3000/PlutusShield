@@ -11,7 +11,8 @@
     "./assets": "./src/assets.ts",
     "./oracle": "./src/oracle.ts",
     "./cip30": "./src/cip30.ts",
-    "./evidence": "./src/evidence.ts"
+    "./evidence": "./src/evidence.ts",
+    "./chain": "./src/chain.ts"
   },
   "scripts": {
     "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts"

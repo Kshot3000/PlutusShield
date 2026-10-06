@@ -5,7 +5,7 @@ import { C, Callout, DocLink, List, P, Section, Strong, Table } from "@/componen
 export const metadata: Metadata = {
   title: "Risks & disclosures",
   description:
-    "Honest PlutusShield disclosures: unaudited, not deployed, purchases closed, oracle and issuer trust assumptions, LP capital risk, and model limitations.",
+    "Honest PlutusShield disclosures: unaudited, testnet only, mainnet purchases closed, oracle and issuer trust assumptions, LP capital risk, and model limitations.",
 };
 
 export default function RisksPage() {
@@ -37,7 +37,7 @@ export default function RisksPage() {
           head={["Item", "Status"]}
           rows={[
             ["Audit", <Strong key="a">Not audited.</Strong>],
-            ["Cardano deployment", "Not deployed to any network. Preview deploy tooling and runbook exist, the full flow passes in the Lucid Emulator, and the Preview deployer is awaiting faucet funding"],
+            ["Cardano deployment", "Live on the Preview testnet only (test ADA and mock tUSDCx, no real value). Not deployed to mainnet, and no mainnet deploy happens before an external audit"],
             ["Midnight deployment", "Not deployed to any network"],
             ["Buying cover", "Closed. /cover is a quote preview"],
             ["Underwriting", "Closed. /pool is a simulator"],

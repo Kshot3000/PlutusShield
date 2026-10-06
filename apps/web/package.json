@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "build:pages": "NEXT_PUBLIC_BASE_PATH=/PlutusShield next build",
+    "build": "node scripts/snapshot-pool.mjs && next build",
+    "build:pages": "NEXT_PUBLIC_BASE_PATH=/PlutusShield pnpm build",
     "preview": "npx --yes serve@14 out",
-    "lint": "eslint"
+    "lint": "eslint",
+    "snapshot": "node scripts/snapshot-pool.mjs"
   },
   "dependencies": {
     "next": "16.3.8",

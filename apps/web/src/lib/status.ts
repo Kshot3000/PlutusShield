@@ -31,13 +31,13 @@ export const MILESTONES: Milestone[] = [
   },
   {
     label: "Preview pool deployment",
-    detail: "Keys are generated and the plan dry run is verified. Next: fund the deployer from the testnet faucet, then init the pool.",
-    state: "next",
+    detail: "Live on Cardano Preview: pool initialised with ADA and tUSDCx tranches, LP deposits and the first ADA and USDC policies on-chain. /pool reads it straight from the ledger.",
+    state: "done",
   },
   {
     label: "Browser buy & deposit",
-    detail: "Wallet connect is live: any CIP-30 wallet shows its network, address, test ADA, tUSDCx and LP shares. Next: build and sign buy and deposit transactions against live tranche data.",
-    state: "planned",
+    detail: "Wallet connect and live tranche reads are done: any CIP-30 wallet shows its balances and /pool shows real capital, cover and policies. Next: build and sign buy and deposit transactions in the browser.",
+    state: "next",
   },
   {
     label: "Production oracle feeds",
