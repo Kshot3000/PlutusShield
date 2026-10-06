@@ -1,0 +1,17 @@
+{
+  "$comment": "PlutusShield Cardano Preview deployment. Public settings only; keys live in .keys/ (gitignored). See README.md.",
+  "network": "Preview",
+  "product": { "id": "depeg", "tier": "B", "coveredAsset": "USDM" },
+  "assets": [
+    { "kind": "ada", "minPremium": 5 },
+    { "kind": "preview-mock-usdc", "minPremium": 5 }
+  ],
+  "oracle": {
+    "$comment": "policy 'native-sig:oracle' = a native script signed by .keys/oracle.sk (Preview test oracle). For a real oracle set policyId to its 56-hex policy and keep the feed allowlist in sync.",
+    "policy": "native-sig:oracle",
+    "feeds": ["feed-a", "feed-b", "feed-c"],
+    "quorum": 2
+  },
+  "claimGraceDays": 3,
+  "poolMinLovelace": 3000000
+}

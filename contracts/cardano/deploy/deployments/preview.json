@@ -1,0 +1,27 @@
+{
+  "network": "Preview",
+  "status": "awaiting-funding",
+  "generatedAt": "2026-10-06T03:43:12.199Z",
+  "deployer": {
+    "address": "addr_test1vr0zk5tv56j2xaaefl4qrzzgxtdvcr6hhssa94fwh72fd5ccklyuz",
+    "keyHash": "de2b516ca6a4a377b94fea01884832dacc0f57bc21d2d52ebf9496d3"
+  },
+  "oracle": {
+    "keyHash": "9763b2d4c88390316b716afbaed872fb9a4a521a68843790fbc29ad5",
+    "policyId": "d8365e107288ee8c1e313505cf2c754386eef7c95b2cd75b1fa1dd93",
+    "feeds": [
+      "feed-a",
+      "feed-b",
+      "feed-c"
+    ],
+    "quorum": 2
+  },
+  "mockUsdc": {
+    "policyId": "e5c5ae166089e4d907cabf8456dea8aebb76a2d5c65458c8e1e632ef",
+    "assetName": "745553444378",
+    "unit": "e5c5ae166089e4d907cabf8456dea8aebb76a2d5c65458c8e1e632ef745553444378",
+    "ticker": "tUSDCx",
+    "decimals": 6
+  },
+  "assets": []
+}

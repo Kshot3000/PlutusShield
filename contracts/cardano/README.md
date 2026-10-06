@@ -2,7 +2,9 @@
 
 Aiken (Plutus V3) validators for the MVP product: **parametric stablecoin depeg cover**. Cardano holds the money. Underwriters fund a pool, buyers pay premiums into it and receive a policy NFT, and the pool pays out automatically when a quorum of authenticated oracle feeds shows the depeg lasted for the required window.
 
-> **Status:** compiles with Aiken v1.1.24 (stdlib v4.0.0) and passes 48 `aiken check` tests. Not deployed to any network and not audited. No real funds.
+Pools are **multi-asset**: one pool UTxO holds an independent tranche per accepted currency, by default **ada** and **USDC** (Circle **USDCx** on mainnet, a mock tUSDCx on Preview). Each policy is priced, collateralized, and paid out in one tranche's asset.
+
+> **Status:** compiles with Aiken v1.1.24 (stdlib v4.0.0) and passes 72 `aiken check` tests. The whole flow, including ADA and USDC buys and a USDC settlement, passes in the Lucid Emulator against the applied script (`deploy/`, `pnpm test:deploy`). Not deployed to any network yet (see the [Preview runbook](deploy/README.md)) and not audited. No real funds.
 
 ## Layout
 
@@ -13,8 +15,35 @@ validators/cover.ak        the validator (mint + spend) + validator tests
 lib/plutusshield/types.ak  params, datums, redeemers
 lib/plutusshield/pricing.ak  integer mirror of the SDK quote engine + tests
 lib/plutusshield/oracle.ak   oracle authentication + trigger evaluation + tests
-lib/plutusshield/names.ak    token names, policy-id derivation + tests
+lib/plutusshield/names.ak    token names (incl. per-tranche LP), policy-id derivation + tests
+deploy/                      Preview runbook, keys, parameter application, tx builders, emulator run
 ```
+
+## Multi-asset tranches (ADA + USDC)
+
+`CoverParams.assets` is an ordered list of accepted currencies. Position `i` is **tranche `i`**:
+
+```
+assets   = [ AssetTerms { asset: ada,    min_premium: 5_000_000 },     tranche 0, LP token "lp" ‖ 0x00
+             AssetTerms { asset: USDCx,  min_premium: 5_000_000 } ]    tranche 1, LP token "lp" ‖ 0x01
+PoolDatum  { tranches: [ Tranche { total_shares, active_cover }, … ] } one per asset, same order
+capital_i  = quantity of assets[i] in the pool UTxO (ada tranche: all its lovelace)
+```
+
+- A policy carries `asset` in its datum. Its **premium is paid in that asset** into that tranche, its capacity and utilization pricing use **that tranche only**, and `Settle` pays **from that tranche only**.
+- Every pool action moves exactly one tranche. All other tranches must keep their capital, with one exception: the ada tranche may grow when it isn't the target, to cover a min-UTxO top-up. Their ledgers must stay unchanged. A USDC claim can never touch ada capital, and the reverse holds too.
+- Tranches never price against each other, so no FX oracle is needed. Cross-currency premiums (paying ada for USDC cover) are intentionally unsupported.
+- `min_premium` is per asset because it is denominated in that asset's base units.
+- `InitPool` requires 1–256 **distinct** assets (ada only as `("", "")`), a datum with exactly one empty tranche per asset, and a pool value holding only ada, the NFT, and tranche assets.
+- One-asset pools still work. `[ada]` or `[USDCx]` alone is just a one-element list.
+
+| Network | "USDC" asset class (policy . asset name) | Decimals |
+|---|---|---|
+| mainnet | `1f3aec8bfe7ea4fe14c5f121e2a92e301afe414147860d557cac7e34` . `5553444378` ("USDCx", Circle xReserve) | 6 |
+| preprod | `31dde3db98ad05feb688d4dbb146b3b6054e1246cbcef98c79b0bf66` . `5553444378` ("USDCx") | 6 |
+| preview | mock: `<deployer native-script policy>` . `745553444378` ("tUSDCx"), minted by `deploy/` | 6 |
+
+The SDK exports these as `USDCX_MAINNET`, `USDCX_PREPROD`, and `currencyAsset("USDC", network, previewPolicy)` (`packages/sdk/src/assets.ts`). The mainnet entry is a placeholder in the sense that no mainnet pool exists. It is, however, the real USDCx asset.
 
 ## One validator, two roles
 
@@ -28,7 +57,7 @@ A single hash avoids the circular dependency you get with separate pool and poli
 | Token | Asset name | Lives at | Meaning |
 |---|---|---|---|
 | Pool NFT | `pool` | script address | Authenticates the one pool UTxO. Minted once by consuming `params.seed`. |
-| LP share | `lp` | LP wallets | Fungible, pro-rata claim on pool capital |
+| LP share | `lp` ‖ tranche byte (`6c7000` ada, `6c7001` USDC) | LP wallets | Fungible, pro-rata claim on **that tranche's** capital |
 | Policy reference token | `000643b0` ‖ first 28 bytes of policy id (CIP-67 label 100) | script address, with `PolicyDatum` | Live policy state |
 | Policy user token | `000de140` ‖ first 28 bytes of policy id (CIP-67 label 222) | buyer's wallet | Bearer right to claim. Burning it is how you claim. |
 
@@ -41,34 +70,36 @@ Everything is fixed when the script is parameterised. Nothing can be changed aft
 ```
 CoverParams {
   seed:           OutputReference       one-shot UTxO for the pool NFT
-  pool_asset:     AssetClass            capital/premium/payout currency ("" "" = ada)
+  assets:         List<AssetTerms>      one tranche per accepted currency, e.g. [ada, USDCx]
   product:        ProductTerms          one product line per deployment
   oracle:         OracleConfig          trusted feeds + quorum
   claim_grace_ms: Int                   time after expiry to file a claim
 }
+AssetTerms { asset: AssetClass ("" "" = ada), min_premium }   premium floor in that asset's base units
 ProductTerms {
   product_id, trigger { covered_asset, threshold_bps, window_ms },
-  base_rate_bps, risk_mult_bps, min_days, max_days, min_premium,
+  base_rate_bps, risk_mult_bps, min_days, max_days,
   max_single_policy_bps, max_utilization_bps
 }
 OracleConfig { policy_id, feeds: List<AssetName>, quorum }
 ```
 
-`packages/sdk` builds these from the same model parameters the quote engine uses (`productTerms("depeg", "B", depegTrigger(...))`): base 2% = `200`, tier multipliers A/B/C = `8_000`/`10_000`/`15_000`, kink 70%, single-policy cap 10% = `1_000`, utilization cap 90% = `9_000`, min premium 5 units. `InitPool` refuses to start a pool with nonsensical parameters, such as a zero quorum, a quorum larger than the feed list, or a threshold above 100%.
+`packages/sdk` builds these from the same model parameters the quote engine uses (`productTerms("depeg", "B", depegTrigger(...))`): base 2% = `200`, tier multipliers A/B/C = `8_000`/`10_000`/`15_000`, kink 70%, single-policy cap 10% = `1_000`, utilization cap 90% = `9_000`, and `assetTerms(asset)` gives a 5-unit premium floor per currency. `InitPool` refuses to start a pool with nonsensical parameters, such as a zero quorum, a quorum larger than the feed list, or a threshold above 100%.
 
-> `plutus.json` holds the **unapplied** script. The deployed hash (and so the policy id and address) depends on the parameters, applied with e.g. `aiken blueprint apply` or a TS library.
+> `plutus.json` holds the **unapplied** script. The deployed hash (and so the policy id and address) depends on the parameters. `deploy/scripts/plan.ts` applies them with Lucid and cross-checks the result against `aiken blueprint apply`.
 
 ## Datums
 
 ```
 CoverDatum = Pool(PoolDatum) | Policy(PolicyDatum)
 
-PoolDatum   { total_shares, active_cover }          capital = pool asset held by the UTxO
+PoolDatum   { tranches: List<Tranche { total_shares, active_cover }> }   tranche i capital = assets[i] held by the UTxO
 
 PolicyDatum {
   policy_id:           ByteArray  32 bytes = blake2b_256(cbor(pool OutputReference spent at purchase))
   product_id:          ByteArray  "depeg"
-  coverage, premium:   Int        base units
+  asset:               AssetClass premium / coverage / payout currency; selects the tranche
+  coverage, premium:   Int        base units of `asset`
   start, expiry:       Int        POSIX ms
   trigger:             Trigger    must equal the product's trigger
   midnight_commitment: ByteArray  32-byte Midnight coverage commitment
@@ -87,15 +118,15 @@ OracleDatum { covered_asset, price_bps, window_start, window_end }   (on oracle 
 | `ViaPool` | the pool UTxO is an input (the pool spend validates everything) |
 | `BurnUserTokens` | only negative quantities of user tokens. Burning your own claim right is always allowed. |
 
-**Spend pool** (`PoolAction`). The pool output must stay at the same address, carry the pool NFT, and hold no foreign tokens.
+**Spend pool** (`PoolAction`). The pool output must stay at the same address, carry the pool NFT, and hold no foreign tokens. Each action targets one tranche `t` (from the redeemer for LP actions, from `PolicyDatum.asset` for policy actions). All other tranches keep their capital and ledger. "capital" below means tranche `t`'s capital.
 
 | Redeemer | Rule |
 |---|---|
-| `Deposit` | capital increases by `amount > 0`; mints exactly `amount * total_shares / capital` LP (or `amount` into an empty pool) |
-| `Withdraw { shares }` | burns exactly `shares` LP; capital decreases by exactly `shares * capital / total_shares`; **capital lock:** `active_cover ≤ remaining capital × max_utilization` |
-| `Buy` | mints exactly one ref + one user token for `policy_id = blake2b_256(cbor(pool input ref))`; ref token goes to the script with a `PolicyDatum` whose product and trigger equal the params; term is a whole number of days within the product bounds; `start ≥` tx upper bound (no backdating); single-policy and utilization caps; capital increases by `premium ≥ required_premium(...)`; `active_cover += coverage` |
-| `Settle` | burns exactly that policy's ref + user token; the claim tx's upper bound `≤ expiry + claim_grace`; **oracle quorum** (below); capital decreases by exactly `coverage`; `active_cover -= coverage` |
-| `Expire` | anyone, once the tx lower bound `> expiry + claim_grace`; burns the ref token (and optionally the user token); capital unchanged; `active_cover -= coverage` |
+| `Deposit { tranche }` | capital increases by `amount > 0`; mints exactly `amount * total_shares / capital` of `lp ‖ tranche` (or `amount` into an empty tranche) |
+| `Withdraw { tranche, shares }` | burns exactly `shares` of `lp ‖ tranche`; capital decreases by exactly `shares * capital / total_shares`; **capital lock:** `active_cover ≤ remaining capital × max_utilization` for that tranche |
+| `Buy` | `PolicyDatum.asset` must be an accepted asset (selects `t`); mints exactly one ref + one user token for `policy_id = blake2b_256(cbor(pool input ref))`; ref token goes to the script with a `PolicyDatum` whose product and trigger equal the params; term is a whole number of days within the product bounds; `start ≥` tx upper bound (no backdating); single-policy and utilization caps **on tranche `t`**; tranche `t` capital increases by `premium ≥ required_premium(…, assets[t].min_premium, …)`; `active_cover += coverage` |
+| `Settle` | burns exactly that policy's ref + user token; the claim tx's upper bound `≤ expiry + claim_grace`; **oracle quorum** (below); tranche `t` capital decreases by exactly `coverage` (paid in the policy's asset); `active_cover -= coverage` |
+| `Expire` | anyone, once the tx lower bound `> expiry + claim_grace`; burns the ref token (and optionally the user token); capital unchanged; tranche `t` `active_cover -= coverage` |
 
 **Spend policy UTxO.** Allowed only if the UTxO holds its reference token and that token is burned in the transaction.
 
@@ -114,7 +145,7 @@ policy.start <= window_start  and  window_end <= policy.expiry
 
 ### Solvency invariant
 
-Every sale keeps `active_cover ≤ 90% of capital`. Every withdrawal keeps the same bound. Each claim removes exactly `coverage` from both capital and `active_cover`, and premiums only add capital. So `capital ≥ active_cover` always holds and every live policy is fully collateralized.
+Per tranche: every sale keeps `active_cover ≤ 90% of capital`, and every withdrawal keeps the same bound. Each claim removes exactly `coverage` from both capital and `active_cover`, and premiums only add capital. So `capital ≥ active_cover` holds in every tranche, and every live policy is fully collateralized **in its own currency**.
 
 ### Double-claim protection
 
@@ -134,6 +165,8 @@ For the MVP parametric product, coverage and premium are **public on Cardano**, 
 
 ## Known limitations / next steps
 
+See also the gap list in the [Preview runbook](deploy/README.md#known-gaps-before-this-is-more-than-a-testnet-demo).
+
 - **Adverse selection.** Nothing stops someone buying cover while a depeg is already under way (the window must start after `start`, but a depeg that keeps going will qualify). Next step: a sale circuit-breaker that requires a healthy-peg oracle reading at purchase, and/or a waiting period.
 - The expire path lets whoever submits it keep the reference UTxO's min-ada. Refunding it to the holder is planned.
 - One pool UTxO serialises all actions (contention under load). Batching / order UTxOs come later.
@@ -146,8 +179,9 @@ For the MVP parametric product, coverage and premium are **public on Cardano**, 
 
 ```bash
 # Aiken v1.1.24: https://github.com/aiken-lang/aiken/releases/tag/v1.1.24
-aiken check     # 48 tests
+aiken check     # 72 tests
 aiken build     # regenerates plutus.json
 # or from the repo root
 pnpm test:cardano
+pnpm test:deploy  # end-to-end emulator run of the applied script
 ```

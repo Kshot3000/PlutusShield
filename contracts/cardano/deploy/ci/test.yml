@@ -1,0 +1,39 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  cardano:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: aiken-lang/setup-aiken@v1
+        with:
+          version: v1.1.24
+      - run: pnpm install --frozen-lockfile
+      - name: Aiken validators (aiken check)
+        run: pnpm test:cardano
+      - name: Blueprint is up to date
+        working-directory: contracts/cardano
+        run: aiken build && git diff --exit-code plutus.json
+      - name: SDK (golden vectors vs Aiken)
+        run: pnpm test:sdk
+      - name: End-to-end emulator run (applied validator, ADA + USDC tranches)
+        run: pnpm test:deploy
+      - name: Preview plan dry run (lucid vs aiken apply)
+        working-directory: contracts/cardano/deploy
+        run: |
+          mkdir -p "$RUNNER_TEMP/keys"
+          PLUTUSSHIELD_KEYS_DIR="$RUNNER_TEMP/keys" pnpm keygen
+          PLUTUSSHIELD_KEYS_DIR="$RUNNER_TEMP/keys" pnpm plan --offline

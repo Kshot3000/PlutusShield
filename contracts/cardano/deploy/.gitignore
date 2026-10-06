@@ -1,0 +1,7 @@
+# Signing keys never leave the machine they were generated on.
+.keys/
+*.sk
+*.skey
+# Local scratch outputs
+deployments/*.local.json
+deployments/*.dryrun.plutus.json

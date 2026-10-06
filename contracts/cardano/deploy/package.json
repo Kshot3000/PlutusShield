@@ -1,0 +1,17 @@
+{
+  "name": "@plutusshield/cardano-deploy",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "PlutusShield Cardano Preview deploy tooling: keys, parameter application, pool init, and an end-to-end emulator run",
+  "scripts": {
+    "keygen": "node --experimental-strip-types --no-warnings scripts/keygen.ts",
+    "plan": "node --experimental-strip-types --no-warnings scripts/plan.ts",
+    "emulator": "node --experimental-strip-types --no-warnings scripts/emulator.ts",
+    "preview": "node --experimental-strip-types --no-warnings scripts/preview.ts",
+    "test": "node --experimental-strip-types --no-warnings scripts/emulator.ts"
+  },
+  "dependencies": {
+    "@lucid-evolution/lucid": "0.6.7"
+  }
+}

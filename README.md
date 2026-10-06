@@ -6,7 +6,7 @@ PlutusShield is protection you can verify on-chain, with privacy where it actual
 
 **Live site:** [kshot3000.github.io/PlutusShield](https://kshot3000.github.io/PlutusShield/) — static export of `apps/web`, deployed to GitHub Pages on every push to `main`.
 
-> **Status: pre-testnet.** This repo holds the product vision and docs, a Next.js site and app shell (`apps/web`) with a working cover quote calculator, the shared quote engine and Cardano datum codecs (`packages/sdk`), the Cardano validators for parametric depeg cover (`contracts/cardano`, Aiken: underwriting pool, policy NFTs, oracle-quorum settlement; 48 passing tests), and the Midnight Compact policy registry (`contracts/midnight`, passes off-chain simulation tests). Nothing is deployed or audited, no pools are live, and no policies are on sale yet. Quote figures use model parameters against an example pool.
+> **Status: pre-testnet.** This repo holds the product vision and docs, a Next.js site and app shell (`apps/web`) with a working cover quote calculator, the shared quote engine and Cardano datum codecs (`packages/sdk`), the Cardano validators for parametric depeg cover (`contracts/cardano`, Aiken: underwriting pool, policy NFTs, oracle-quorum settlement, ADA + USDC (USDCx) tranches; 72 passing tests, plus an end-to-end emulator run and a Preview deploy runbook), and the Midnight Compact policy registry (`contracts/midnight`, passes off-chain simulation tests). Nothing is deployed or audited, no pools are live, and no policies are on sale yet. Quote figures use model parameters against an example pool.
 
 ---
 
@@ -77,7 +77,8 @@ PlutusShield/
 ├── apps/
 │   └── web/                # Marketing site + dApp shell (Next.js / TypeScript)
 ├── contracts/
-│   ├── cardano/            # Aiken: underwriting pool, policy NFTs, oracle-quorum payout
+│   ├── cardano/            # Aiken: multi-asset (ADA + USDC) pool, policy NFTs, oracle-quorum payout
+│   │   └── deploy/         # Preview runbook: keys, param application, tx builders, emulator
 │   └── midnight/           # Compact: private cover registry, holder proofs, claims
 ├── packages/
 │   └── sdk/                # Products, quote engine, Cardano datum/redeemer codecs
@@ -133,6 +134,7 @@ One-time setup: repo **Settings → Pages → Build and deployment → Source: G
 pnpm test            # SDK + Aiken validators + Midnight contract simulation
 pnpm test:sdk        # quote engine + Cardano codecs (Node 22+)
 pnpm test:cardano    # aiken check (Aiken v1.1.24)
+pnpm test:deploy     # end-to-end Lucid Emulator run of the applied validator
 pnpm test:midnight   # Compact compile + simulation
 ```
 
@@ -154,18 +156,21 @@ Requires [Aiken v1.1.24](https://github.com/aiken-lang/aiken/releases/tag/v1.1.2
 
 ```bash
 cd contracts/cardano
-aiken check          # 48 unit tests: pool, buy, settle, expire, oracle auth, pricing
+aiken check          # 72 unit tests: ADA/USDC tranches, pool, buy, settle, expire, oracle auth, pricing
 aiken build          # regenerates plutus.json (CIP-57 blueprint)
 ```
 
-See [contracts/cardano/README.md](contracts/cardano/README.md) for validators, datum/redeemer shapes, and trust assumptions.
+See [contracts/cardano/README.md](contracts/cardano/README.md) for validators, datum/redeemer shapes, and trust assumptions, and [contracts/cardano/deploy/README.md](contracts/cardano/deploy/README.md) for the Cardano Preview deploy runbook.
 
 ## Roadmap (high level)
 
 - [x] Vision, architecture, and product docs
 - [x] Aiken validators: underwriting pool, policy mint, payout (`contracts/cardano`)
 - [x] Parametric trigger: multi-oracle stablecoin depeg (on-chain quorum check)
-- [ ] Testnet deployment (Preview) + oracle feed integration
+- [x] Multi-asset pools: ADA + USDC (USDCx) tranches, premiums and payouts per policy currency
+- [x] Preview deploy tooling + runbook, full flow verified in the Lucid Emulator
+- [ ] Testnet deployment (Preview): fund deployer, init pool, first buy (see runbook)
+- [ ] Real oracle feed integration
 - [ ] Sale circuit-breaker against buying into an active depeg
 - [x] Compact contract: private policy commitment + coverage proof (`contracts/midnight`)
 - [x] Quote engine with risk tiers and utilization-kinked pricing (`packages/sdk`)

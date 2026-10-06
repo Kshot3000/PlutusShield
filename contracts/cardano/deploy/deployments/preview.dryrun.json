@@ -1,0 +1,95 @@
+{
+  "network": "Preview",
+  "status": "awaiting-funding",
+  "generatedAt": "2026-10-06T03:43:14.519Z",
+  "deployer": {
+    "address": "addr_test1vr0zk5tv56j2xaaefl4qrzzgxtdvcr6hhssa94fwh72fd5ccklyuz",
+    "keyHash": "de2b516ca6a4a377b94fea01884832dacc0f57bc21d2d52ebf9496d3"
+  },
+  "oracle": {
+    "keyHash": "9763b2d4c88390316b716afbaed872fb9a4a521a68843790fbc29ad5",
+    "policyId": "d8365e107288ee8c1e313505cf2c754386eef7c95b2cd75b1fa1dd93",
+    "feeds": [
+      "feed-a",
+      "feed-b",
+      "feed-c"
+    ],
+    "quorum": 2
+  },
+  "mockUsdc": {
+    "policyId": "e5c5ae166089e4d907cabf8456dea8aebb76a2d5c65458c8e1e632ef",
+    "assetName": "745553444378",
+    "unit": "e5c5ae166089e4d907cabf8456dea8aebb76a2d5c65458c8e1e632ef745553444378",
+    "ticker": "tUSDCx",
+    "decimals": 6
+  },
+  "assets": [
+    {
+      "tranche": 0,
+      "asset": "lovelace",
+      "lpToken": "34d50b561ebf2f25a83dedec652020bb031f6b4a2d01c9c7161ed00e6c7000",
+      "minPremium": "5000000"
+    },
+    {
+      "tranche": 1,
+      "asset": "e5c5ae166089e4d907cabf8456dea8aebb76a2d5c65458c8e1e632ef.745553444378",
+      "lpToken": "34d50b561ebf2f25a83dedec652020bb031f6b4a2d01c9c7161ed00e6c7001",
+      "minPremium": "5000000"
+    }
+  ],
+  "script": {
+    "hash": "34d50b561ebf2f25a83dedec652020bb031f6b4a2d01c9c7161ed00e",
+    "address": "addr_test1wq6d2z6kr6lj7fdg8hk7cefqyzasx8mtfgksrjw8zc0dqrshdn0zz",
+    "poolNft": "34d50b561ebf2f25a83dedec652020bb031f6b4a2d01c9c7161ed00e706f6f6c",
+    "paramsCbor": "d8799fd8799f5820000000000000000000000000000000000000000000000000000000000000000000ff9fd8799fd8799f4040ff1a004c4b40ffd8799fd8799f581ce5c5ae166089e4d907cabf8456dea8aebb76a2d5c65458c8e1e632ef46745553444378ff1a004c4b40ffffd8799f456465706567d8799f445553444d19251c1a05265c00ff18c81927100e19016d1903e8192328ffd8799f581cd8365e107288ee8c1e313505cf2c754386eef7c95b2cd75b1fa1dd939f46666565642d6146666565642d6246666565642d63ff02ff1a0f731400ff",
+    "seed": "0000000000000000000000000000000000000000000000000000000000000000#0",
+    "aikenApplyMatches": true,
+    "dryRun": true
+  },
+  "params": {
+    "seed": {
+      "txHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "outputIndex": 0
+    },
+    "assets": [
+      {
+        "asset": {
+          "policyId": "",
+          "assetName": ""
+        },
+        "minPremium": "5000000"
+      },
+      {
+        "asset": {
+          "policyId": "e5c5ae166089e4d907cabf8456dea8aebb76a2d5c65458c8e1e632ef",
+          "assetName": "745553444378"
+        },
+        "minPremium": "5000000"
+      }
+    ],
+    "product": {
+      "productId": "6465706567",
+      "trigger": {
+        "coveredAsset": "5553444d",
+        "thresholdBps": "9500",
+        "windowMs": "86400000"
+      },
+      "baseRateBps": "200",
+      "riskMultBps": "10000",
+      "minDays": "14",
+      "maxDays": "365",
+      "maxSinglePolicyBps": "1000",
+      "maxUtilizationBps": "9000"
+    },
+    "oracle": {
+      "policyId": "d8365e107288ee8c1e313505cf2c754386eef7c95b2cd75b1fa1dd93",
+      "feeds": [
+        "666565642d61",
+        "666565642d62",
+        "666565642d63"
+      ],
+      "quorum": "2"
+    },
+    "claimGraceMs": "259200000"
+  }
+}
