@@ -1,6 +1,17 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { depegTrigger, productTerms, requiredPremium, textHex } from "../src/cardano.ts";
+import {
+  ADA as ADA_ASSET,
+  assetTerms,
+  coverDatumData,
+  depegTrigger,
+  premiumTerms,
+  productTerms,
+  requiredPremium,
+  textHex,
+  toCborHex,
+} from "../src/cardano.ts";
+import { USDCX_MAINNET } from "../src/assets.ts";
 import {
   EMPTY_POOL,
   buy,
@@ -13,6 +24,15 @@ import {
   underwriterProjection,
   utilizationBps,
   withdraw,
+  bookBuy,
+  bookDatum,
+  bookDeposit,
+  bookExpire,
+  bookRequiredPremium,
+  bookSettle,
+  bookWithdraw,
+  emptyBook,
+  type PoolBook,
   type PoolLedger,
 } from "../src/pool.ts";
 
@@ -21,6 +41,9 @@ const ADA = 1_000_000n;
 const base: PoolLedger = { capital: 1_000_000n * ADA, totalShares: 1_000_000n * ADA, activeCover: 300_000n * ADA };
 const terms = productTerms("depeg", "B", depegTrigger(textHex("USDM")));
 const MAX_U = terms.maxUtilizationBps;
+const adaTerms = assetTerms(ADA_ASSET);
+const usdcTerms = assetTerms(USDCX_MAINNET);
+const pricing = premiumTerms(terms, adaTerms);
 
 test("first deposit mints 1:1, later deposits mint pro rata (floored)", () => {
   const a = deposit(EMPTY_POOL, 500n * ADA);
@@ -59,16 +82,16 @@ test("maxWithdrawableShares is the exact capital-lock boundary", () => {
 
 test("buy charges the validator floor and enforces capacity", () => {
   const coverage = 10_000n * ADA;
-  const r = buy(base, terms, coverage, 90n);
+  const r = buy(base, terms, adaTerms, coverage, 90n);
   assert.ok(r.ok);
-  assert.equal(r.premium, requiredPremium(terms, coverage, 90n, base.capital, base.activeCover));
+  assert.equal(r.premium, requiredPremium(pricing, coverage, 90n, base.capital, base.activeCover));
   assert.equal(r.pool.activeCover, base.activeCover + coverage);
   assert.equal(r.pool.capital, base.capital + r.premium);
-  assert.equal(buy(base, terms, coverage, 90n, r.premium - 1n).ok, false);
-  assert.equal(buy(base, terms, 100_001n * ADA, 90n).ok, false); // > 10% single-policy cap
-  assert.equal(buy(base, terms, coverage, 7n).ok, false); // below min term
+  assert.equal(buy(base, terms, adaTerms, coverage, 90n, r.premium - 1n).ok, false);
+  assert.equal(buy(base, terms, adaTerms, 100_001n * ADA, 90n).ok, false); // > 10% single-policy cap
+  assert.equal(buy(base, terms, adaTerms, coverage, 7n).ok, false); // below min term
   const full: PoolLedger = { ...base, activeCover: 895_000n * ADA };
-  assert.equal(buy(full, terms, coverage, 90n).ok, false); // would pass 90% utilization
+  assert.equal(buy(full, terms, adaTerms, coverage, 90n).ok, false); // would pass 90% utilization
 });
 
 test("settle pays coverage once; expire frees capacity without moving capital", () => {
@@ -98,7 +121,7 @@ test("solvency invariant holds across random action sequences", () => {
         if (r.ok) p = r.pool;
       } else if (op === 2) {
         const cov = BigInt(1 + rnd(20_000)) * ADA;
-        const r = buy(p, terms, cov, BigInt(14 + rnd(352)));
+        const r = buy(p, terms, adaTerms, cov, BigInt(14 + rnd(352)));
         if (r.ok) (p = r.pool), live.push(cov);
       } else if (live.length) {
         const cov = live.splice(rnd(live.length), 1)[0];
@@ -138,4 +161,54 @@ test("underwriter projection: premium APR, stress loss, break-even", () => {
   });
   assert.ok(stressed.net < 0);
   assert.ok(Math.abs(stressed.claimLoss - 3_500) < 1e-9);
+});
+
+// Same two-tranche fixture as cover.ak: [ada, USDCx].
+const book: PoolBook = {
+  assets: [adaTerms, usdcTerms],
+  tranches: [base, { capital: 500_000n * ADA, totalShares: 500_000n * ADA, activeCover: 100_000n * ADA }],
+};
+
+test("multi-asset book: a USDC policy is priced, capped and booked on the USDC tranche only", () => {
+  const coverage = 10_000n * ADA;
+  // cover.ak usdc_buy_prices_against_usdc_tranche floor
+  assert.equal(bookRequiredPremium(book, terms, USDCX_MAINNET, coverage, 30n), 17_670_410n);
+  const r = bookBuy(book, terms, USDCX_MAINNET, coverage, 30n);
+  assert.ok(r.ok);
+  assert.equal(r.tranche, 1);
+  assert.equal(r.premium, 17_670_410n);
+  assert.deepEqual(r.book.tranches[0], book.tranches[0]);
+  assert.equal(r.book.tranches[1].capital, 500_000n * ADA + 17_670_410n);
+  assert.equal(r.book.tranches[1].activeCover, 110_000n * ADA);
+  // 60k USDC is within 10% of the ada tranche but not of the USDC tranche
+  assert.equal(bookBuy(book, terms, USDCX_MAINNET, 60_000n * ADA, 30n).ok, false);
+  assert.equal(bookBuy(book, terms, ADA_ASSET, 60_000n * ADA, 30n).ok, true);
+  // unaccepted asset
+  assert.equal(bookBuy(book, terms, { policyId: "ab".repeat(28), assetName: "" }, coverage, 30n).ok, false);
+});
+
+test("multi-asset book: ada floor equals the single-tranche floor", () => {
+  assert.equal(bookRequiredPremium(book, terms, ADA_ASSET, 10_000n * ADA, 30n), 18_228_493n);
+});
+
+test("multi-asset book: LP actions and claims touch one tranche and keep the datum shape", () => {
+  const d = bookDeposit(book, USDCX_MAINNET, 20_000n * ADA);
+  assert.ok(d.ok);
+  assert.equal(d.shares, 20_000n * ADA);
+  assert.deepEqual(d.book.tranches[0], book.tranches[0]);
+  const w = bookWithdraw(book, USDCX_MAINNET, 400_000n * ADA, terms);
+  assert.equal(w.ok, false); // USDC capital lock
+  const s = bookSettle(book, USDCX_MAINNET, 10_000n * ADA);
+  assert.ok(s.ok);
+  assert.equal(s.book.tranches[1].capital, 490_000n * ADA);
+  assert.deepEqual(s.book.tranches[0], book.tranches[0]);
+  const e = bookExpire(book, ADA_ASSET, 10_000n * ADA);
+  assert.ok(e.ok);
+  assert.deepEqual(e.book.tranches[1], book.tranches[1]);
+  // datum CBOR equals cover.ak sdk_golden_vectors `pool`
+  assert.equal(
+    toCborHex(coverDatumData({ kind: "Pool", pool: bookDatum(book) })),
+    "d8799fd8799f9fd8799f1b000000e8d4a510001b00000045d964b800ffd8799f1b000000746a5288001b000000174876e800ffffffff",
+  );
+  assert.equal(emptyBook(book.assets).tranches.length, 2);
 });

@@ -8,6 +8,10 @@
  *
  * Amounts are bigint base units (lovelace or a stablecoin's smallest unit),
  * times are POSIX milliseconds, rates are basis points. Byte strings are hex.
+ *
+ * Multi-asset: a pool holds one tranche per accepted asset (`CoverParams.assets`,
+ * e.g. [ada, USDCx]). A policy is denominated in one tranche asset; its premium,
+ * capacity, utilization pricing, and payout all use that tranche only.
  */
 import { blake2b256 } from "./blake2b.ts";
 import { PRODUCTS, RISK_MULTIPLIER, type ProductId, type RiskTier } from "./products.ts";
@@ -40,6 +44,12 @@ export const DAY_MS = 86_400_000n;
 
 export interface AssetClass { policyId: string; assetName: string }
 export const ADA: AssetClass = { policyId: "", assetName: "" };
+export const isAda = (a: AssetClass) => a.policyId === "";
+export const sameAsset = (a: AssetClass, b: AssetClass) =>
+  a.policyId.toLowerCase() === b.policyId.toLowerCase() && a.assetName.toLowerCase() === b.assetName.toLowerCase();
+
+/** One accepted pool currency (Aiken `AssetTerms`). Index in `CoverParams.assets` = tranche index. */
+export interface AssetTerms { asset: AssetClass; minPremium: bigint }
 
 export interface OutputReference { txHash: string; outputIndex: number }
 
@@ -52,7 +62,6 @@ export interface ProductTerms {
   riskMultBps: bigint;
   minDays: bigint;
   maxDays: bigint;
-  minPremium: bigint;
   maxSinglePolicyBps: bigint;
   maxUtilizationBps: bigint;
 }
@@ -61,17 +70,23 @@ export interface OracleConfig { policyId: string; feeds: string[]; quorum: bigin
 
 export interface CoverParams {
   seed: OutputReference;
-  poolAsset: AssetClass;
+  /** One tranche per entry, in order. Distinct, 1..=256 entries. */
+  assets: AssetTerms[];
   product: ProductTerms;
   oracle: OracleConfig;
   claimGraceMs: bigint;
 }
 
-export interface PoolDatum { totalShares: bigint; activeCover: bigint }
+/** One tranche's ledger (Aiken `Tranche`). Its capital is the pool UTxO's quantity of the tranche asset. */
+export interface Tranche { totalShares: bigint; activeCover: bigint }
+/** `tranches[i]` belongs to `CoverParams.assets[i]`. */
+export interface PoolDatum { tranches: Tranche[] }
 
 export interface PolicyDatum {
   policyId: string;
   productId: string;
+  /** Currency of coverage, premium and payout; selects the tranche. */
+  asset: AssetClass;
   coverage: bigint;
   premium: bigint;
   start: bigint;
@@ -85,8 +100,8 @@ export interface OracleDatum { coveredAsset: string; priceBps: bigint; windowSta
 export type CoverDatum = { kind: "Pool"; pool: PoolDatum } | { kind: "Policy"; policy: PolicyDatum };
 export type MintAction = "InitPool" | "ViaPool" | "BurnUserTokens";
 export type PoolAction =
-  | { kind: "Deposit" }
-  | { kind: "Withdraw"; shares: bigint }
+  | { kind: "Deposit"; tranche: number }
+  | { kind: "Withdraw"; tranche: number; shares: bigint }
   | { kind: "Buy" }
   | { kind: "Settle" }
   | { kind: "Expire" };
@@ -106,7 +121,6 @@ export const productTermsData = (p: ProductTerms) =>
     int(p.riskMultBps),
     int(p.minDays),
     int(p.maxDays),
-    int(p.minPremium),
     int(p.maxSinglePolicyBps),
     int(p.maxUtilizationBps),
   ]);
@@ -114,21 +128,25 @@ export const productTermsData = (p: ProductTerms) =>
 export const oracleConfigData = (o: OracleConfig) =>
   constr(0, [bytes(o.policyId), { list: o.feeds.map(bytes) }, int(o.quorum)]);
 
+export const assetTermsData = (a: AssetTerms) => constr(0, [assetClassData(a.asset), int(a.minPremium)]);
+
 export const coverParamsData = (c: CoverParams) =>
   constr(0, [
     outputReferenceData(c.seed),
-    assetClassData(c.poolAsset),
+    { list: c.assets.map(assetTermsData) },
     productTermsData(c.product),
     oracleConfigData(c.oracle),
     int(c.claimGraceMs),
   ]);
 
-export const poolDatumData = (d: PoolDatum) => constr(0, [int(d.totalShares), int(d.activeCover)]);
+export const trancheData = (t: Tranche) => constr(0, [int(t.totalShares), int(t.activeCover)]);
+export const poolDatumData = (d: PoolDatum) => constr(0, [{ list: d.tranches.map(trancheData) }]);
 
 export const policyDatumData = (d: PolicyDatum) =>
   constr(0, [
     bytes(d.policyId),
     bytes(d.productId),
+    assetClassData(d.asset),
     int(d.coverage),
     int(d.premium),
     int(d.start),
@@ -147,8 +165,8 @@ export const mintActionData = (a: MintAction) => constr(["InitPool", "ViaPool", 
 
 export const poolActionData = (a: PoolAction): PlutusData => {
   switch (a.kind) {
-    case "Deposit": return constr(0);
-    case "Withdraw": return constr(1, [int(a.shares)]);
+    case "Deposit": return constr(0, [int(a.tranche)]);
+    case "Withdraw": return constr(1, [int(a.tranche), int(a.shares)]);
     case "Buy": return constr(2);
     case "Settle": return constr(3);
     case "Expire": return constr(4);
@@ -245,7 +263,24 @@ export const toCborHex = (d: PlutusData) => bytesToHex(encodePlutusData(d));
 // ------------------------------------------------------------- names
 
 export const POOL_NFT = utf8Hex("pool");
-export const LP_TOKEN = utf8Hex("lp");
+/** LP share prefix. Tranche `i` mints `lpTokenName(i)` = "lp" ‖ one byte i (Aiken `names.lp_name`). */
+export const LP_PREFIX = utf8Hex("lp");
+export function lpTokenName(tranche: number): string {
+  if (!Number.isInteger(tranche) || tranche < 0 || tranche > 255) throw new Error(`tranche out of range: ${tranche}`);
+  return LP_PREFIX + tranche.toString(16).padStart(2, "0");
+}
+
+/** Tranche index of `asset` in the deployment, as the validator resolves `PolicyDatum.asset`. */
+export function trancheOf(assets: AssetTerms[], asset: AssetClass): number {
+  const i = assets.findIndex((a) => sameAsset(a.asset, asset));
+  if (i < 0) throw new Error(`asset ${asset.policyId}.${asset.assetName} is not accepted by this pool`);
+  return i;
+}
+
+/** The all-zero pool datum `InitPool` requires: one empty tranche per accepted asset. */
+export const initialPoolDatum = (assets: AssetTerms[]): PoolDatum => ({
+  tranches: assets.map(() => ({ totalShares: 0n, activeCover: 0n })),
+});
 /** CIP-67 (100) reference token label. */
 export const REF_LABEL = "000643b0";
 /** CIP-67 (222) user token label. */
@@ -269,9 +304,22 @@ export function utilizationMultiplierBps(uBps: bigint): bigint {
   return 12_500n + (15_000n * (u - KINK_BPS)) / (BPS - KINK_BPS);
 }
 
-/** Exactly the validator's minimum premium (pool capital/active cover before the purchase). */
+/** Product rates + the tranche asset's premium floor: everything the premium formula needs. */
+export type PremiumTerms = Pick<ProductTerms, "baseRateBps" | "riskMultBps"> & { minPremium: bigint };
+
+/** Combine product terms with the policy's tranche asset (its `minPremium`). */
+export const premiumTerms = (product: ProductTerms, asset: AssetTerms): PremiumTerms => ({
+  baseRateBps: product.baseRateBps,
+  riskMultBps: product.riskMultBps,
+  minPremium: asset.minPremium,
+});
+
+/**
+ * Exactly the validator's minimum premium. `capital` / `activeCover` are the
+ * policy's own tranche before the purchase, in that asset's base units.
+ */
 export function requiredPremium(
-  terms: Pick<ProductTerms, "baseRateBps" | "riskMultBps" | "minPremium">,
+  terms: PremiumTerms,
   coverage: bigint,
   days: bigint,
   capital: bigint,
@@ -304,7 +352,7 @@ export function withinCapacity(
  */
 export function chainPremium(
   quotedPremium: number,
-  terms: Pick<ProductTerms, "baseRateBps" | "riskMultBps" | "minPremium">,
+  terms: PremiumTerms,
   coverage: bigint,
   days: bigint,
   capital: bigint,
@@ -325,10 +373,10 @@ export const depegTrigger = (coveredAssetHex: string): Trigger => ({
 
 /**
  * On-chain ProductTerms for one product line, derived from the same model
- * parameters the quote engine uses. `unit` = base units per quote unit
- * (1_000_000 for ada or a 6-decimal stablecoin).
+ * parameters the quote engine uses. Asset-specific settings (the premium
+ * floor) live in `AssetTerms`, one per tranche; see `assetTerms`.
  */
-export function productTerms(id: ProductId, tier: RiskTier, trigger: Trigger, unit = 1_000_000n): ProductTerms {
+export function productTerms(id: ProductId, tier: RiskTier, trigger: Trigger): ProductTerms {
   const p = PRODUCTS[id];
   return {
     productId: utf8Hex(id),
@@ -337,16 +385,26 @@ export function productTerms(id: ProductId, tier: RiskTier, trigger: Trigger, un
     riskMultBps: BigInt(Math.round(RISK_MULTIPLIER[tier] * 10_000)),
     minDays: BigInt(p.minDays),
     maxDays: BigInt(p.maxDays),
-    minPremium: BigInt(MIN_PREMIUM) * unit,
     maxSinglePolicyBps: BigInt(Math.round(MAX_SINGLE_POLICY_SHARE * 10_000)),
     maxUtilizationBps: BigInt(Math.round(MAX_UTILIZATION * 10_000)),
   };
+}
+
+/**
+ * On-chain `AssetTerms` for one accepted currency. `unit` = base units per
+ * quote unit (1_000_000 for ada and for 6-decimal USDC / USDCx), so the
+ * premium floor is `minPremium` whole units of that asset (default 5).
+ */
+export function assetTerms(asset: AssetClass, unit = 1_000_000n, minPremium = MIN_PREMIUM): AssetTerms {
+  return { asset, minPremium: BigInt(minPremium) * unit };
 }
 
 /** Build the PolicyDatum a Buy transaction must lock with the reference token. */
 export function buildPolicyDatum(args: {
   poolRef: OutputReference;
   terms: ProductTerms;
+  /** Premium/coverage/payout currency; must be one of the pool's assets. */
+  asset: AssetClass;
   coverage: bigint;
   premium: bigint;
   start: bigint;
@@ -357,6 +415,7 @@ export function buildPolicyDatum(args: {
   return {
     policyId: policyIdFrom(args.poolRef),
     productId: args.terms.productId,
+    asset: { policyId: args.asset.policyId.toLowerCase(), assetName: args.asset.assetName.toLowerCase() },
     coverage: args.coverage,
     premium: args.premium,
     start: args.start,

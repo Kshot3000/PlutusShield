@@ -1,7 +1,7 @@
 import { PRODUCTS, RISK_MULTIPLIER, type ProductId, type RiskTier } from "./products.ts";
 
 export interface PoolState {
-  /** Total capital deposited by underwriters (ADA-equivalent units). */
+  /** Capital in the policy's currency tranche (whole ADA or whole USDC). */
   capital: number;
   /** Capital already locked against active cover. */
   activeCover: number;
@@ -12,7 +12,10 @@ export interface QuoteInput {
   coverAmount: number;
   days: number;
   riskTier: RiskTier;
+  /** Pool tranche the policy draws on, in the policy's currency (ADA or USDC units). */
   pool: PoolState;
+  /** Premium floor in the policy's currency. Defaults to MIN_PREMIUM (5 units). */
+  minPremium?: number;
 }
 
 export interface QuoteBreakdown {
@@ -66,7 +69,7 @@ export function quote(input: QuoteInput): QuoteResult {
   const uMult = (utilizationMultiplier(utilizationBefore) + utilizationMultiplier(utilizationAfter)) / 2;
   const riskMultiplier = RISK_MULTIPLIER[input.riskTier];
   const annualRate = product.baseAnnualRate * riskMultiplier * uMult;
-  const premium = Math.max(MIN_PREMIUM, coverAmount * annualRate * (days / 365));
+  const premium = Math.max(input.minPremium ?? MIN_PREMIUM, coverAmount * annualRate * (days / 365));
 
   return {
     ok: true,

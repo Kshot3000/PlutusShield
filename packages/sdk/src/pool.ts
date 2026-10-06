@@ -8,19 +8,31 @@
  * to preview LP actions before building a transaction, so what the UI shows
  * is what the chain enforces.
  *
+ * Multi-asset: the pool UTxO carries one tranche per accepted asset
+ * (`CoverParams.assets`, e.g. [ada, USDCx]). Each tranche is an independent
+ * `PoolLedger` in that asset's base units; `PoolBook` bundles them and maps
+ * 1:1 onto the on-chain `PoolDatum { tranches }`. The single-ledger
+ * functions below are exactly the per-tranche rules the validator applies.
+ *
  * Amounts are base units (lovelace or a stablecoin's smallest unit).
  */
 import {
   BPS,
+  premiumTerms,
   requiredPremium,
+  sameAsset,
+  trancheOf,
   withinCapacity,
+  type AssetClass,
+  type AssetTerms,
+  type PoolDatum,
   type ProductTerms,
 } from "./cardano.ts";
 import { PRODUCTS, RISK_MULTIPLIER, type ProductId, type RiskTier } from "./products.ts";
 import { MAX_UTILIZATION, utilizationMultiplier } from "./quote.ts";
 
 export interface PoolLedger {
-  /** Pool asset held by the pool UTxO. */
+  /** Quantity of this tranche's asset held by the pool UTxO (ada: all its lovelace). */
   capital: bigint;
   /** LP shares outstanding (PoolDatum.total_shares). */
   totalShares: bigint;
@@ -95,10 +107,14 @@ export function maxWithdrawableShares(p: PoolLedger, maxUtilizationBps: bigint, 
   return s < cap ? s : cap;
 }
 
-/** `Buy`: capacity caps, premium floor, then capital += premium and activeCover += coverage. */
+/**
+ * `Buy` on the policy's tranche: capacity caps, premium floor (with that
+ * asset's `minPremium`), then capital += premium and activeCover += coverage.
+ */
 export function buy(
   p: PoolLedger,
   terms: ProductTerms,
+  asset: Pick<AssetTerms, "minPremium">,
   coverage: bigint,
   days: bigint,
   premium?: bigint,
@@ -108,7 +124,13 @@ export function buy(
     return fail(`Term must be ${terms.minDays}–${terms.maxDays} days`);
   if (!withinCapacity(terms, coverage, p.capital, p.activeCover))
     return fail("Exceeds pool capacity (single-policy or utilization cap)");
-  const floor = requiredPremium(terms, coverage, days, p.capital, p.activeCover);
+  const floor = requiredPremium(
+    { baseRateBps: terms.baseRateBps, riskMultBps: terms.riskMultBps, minPremium: asset.minPremium },
+    coverage,
+    days,
+    p.capital,
+    p.activeCover,
+  );
   const paid = premium ?? floor;
   if (paid < floor) return fail("Premium below the validator's floor");
   return {
@@ -133,6 +155,69 @@ export function settle(p: PoolLedger, coverage: bigint): Step<{ payout: bigint }
 export function expire(p: PoolLedger, coverage: bigint): Step<object> {
   if (coverage <= 0n || coverage > p.activeCover) return fail("Unknown or already-closed policy");
   return { ok: true, pool: { ...p, activeCover: p.activeCover - coverage } };
+}
+
+// ------------------------------------------------------------- multi-asset book
+
+/** The whole pool UTxO: accepted assets (from params) and one ledger per tranche. */
+export interface PoolBook {
+  assets: AssetTerms[];
+  tranches: PoolLedger[];
+}
+
+export type BookStep<T> = ({ ok: true; book: PoolBook; tranche: number } & T) | { ok: false; reason: string };
+
+export const emptyBook = (assets: AssetTerms[]): PoolBook => ({ assets, tranches: assets.map(() => ({ ...EMPTY_POOL })) });
+
+/** On-chain datum for a book (capital is not in the datum; it is the UTxO value). */
+export const bookDatum = (b: PoolBook): PoolDatum => ({
+  tranches: b.tranches.map((t) => ({ totalShares: t.totalShares, activeCover: t.activeCover })),
+});
+
+/** Run a single-tranche step on tranche `i`, leaving every other tranche untouched (as the validator requires). */
+function onTranche<T extends object>(b: PoolBook, i: number, f: (p: PoolLedger) => Step<T>): BookStep<T> {
+  const t = b.tranches[i];
+  if (!t) return fail(`Unknown tranche ${i}`);
+  const r = f(t);
+  if (!r.ok) return r;
+  const { pool, ...rest } = r;
+  const tranches = b.tranches.map((x, j) => (j === i ? pool : x));
+  return { ...(rest as T), ok: true, tranche: i, book: { ...b, tranches } };
+}
+
+const indexOf = (b: PoolBook, asset: AssetClass): number => b.assets.findIndex((a) => sameAsset(a.asset, asset));
+
+export const bookDeposit = (b: PoolBook, asset: AssetClass, amount: bigint) =>
+  onTranche(b, indexOf(b, asset), (p) => deposit(p, amount));
+
+export const bookWithdraw = (b: PoolBook, asset: AssetClass, shares: bigint, terms: ProductTerms) =>
+  onTranche(b, indexOf(b, asset), (p) => withdraw(p, shares, terms.maxUtilizationBps));
+
+/** Buy a policy denominated in `asset`: priced and capped against that tranche only. */
+export function bookBuy(
+  b: PoolBook,
+  terms: ProductTerms,
+  asset: AssetClass,
+  coverage: bigint,
+  days: bigint,
+  premium?: bigint,
+): BookStep<{ premium: bigint }> {
+  const i = indexOf(b, asset);
+  if (i < 0) return fail("Asset not accepted by this pool");
+  return onTranche(b, i, (p) => buy(p, terms, b.assets[i], coverage, days, premium));
+}
+
+export const bookSettle = (b: PoolBook, asset: AssetClass, coverage: bigint) =>
+  onTranche(b, indexOf(b, asset), (p) => settle(p, coverage));
+
+export const bookExpire = (b: PoolBook, asset: AssetClass, coverage: bigint) =>
+  onTranche(b, indexOf(b, asset), (p) => expire(p, coverage));
+
+/** Validator floor for a policy in `asset` against the book (same as `requiredPremium` on its tranche). */
+export function bookRequiredPremium(b: PoolBook, terms: ProductTerms, asset: AssetClass, coverage: bigint, days: bigint) {
+  const i = trancheOf(b.assets, asset);
+  const t = b.tranches[i];
+  return requiredPremium(premiumTerms(terms, b.assets[i]), coverage, days, t.capital, t.activeCover);
 }
 
 // ------------------------------------------------------------- LP projection
