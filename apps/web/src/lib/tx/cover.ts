@@ -152,7 +152,7 @@ export function circuitBreakerMessage(params: CoverParams, blocked: string[]) {
   return (
     `sale circuit-breaker: every allowlisted feed needs a fresh healthy-peg reading (price >= ${params.product.trigger.thresholdBps} bps, ` +
     `window_end within ${Number(params.saleGuard.maxPriceAgeMs) / 60_000} min). Blocked: ${blocked.join(", ")}. ` +
-    "Publish fresh readings (Preview: `pnpm preview peg`) or wait for the depeg to clear."
+    "Publish fresh readings (Preview: `pnpm oracle` from live markets, or `pnpm preview peg`) or wait for the depeg to clear."
   );
 }
 

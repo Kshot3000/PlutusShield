@@ -56,7 +56,8 @@
     "2026-10-06T15:26:40.000Z browser-e2e Buy 1000 usdc cover 30d via /cover CIP-30 panel (premium 5000000)": "4eb5ee79f01704afb43d11252973a942c3acc9054c564205b0fcd8d108f96407",
     "2026-10-06T15:37:23.663Z oracle peg 10000bps feed-a,feed-b,feed-c": "2d1294cb80ee23da118226946041391fb81cb66d0481f34a3d193c70809635d7",
     "2026-10-06T15:41:30.000Z browser-e2e Buy 25 ada cover 14d via LIVE Pages /cover (premium 5000000)": "a520325ddd4ec72cdfa27b50cee5e4cddb8c72c001669ddfd592a7a84b1824ca",
-    "2026-10-06T15:42:54.746Z web-buy Buy 20 ada cover 14d (website builder, premium 5000000)": "abe6f27c3091d63090711c663141c5302dec11c4a8121be73fa55f3c85976ece"
+    "2026-10-06T15:42:54.746Z web-buy Buy 20 ada cover 14d (website builder, premium 5000000)": "abe6f27c3091d63090711c663141c5302dec11c4a8121be73fa55f3c85976ece",
+    "2026-10-06T16:22:51.051Z oracle live peg 9994bps": "c433481b3573cd7c6884bb7aef57b0ec11af900a1e2c81152be67336fdbbd625"
   },
   "script": {
     "hash": "4e5423fefc28871aef53bd2ee85722c19af742e6b7a99d507e0ce2ac",

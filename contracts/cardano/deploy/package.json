@@ -9,6 +9,7 @@
     "plan": "node --experimental-strip-types --no-warnings scripts/plan.ts",
     "emulator": "node --experimental-strip-types --no-warnings scripts/emulator.ts",
     "preview": "node --experimental-strip-types --no-warnings scripts/preview.ts",
+    "oracle": "node --experimental-strip-types --no-warnings scripts/oracle-publisher.ts",
     "test": "node --experimental-strip-types --no-warnings scripts/emulator.ts",
     "web-artifacts": "node --experimental-strip-types --no-warnings scripts/web-artifacts.ts",
     "web-lp": "node --experimental-strip-types --no-warnings scripts/web-lp.ts",

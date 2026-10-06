@@ -203,6 +203,41 @@ export function publishFeeds(
   return tx.mintAssets(mint).attach.MintingPolicy(oracle.script).addSignerKey(oracle.keyHash).complete();
 }
 
+/**
+ * Live publisher: write a fresh reading for every feed while recycling
+ * `recycle` (superseded healthy-peg feed UTxOs at the oracle address). Their
+ * feed tokens move into the new outputs and their 2 ada comes back as change,
+ * so a long-running relay doesn't leak min-ada on every refresh. Tokens are
+ * minted only for feeds with nothing to recycle and surplus ones are burned.
+ * Callers must never pass depeg attestations: claims settle against them.
+ */
+export function refreshFeeds(
+  lucid: LucidEvolution,
+  oracle: { script: Script; policyId: string; keyHash: string },
+  to: string,
+  feeds: { name: string; datum: OracleDatum }[],
+  recycle: UTxO[],
+) {
+  const have: Record<string, bigint> = {};
+  for (const u of recycle)
+    for (const [unit, q] of Object.entries(u.assets)) if (unit.startsWith(oracle.policyId)) have[unit] = (have[unit] ?? 0n) + q;
+  const need: Record<string, bigint> = {};
+  let tx = lucid.newTx();
+  if (recycle.length) tx = tx.collectFrom(recycle);
+  for (const f of feeds) {
+    const unit = oracle.policyId + textHex(f.name);
+    need[unit] = (need[unit] ?? 0n) + 1n;
+    tx = tx.pay.ToContract(to, inline(toCborHex(oracleDatumData(f.datum))), { lovelace: 2_000_000n, [unit]: 1n });
+  }
+  const mint: Record<string, bigint> = {};
+  for (const unit of new Set([...Object.keys(have), ...Object.keys(need)])) {
+    const delta = (need[unit] ?? 0n) - (have[unit] ?? 0n);
+    if (delta !== 0n) mint[unit] = delta;
+  }
+  if (Object.keys(mint).length) tx = tx.mintAssets(mint).attach.MintingPolicy(oracle.script);
+  return tx.addSignerKey(oracle.keyHash).complete();
+}
+
 export async function settle(lucid: LucidEvolution, d: Deployment, policyId: string, feedUtxos: UTxO[], now: number) {
   const pool = await readPool(lucid, d);
   const { utxo: policyUtxo, policy } = await readPolicy(lucid, d, policyId);

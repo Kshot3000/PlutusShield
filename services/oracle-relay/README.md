@@ -28,7 +28,28 @@ The example file is **synthetic example data** (three venues, a 36-hour USDM dip
 - The relay never decides payouts. It publishes a datum; the validator decides whether that datum, together with a quorum of others, proves the trigger inside the policy period.
 - Publishing (minting the feed token and locking the datum UTxO) uses the deploy tooling in [`contracts/cardano/deploy`](../../contracts/cardano/deploy).
 
+## Live venues
+
+`src/venues.ts` turns three public, keyless APIs into relay input for Cardano USDM (`c48cbb…0014df105553444d`):
+
+| Venue | Source | Notes |
+| --- | --- | --- |
+| `coingecko` | CoinGecko `usdm-2` USD market chart | Cross-venue aggregate, hourly |
+| `minswap-ada-usdm` | Minswap ADA/USDM pool (GeckoTerminal OHLCV, USDM in ADA) × Kraken ADA/USD hourly candles | The ADA leg comes from a different provider than the pool leg |
+| `minswap-usdcx-usdm` | Minswap USDCx/USDM pool (GeckoTerminal OHLCV) | USDM against Circle's USDCx |
+
+AMM prices only move on trades, so no-trade hours are forward-filled from the last close, and every sample is stamped at the end of its candle so a reading can never look ahead. A venue that fails (rate limit, wrong pair side, no data) is reported and skipped; the publisher needs at least two. Free API tiers rate-limit, so requests back off and retry on HTTP 429.
+
+```bash
+pnpm relay:live            # read-only: what a relay would publish right now
+pnpm relay:live --json
+pnpm oracle:publish --dry-run   # Preview publisher decision, signs nothing
+```
+
+The Preview publisher (`contracts/cardano/deploy/scripts/oracle-publisher.ts`) runs this every cycle and refreshes the on-chain feeds before `max_price_age_ms` lapses. See step 12 of the [deploy runbook](../../contracts/cardano/deploy/README.md).
+
 ## Next
 
-- Venue adapters (Cardano DEX pool reserves, CEX tickers) that write the input file on a schedule.
-- A long-running publisher that refreshes peg readings before `max_price_age_ms` lapses and posts a depeg attestation the moment one is provable.
+- More venues (a second DEX, a CEX listing) so no single provider family supplies two of three readings.
+- One live UTxO per feed (a state-thread oracle) instead of recycling superseded readings.
+- Post a depeg attestation automatically once a 24h trigger window is provable, after an operator review step.

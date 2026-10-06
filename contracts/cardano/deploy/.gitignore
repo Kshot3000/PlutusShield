@@ -8,3 +8,6 @@ deployments/*.dryrun.plutus.json
 
 # Applied blueprint is large and reproducible via `pnpm plan`
 deployments/preview.plutus.json
+
+# Live oracle publisher status (rewritten every cycle).
+deployments/oracle-status.json

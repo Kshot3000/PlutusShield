@@ -17,8 +17,10 @@
     "preview:keygen": "pnpm --filter @plutusshield/cardano-deploy keygen",
     "preview:plan": "pnpm --filter @plutusshield/cardano-deploy plan",
     "cardano:preview": "pnpm --filter @plutusshield/cardano-deploy preview",
+    "oracle:publish": "pnpm --filter @plutusshield/cardano-deploy oracle",
     "test:relay": "pnpm --filter @plutusshield/oracle-relay test",
     "relay:evaluate": "pnpm --filter @plutusshield/oracle-relay evaluate",
+    "relay:live": "pnpm --filter @plutusshield/oracle-relay live",
     "test:midnight": "pnpm --filter @plutusshield/midnight-contracts test",
     "build:cardano": "pnpm --filter @plutusshield/cardano-contracts build",
     "compile:midnight": "pnpm --filter @plutusshield/midnight-contracts compile"

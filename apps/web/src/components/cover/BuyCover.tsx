@@ -342,7 +342,7 @@ function OracleStatus({ sale, now, error }: { sale: ReturnType<typeof saleCheck>
               ? `Open: all ${sale.feeds.length} feeds report a healthy peg. Fresh for another ${age(sale.freshUntil! - (now + BUY_WINDOW_MS))}.`
               : sale.feeds.some((f) => f.state === "depeg")
                 ? "Paused: a feed reports USDM below its peg, so nobody can buy into a known loss."
-                : `Paused: the oracle readings are too old. A sale needs every reading under ${MAX_AGE_H} h old when it lands (up to ${BUY_WINDOW_MS / 60_000} min after you sign). The Preview test oracle is refreshed by its operator; a browser can't publish feeds. Check back soon.`}
+                : `Paused: the oracle readings are too old. A sale needs every reading under ${MAX_AGE_H} h old when it lands (up to ${BUY_WINDOW_MS / 60_000} min after you sign). The Preview relay republishes from live USDM markets about every hour, so check back in a few minutes.`}
           </p>
           <ul className="mt-2.5 grid gap-1 text-xs">
             {sale.feeds.map((f) => (
@@ -361,6 +361,11 @@ function OracleStatus({ sale, now, error }: { sale: ReturnType<typeof saleCheck>
               </li>
             ))}
           </ul>
+          <p className="mt-3 border-t border-border pt-2.5 text-[11px] leading-relaxed text-text-dim">
+            Readings are real market data: the 24h median TWAP of CoinGecko&apos;s USDM price, the Minswap ADA/USDM pool (priced with
+            Kraken ADA/USD), and the Minswap USDCx/USDM pool, published on Preview by the PlutusShield relay. On mainnet each feed is
+            an independent operator.
+          </p>
         </>
       )}
     </div>
