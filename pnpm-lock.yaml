@@ -64,6 +64,8 @@ importers:
 
   packages/sdk: {}
 
+  services/oracle-relay: {}
+
 packages:
 
   '@alloc/quick-lru@5.3.0':

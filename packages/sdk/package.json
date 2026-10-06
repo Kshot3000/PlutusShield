@@ -8,7 +8,8 @@
     ".": "./src/index.ts",
     "./cardano": "./src/cardano.ts",
     "./pool": "./src/pool.ts",
-    "./assets": "./src/assets.ts"
+    "./assets": "./src/assets.ts",
+    "./oracle": "./src/oracle.ts"
   },
   "scripts": {
     "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts"

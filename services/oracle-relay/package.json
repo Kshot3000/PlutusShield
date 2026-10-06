@@ -1,0 +1,11 @@
+{
+  "name": "@plutusshield/oracle-relay",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "PlutusShield oracle relay: aggregate price sources, evaluate parametric triggers, and emit the exact feed datums the Cardano validator accepts",
+  "scripts": {
+    "evaluate": "node --experimental-strip-types --no-warnings src/cli.ts",
+    "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts"
+  }
+}

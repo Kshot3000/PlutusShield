@@ -66,7 +66,7 @@ Public Cardano state should never need private Midnight witnesses to verify that
 contracts/cardano/     Aiken validators: pool, policy mint, settle        (built)
 contracts/midnight/    Compact: policy commitment, evidence, disclosure   (built)
 services/api/          Quotes, indexer, oracle relay hooks                (planned)
-services/oracle-relay/ Multi-oracle aggregation + trigger eval            (planned)
+services/oracle-relay/ Multi-venue median TWAP + trigger eval + feed datums (built)
 apps/web/              Marketing site + dApp                              (built: site, /cover quote)
 packages/sdk/          Shared TS types, quote engine, Cardano datum codecs (built)
 ```
