@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.yarn/
+.yarn/cache
+
+# Build / compile
+dist/
+build/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+.plutus/
+aiken.toml.bak
+*.uplc
+*.cbor
+
+# Midnight / Compact
+.compact/
+proof-server/
+*.zkir
+*.bincode
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
