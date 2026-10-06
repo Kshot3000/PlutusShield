@@ -8,19 +8,13 @@
 import type { LucidEvolution, WalletApi } from "@lucid-evolution/lucid";
 import { PREVIEW } from "@/lib/preview";
 import artifact from "@/data/preview-deployment.json";
+import { BLOCKFROST_ID, BLOCKFROST_URL } from "@/lib/chainRead";
 import { poolScriptFrom } from "./lp";
+import { coverScriptFrom } from "./cover";
 
 export const POOL_SCRIPT = poolScriptFrom(artifact);
-
-/**
- * Chain API for tx building. Public Koios only sends CORS headers to its own
- * origin, so a deployed site should set NEXT_PUBLIC_BLOCKFROST_PREVIEW_ID (a
- * Preview-only Blockfrost project id). Koios stays the keyless default for
- * local runs and for browsers/extensions that relax CORS.
- */
-const BLOCKFROST_ID = process.env.NEXT_PUBLIC_BLOCKFROST_PREVIEW_ID;
-const BLOCKFROST_URL = "https://cardano-preview.blockfrost.io/api/v0";
-export const CHAIN_API: "blockfrost" | "koios" = BLOCKFROST_ID ? "blockfrost" : "koios";
+export const COVER_SCRIPT = coverScriptFrom(artifact);
+export { CHAIN_API } from "@/lib/chainRead";
 
 /**
  * Lucid's HTTP layer adds a W3C `traceparent` header, which neither Koios nor
@@ -98,6 +92,8 @@ export function txError(e: unknown): string {
   if (/Transport error|Failed to fetch|NetworkError|CORS/i.test(msg))
     return "This browser couldn't reach the Cardano Preview API (it blocked the cross-site request). Nothing was signed or sent.";
   if (/InputsExhausted|insufficient|not enough/i.test(msg)) return "Your wallet doesn't hold enough for this amount plus fees and collateral.";
+  if (/circuit-breaker/i.test(msg))
+    return "Sales are paused: the oracle feeds don't all show a fresh healthy peg right now. Nothing was signed or sent.";
   if (/collateral/i.test(msg)) return "Your wallet needs a collateral UTxO (about 5 tADA). Set it in the wallet's settings, then try again.";
   return msg.length > 220 ? `${msg.slice(0, 220)}…` : msg;
 }

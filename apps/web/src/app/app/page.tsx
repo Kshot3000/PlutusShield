@@ -4,6 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { ShieldMark } from "@/components/Logo";
 import { Button } from "@/components/ui/Button";
 import { WalletStatusCard } from "@/components/wallet/WalletStatusCard";
+import { PoliciesCard } from "@/components/cover/PoliciesCard";
 import { MILESTONES, RUNBOOK, type MilestoneState } from "@/lib/status";
 
 export const metadata: Metadata = {
@@ -24,11 +25,11 @@ export default function AppPage() {
     <AppShell
       active="app"
       title="Your shield"
-      description="Policies, claims, and LP positions will show up here once the Cardano Preview pool is live. Until then, price cover and stress-test the pool. The math matches the validator exactly."
+      description="Your cover and underwriting on Cardano Preview. Buy depeg cover in ADA or USDC, provide liquidity, and check claims. The math matches the validator exactly."
     >
       <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
         <WalletStatusCard />
-        <StatusCard label="Active policies" value="0" hint="Bought policies appear here with their timeline" />
+        <PoliciesCard />
         <StatusCard label="LP positions" value="0" hint="lp00 (ADA) and lp01 (USDC) shares" />
       </div>
 
@@ -43,11 +44,11 @@ export default function AppPage() {
             <ShieldMark size={44} className="relative" />
           </div>
           <h2 id="empty-title" className="relative mt-6 font-display text-[2rem] leading-tight text-text">
-            No cover yet. <em className="text-accent-strong">Start with a quote.</em>
+            Get covered. <em className="text-accent-strong">Live on Preview.</em>
           </h2>
           <p className="relative mt-3 max-w-md text-sm leading-relaxed text-text-muted">
-            Choose ADA or USDC, set a size and term, and see the exact premium the validator would accept, with the
-            waiting period, peg check, and payout spelled out before you ever connect a wallet.
+            Choose ADA or USDC, set a size and term, and pay exactly the premium the validator enforces, from your own
+            CIP-30 wallet. The waiting period, oracle peg check, and payout are spelled out before you sign.
           </p>
           <div className="relative mt-7 grid gap-3 sm:grid-cols-3">
             <Link
@@ -56,7 +57,7 @@ export default function AppPage() {
             >
               <p className="font-mono-label text-[9.5px] text-text-dim">Buyers</p>
               <p className="mt-1.5 text-sm font-semibold text-text">
-                Quote cover <span className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
+                Buy cover <span className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
               </p>
               <p className="mt-1 text-xs text-text-muted">Depeg cover in ADA or USDC</p>
             </Link>
@@ -66,7 +67,7 @@ export default function AppPage() {
             >
               <p className="font-mono-label text-[9.5px] text-text-dim">Underwriters</p>
               <p className="mt-1.5 text-sm font-semibold text-text">
-                Simulate pool <span className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
+                Provide liquidity <span className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
               </p>
               <p className="mt-1 text-xs text-text-muted">Shares, premiums, claim stress</p>
             </Link>

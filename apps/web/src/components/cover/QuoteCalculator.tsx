@@ -318,7 +318,7 @@ export function QuoteCalculator() {
         </div>
 
         <PreviewFlow
-          cta="How buying will work"
+          cta="How buying works"
           heading={`Buying ${cur.symbol} cover on Cardano Preview`}
           next={{ href: "/docs/how-cover-works", label: "How cover works" }}
           steps={[
@@ -350,7 +350,7 @@ export function QuoteCalculator() {
           ]}
         />
         <p className="mt-4 text-center text-[11px] text-text-dim">
-          Example {cur.symbol} tranche, model parameters, no live market data. No transaction is built or signed.
+          Example {cur.symbol} tranche and model parameters. To buy for real on Preview, use the live panel above.
         </p>
       </div>
 

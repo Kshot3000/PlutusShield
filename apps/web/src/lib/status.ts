@@ -36,13 +36,13 @@ export const MILESTONES: Milestone[] = [
   },
   {
     label: "Browser buy & deposit",
-    detail: "Wallet connect and live tranche reads are done: any CIP-30 wallet shows its balances and /pool shows real capital, cover and policies. Next: build and sign buy and deposit transactions in the browser.",
-    state: "next",
+    detail: "Any CIP-30 wallet can buy depeg cover on /cover (premium in tADA or tUSDCx, oracle peg check before signing, My policies) and deposit or withdraw on /pool. Every flow is proven with real Preview transactions.",
+    state: "done",
   },
   {
     label: "Production oracle feeds",
-    detail: "Relay core is built: venue median, TWAP, depeg-window search. Next: venue adapters, a publisher, and independent operators (for example Charli3 or Orcfax).",
-    state: "planned",
+    detail: "Relay core is built: venue median, TWAP, depeg-window search. Preview sales use an operator-run test oracle. Next: venue adapters, an automatic publisher, and independent operators (for example Charli3 or Orcfax).",
+    state: "next",
   },
   {
     label: "External audit",

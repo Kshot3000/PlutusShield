@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { CurrencyMark } from "@/components/ui/ChoiceGroup";
-import { fetchKoiosUtxos, readPoolState, type ChainUtxo, type LivePoolState } from "@plutusshield/sdk/chain";
+import { readPoolState, type ChainUtxo, type LivePoolState } from "@plutusshield/sdk/chain";
+import { CHAIN_API, fetchPreviewUtxos } from "@/lib/chainRead";
 import { formatUnits } from "@plutusshield/sdk/cip30";
 import { PREVIEW, PREVIEW_ASSETS, explorerAddress, explorerTx } from "@/lib/preview";
 import snapshot from "@/data/preview-pool-snapshot.json";
@@ -56,7 +57,7 @@ export function LivePool() {
   const refresh = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     try {
-      const utxos = await fetchKoiosUtxos(PREVIEW.koios, PREVIEW.poolAddress, fetch, signal);
+      const utxos = await fetchPreviewUtxos(PREVIEW.poolAddress, signal);
       setView({ state: read(utxos), error: null });
       setSource({ kind: "live", at: new Date() });
     } catch (e) {
@@ -87,7 +88,7 @@ export function LivePool() {
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--cardano)]" aria-hidden />
               Live on Cardano Preview
             </Badge>
-            <Badge>{source.kind === "live" ? `Read from chain · ${ago(source.at)}` : mounted ? `Snapshot · ${ago(source.at)}` : "Snapshot"}</Badge>
+            <Badge>{source.kind === "live" ? `Read from chain via ${CHAIN_API === "blockfrost" ? "Blockfrost" : "Koios"} · ${ago(source.at)}` : mounted ? `Snapshot · ${ago(source.at)}` : "Snapshot"}</Badge>
           </div>
           <h2 id="live-pool" className="mt-3 text-xl font-semibold tracking-tight text-text sm:text-2xl">
             The real pool, read straight from the ledger

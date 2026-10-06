@@ -37,7 +37,7 @@ export function AppShell({
             <div>
               <Badge variant="gold" className="animate-rise mb-5">
                 <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-gold text-gold" aria-hidden="true" />
-                Preview build · Testnet next
+                Live on Cardano Preview testnet
               </Badge>
               <h1 className="animate-rise delay-1 font-display text-[2.6rem] leading-[1.02] text-text sm:text-6xl">
                 {title}
