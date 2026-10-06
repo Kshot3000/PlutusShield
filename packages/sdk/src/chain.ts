@@ -21,6 +21,7 @@ import {
   type AssetClass,
   type CoverDatum,
   type Credential,
+  type OracleDatum,
   type PlutusData,
   type PolicyDatum,
   type PoolDatum,
@@ -122,6 +123,26 @@ export function decodeCoverDatum(cborHex: string): CoverDatum {
   if (d.constructor === 0) return { kind: "Pool", pool: poolDatumFrom(asConstr(d, 0, 1, "Pool")[0]) };
   if (d.constructor === 1) return { kind: "Policy", policy: policyDatumFrom(asConstr(d, 1, 1, "Policy")[0]) };
   return fail(`CoverDatum constructor ${d.constructor}`);
+}
+
+/**
+ * Decode an oracle feed UTxO's inline datum (`OracleDatum`). Returns
+ * undefined for anything that is not exactly that shape, so stray UTxOs at a
+ * feed address are skipped rather than trusted.
+ */
+export function decodeOracleDatum(cborHex: string | null | undefined): OracleDatum | undefined {
+  if (!cborHex) return undefined;
+  try {
+    const f = asConstr(decodePlutusData(cborHex), 0, 4, "OracleDatum");
+    return {
+      coveredAsset: asBytes(f[0], "covered_asset"),
+      priceBps: asInt(f[1], "price"),
+      windowStart: asInt(f[2], "window_start"),
+      windowEnd: asInt(f[3], "window_end"),
+    };
+  } catch {
+    return undefined;
+  }
 }
 
 // ------------------------------------------------------------- pool state
@@ -253,4 +274,56 @@ export async function fetchKoiosUtxos(
   const body = (await res.json()) as unknown;
   if (!Array.isArray(body)) throw new Error("unexpected Koios response");
   return body as ChainUtxo[];
+}
+
+/** One UTxO as Blockfrost `/addresses/{address}/utxos` returns it. */
+interface BlockfrostUtxo {
+  tx_hash: string;
+  output_index: number;
+  amount: { unit: string; quantity: string }[];
+  inline_datum: string | null;
+}
+
+/** Blockfrost's UTxO shape → the Koios-style `ChainUtxo` the readers here take. */
+export function chainUtxoFromBlockfrost(u: BlockfrostUtxo): ChainUtxo {
+  const lovelace = u.amount.find((a) => a.unit === "lovelace")?.quantity ?? "0";
+  return {
+    tx_hash: u.tx_hash,
+    tx_index: u.output_index,
+    value: lovelace,
+    asset_list: u.amount
+      .filter((a) => a.unit !== "lovelace")
+      .map((a) => ({ policy_id: a.unit.slice(0, 56), asset_name: a.unit.slice(56), quantity: a.quantity })),
+    inline_datum: u.inline_datum ? { bytes: u.inline_datum } : null,
+    block_time: null,
+  };
+}
+
+/**
+ * Fetch UTxOs at an address from Blockfrost (e.g.
+ * https://cardano-preview.blockfrost.io/api/v0). Unlike public Koios,
+ * Blockfrost sends CORS headers to any origin, so a static site can call it.
+ * Pages through results; an address with no UTxOs (404) is an empty list.
+ */
+export async function fetchBlockfrostUtxos(
+  baseUrl: string,
+  projectId: string,
+  address: string,
+  fetchFn: typeof fetch = fetch,
+  signal?: AbortSignal,
+): Promise<ChainUtxo[]> {
+  const out: ChainUtxo[] = [];
+  for (let page = 1; page <= 20; page++) {
+    const res = await fetchFn(`${baseUrl.replace(/\/$/, "")}/addresses/${address}/utxos?count=100&page=${page}`, {
+      headers: { project_id: projectId, accept: "application/json" },
+      signal,
+    });
+    if (res.status === 404) return out;
+    if (!res.ok) throw new Error(`Blockfrost ${res.status}`);
+    const body = (await res.json()) as unknown;
+    if (!Array.isArray(body)) throw new Error("unexpected Blockfrost response");
+    out.push(...(body as BlockfrostUtxo[]).map(chainUtxoFromBlockfrost));
+    if (body.length < 100) return out;
+  }
+  return out;
 }

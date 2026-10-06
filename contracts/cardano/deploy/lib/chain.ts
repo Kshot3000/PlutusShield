@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { Blockfrost, Koios, Lucid, type LucidEvolution } from "@lucid-evolution/lucid";
-import type { CoverParams } from "../../../../packages/sdk/src/cardano.ts";
+import { coverParamsFromJson, type CoverParams, type CoverParamsJson } from "../../../../packages/sdk/src/cardano.ts";
 import { DEPLOY_DIR } from "./keys.ts";
 
 export async function previewLucid(): Promise<LucidEvolution> {
@@ -38,24 +38,5 @@ export function readDeploymentFile(): DeploymentFile {
 
 export const writeDeploymentFile = (f: DeploymentFile) => writeFileSync(DEPLOYMENT_FILE, toJson(f));
 
-/** Revive bigint fields of CoverParams after a JSON round-trip. */
-export function reviveParams(p: CoverParams): CoverParams {
-  const b = (x: unknown) => BigInt(x as string);
-  return {
-    seed: p.seed,
-    assets: p.assets.map((a) => ({ asset: a.asset, minPremium: b(a.minPremium) })),
-    product: {
-      ...p.product,
-      trigger: { ...p.product.trigger, thresholdBps: b(p.product.trigger.thresholdBps), windowMs: b(p.product.trigger.windowMs) },
-      baseRateBps: b(p.product.baseRateBps),
-      riskMultBps: b(p.product.riskMultBps),
-      minDays: b(p.product.minDays),
-      maxDays: b(p.product.maxDays),
-      maxSinglePolicyBps: b(p.product.maxSinglePolicyBps),
-      maxUtilizationBps: b(p.product.maxUtilizationBps),
-    },
-    oracle: { ...p.oracle, quorum: b(p.oracle.quorum) },
-    claimGraceMs: b(p.claimGraceMs),
-    saleGuard: { waitingPeriodMs: b(p.saleGuard.waitingPeriodMs), maxPriceAgeMs: b(p.saleGuard.maxPriceAgeMs) },
-  };
-}
+/** Revive bigint fields of CoverParams after a JSON round-trip (same reviver the website uses). */
+export const reviveParams = (p: CoverParams): CoverParams => coverParamsFromJson(p as unknown as CoverParamsJson);

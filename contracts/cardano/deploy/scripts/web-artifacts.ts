@@ -1,7 +1,9 @@
 /**
  * Export the public pieces of the Preview deployment the browser needs to
  * build transactions: the parameter-applied cover script (Lucid-ready CBOR),
- * its hash/address, the pool NFT unit, and the tranche assets.
+ * its hash/address, the pool NFT unit, the tranche assets, the full
+ * CoverParams (product terms, premium floors, oracle allowlist, sale guard)
+ * and the address the Preview test oracle publishes its feed UTxOs to.
  *
  *   pnpm web-artifacts   -> apps/web/src/data/preview-deployment.json
  *
@@ -9,7 +11,7 @@
  */
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { validatorToScriptHash } from "@lucid-evolution/lucid";
+import { credentialToAddress, validatorToScriptHash } from "@lucid-evolution/lucid";
 import { deployment } from "../lib/cover.ts";
 import { readDeploymentFile, reviveParams, toJson } from "../lib/chain.ts";
 import { DEPLOY_DIR } from "../lib/keys.ts";
@@ -27,6 +29,13 @@ const out = {
   poolNftUnit: d.poolNftUnit,
   maxUtilizationBps: d.params.product.maxUtilizationBps,
   assets: d.params.assets.map((a) => ({ policyId: a.asset.policyId, assetName: a.asset.assetName })),
+  params: d.params,
+  oracle: {
+    policyId: d.params.oracle.policyId,
+    feeds: file.oracle.feeds,
+    // Feed UTxOs sit at the oracle key's enterprise address (see scripts/preview.ts `peg`).
+    address: credentialToAddress("Preview", { type: "Key", hash: file.oracle.keyHash }),
+  },
   script: d.script,
 };
 const target = join(DEPLOY_DIR, "..", "..", "..", "apps", "web", "src", "data", "preview-deployment.json");

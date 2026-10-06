@@ -22,6 +22,7 @@ import { PREVIEW_MOCK_USDC_ASSET_NAME } from "../../../../packages/sdk/src/asset
 import { buildParams, deployment, loadConfig, unitOf } from "../lib/cover.ts";
 import { keyInfo, sigPolicy } from "../lib/keys.ts";
 import * as act from "../lib/actions.ts";
+import { listWalletPolicies } from "../../../../apps/web/src/lib/tx/cover.ts";
 
 const log = (...a: unknown[]) => console.log("  ", ...a);
 const U = 1_000_000n;
@@ -106,6 +107,14 @@ pool = await act.readPool(lucid, d);
 assert.equal(pool.datum.tranches[1].activeCover, 10_000n * U);
 assert.equal(pool.datum.tranches[0].activeCover, 5_000n * U);
 assert.equal(pool.capitals[1], 500_000n * U + bUsd.premium);
+// The website's "My policies" reader (apps/web/src/lib/tx/cover.ts) finds both, held and bought by this wallet.
+const mine = await listWalletPolicies(lucid, act.coverScriptOf(d), emulator.now());
+assert.deepEqual(new Set(mine.map((p) => p.policy.policyId)), new Set([bUsd.policy.policyId, bAda.policy.policyId]));
+assert.ok(mine.every((p) => p.holder && p.buyer && p.status === "waiting"), "fresh policies sit in their waiting period");
+as(deployerAcct);
+assert.equal((await listWalletPolicies(lucid, act.coverScriptOf(d), emulator.now())).length, 0, "other wallets see none");
+as(buyerAcct);
+log("✓ listWalletPolicies: buyer sees its 2 policies (waiting period), the LP wallet sees none");
 
 // 4b. feed-c now reports 0.93. feed-a and feed-b are still a fresh healthy
 //     quorum, but sales need every feed, using its newest reading.

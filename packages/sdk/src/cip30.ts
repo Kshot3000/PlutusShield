@@ -275,6 +275,56 @@ export function decodeAddress(hexOrCbor: string): DecodedAddress {
   return out;
 }
 
+function fromWords(words: number[]): Uint8Array {
+  const out: number[] = [];
+  let acc = 0;
+  let bits = 0;
+  for (const w of words) {
+    acc = ((acc << 5) | w) & 0xffff;
+    bits += 5;
+    if (bits >= 8) {
+      bits -= 8;
+      out.push((acc >> bits) & 0xff);
+    }
+  }
+  if (bits >= 5 || ((acc << (8 - bits)) & 0xff) !== 0) throw new Error("bad bech32 padding");
+  return Uint8Array.from(out);
+}
+
+/** Decode a bech32 string (checksum verified) into its prefix and raw bytes. */
+export function bech32Decode(s: string): { hrp: string; data: Uint8Array } {
+  const str = s.toLowerCase();
+  if (str !== s && s.toUpperCase() !== s) throw new Error("mixed-case bech32");
+  const sep = str.lastIndexOf("1");
+  if (sep < 1 || sep + 7 > str.length) throw new Error("not bech32");
+  const hrp = str.slice(0, sep);
+  const words = [...str.slice(sep + 1)].map((c) => {
+    const v = CHARSET.indexOf(c);
+    if (v < 0) throw new Error("bad bech32 character");
+    return v;
+  });
+  if (polymod([...hrpExpand(hrp), ...words]) !== 1) throw new Error("bad bech32 checksum");
+  return { hrp, data: fromWords(words.slice(0, -6)) };
+}
+
+/**
+ * The Plutus view of a Shelley base or enterprise address (what a datum's
+ * `Address` field stores): payment credential plus optional inline stake
+ * credential. Pointer and Byron addresses are refused.
+ */
+export function plutusAddressOf(bech32OrHex: string): {
+  payment: { type: "Key" | "Script"; hash: string };
+  stake?: { type: "Key" | "Script"; hash: string };
+} {
+  const raw = /^[0-9a-f]+$/i.test(bech32OrHex) ? hexToBytes(bech32OrHex) : bech32Decode(bech32OrHex).data;
+  const type = raw[0] >> 4;
+  if (raw.length < 29 || type > 7 || type === 4 || type === 5) throw new Error("need a base or enterprise address");
+  const payment = { type: (type & 1 ? "Script" : "Key") as "Key" | "Script", hash: bytesToHex(raw.slice(1, 29)) };
+  if (type >= 6) return { payment };
+  if (raw.length !== 57) throw new Error("base address must be 57 bytes");
+  return { payment, stake: { type: type & 2 ? "Script" : "Key", hash: bytesToHex(raw.slice(29, 57)) } };
+}
+
 /** "addr_test1qz…k9xy" for compact display. */
 export function shortAddress(bech32: string, head = 10, tail = 6): string {
   return bech32.length <= head + tail + 1 ? bech32 : `${bech32.slice(0, head)}…${bech32.slice(-tail)}`;

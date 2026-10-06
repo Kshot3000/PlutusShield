@@ -474,3 +474,29 @@ export function buildPolicyDatum(args: {
     refundTo: args.refundTo,
   };
 }
+
+/** JSON form of `CoverParams`: bigints as decimal strings (or numbers). */
+type Jsonish<T> = T extends bigint ? string | number | bigint : T extends object ? { [K in keyof T]: Jsonish<T[K]> } : T;
+export type CoverParamsJson = Jsonish<CoverParams>;
+
+/** Revive `CoverParams` after a JSON round-trip (deployment files, the web artifact). */
+export function coverParamsFromJson(p: CoverParamsJson): CoverParams {
+  const b = (x: string | number | bigint) => BigInt(x);
+  return {
+    seed: { txHash: p.seed.txHash, outputIndex: Number(p.seed.outputIndex) },
+    assets: p.assets.map((a) => ({ asset: { policyId: a.asset.policyId, assetName: a.asset.assetName }, minPremium: b(a.minPremium) })),
+    product: {
+      productId: p.product.productId,
+      trigger: { coveredAsset: p.product.trigger.coveredAsset, thresholdBps: b(p.product.trigger.thresholdBps), windowMs: b(p.product.trigger.windowMs) },
+      baseRateBps: b(p.product.baseRateBps),
+      riskMultBps: b(p.product.riskMultBps),
+      minDays: b(p.product.minDays),
+      maxDays: b(p.product.maxDays),
+      maxSinglePolicyBps: b(p.product.maxSinglePolicyBps),
+      maxUtilizationBps: b(p.product.maxUtilizationBps),
+    },
+    oracle: { policyId: p.oracle.policyId, feeds: [...p.oracle.feeds], quorum: b(p.oracle.quorum) },
+    claimGraceMs: b(p.claimGraceMs),
+    saleGuard: { waitingPeriodMs: b(p.saleGuard.waitingPeriodMs), maxPriceAgeMs: b(p.saleGuard.maxPriceAgeMs) },
+  };
+}

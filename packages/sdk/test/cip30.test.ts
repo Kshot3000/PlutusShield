@@ -94,3 +94,29 @@ test("display helpers", () => {
   assert.equal(formatUnits(2_000_000n, 6), "2");
   assert.equal(networkLabel(0), "Testnet");
 });
+
+test("plutusAddressOf decodes bech32 enterprise and base addresses to Plutus credentials", async () => {
+  const { plutusAddressOf, bech32Decode, bech32Encode, hexToBytes } = await import("../src/cip30.ts");
+  // Preview deployer (enterprise, key payment credential).
+  assert.deepEqual(plutusAddressOf("addr_test1vr0zk5tv56j2xaaefl4qrzzgxtdvcr6hhssa94fwh72fd5ccklyuz"), {
+    payment: { type: "Key", hash: "de2b516ca6a4a377b94fea01884832dacc0f57bc21d2d52ebf9496d3" },
+  });
+  // Script enterprise (the Preview pool address).
+  assert.deepEqual(plutusAddressOf("addr_test1wp89ggl7ls5gwxh02w7ja6zhytqe4a6zu6m6n82s0cxw9tq4j5tgr").payment, {
+    type: "Script",
+    hash: "4e5423fefc28871aef53bd2ee85722c19af742e6b7a99d507e0ce2ac",
+  });
+  // Base address (key payment, key stake) round-trip, plus the hex form CIP-30 hands out.
+  const pay = "11".repeat(28);
+  const stake = "22".repeat(28);
+  const raw = hexToBytes("00" + pay + stake);
+  const b = bech32Encode("addr_test", raw);
+  assert.deepEqual(bech32Decode(b).data, raw);
+  const want = { payment: { type: "Key", hash: pay }, stake: { type: "Key", hash: stake } };
+  assert.deepEqual(plutusAddressOf(b), want);
+  assert.deepEqual(plutusAddressOf("00" + pay + stake), want);
+  // Base address with a script stake credential (header type 2).
+  assert.deepEqual(plutusAddressOf("20" + pay + stake).stake, { type: "Script", hash: stake });
+  assert.throws(() => plutusAddressOf(b.slice(0, -1) + (b.endsWith("q") ? "p" : "q")), /checksum/);
+  assert.throws(() => plutusAddressOf("40" + pay + "00"), /base or enterprise/);
+});

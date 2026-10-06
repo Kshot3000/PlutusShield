@@ -100,3 +100,43 @@ test("readPoolState ignores stray UTxOs and bad policy datums", () => {
   assert.equal(s.ignored, 1);
   assert.equal(s.policies.length, 2);
 });
+
+test("decodeOracleDatum reads feed datums and skips anything else", async () => {
+  const { decodeOracleDatum } = await import("../src/chain.ts");
+  const { oracleDatumData } = await import("../src/cardano.ts");
+  const d = { coveredAsset: textHex("USDM"), priceBps: 10_000n, windowStart: 1_000n, windowEnd: 86_401_000n };
+  assert.deepEqual(decodeOracleDatum(toCborHex(oracleDatumData(d))), d);
+  assert.equal(decodeOracleDatum(undefined), undefined);
+  assert.equal(decodeOracleDatum(toCborHex({ constructor: 0, fields: [{ int: 1n }] })), undefined);
+  assert.equal(decodeOracleDatum("zz"), undefined);
+});
+
+test("chainUtxoFromBlockfrost maps Blockfrost UTxOs onto the Koios shape readPoolState takes", async () => {
+  const { chainUtxoFromBlockfrost, fetchBlockfrostUtxos } = await import("../src/chain.ts");
+  // Rebuild each fixture UTxO the way Blockfrost would return it, then map back.
+  const bf = fixture.map((u) => ({
+    tx_hash: u.tx_hash,
+    output_index: u.tx_index,
+    amount: [{ unit: "lovelace", quantity: u.value }, ...(u.asset_list ?? []).map((a) => ({ unit: a.policy_id + (a.asset_name ?? ""), quantity: a.quantity }))],
+    inline_datum: u.inline_datum?.bytes ?? null,
+  }));
+  const mapped = bf.map(chainUtxoFromBlockfrost);
+  const a = readPoolState(fixture, SCRIPT, [ADA, USDC], 9_000n);
+  const b = readPoolState(mapped, SCRIPT, [ADA, USDC], 9_000n);
+  assert.deepEqual(b.tranches, a.tranches);
+  assert.deepEqual(b.policies.map((p) => p.policy), a.policies.map((p) => p.policy));
+
+  // Paging + 404-as-empty, with a fake fetch.
+  const calls: string[] = [];
+  const page = (n: number) => Array.from({ length: n }, () => bf[0]);
+  const fake = (async (url: string, init?: RequestInit) => {
+    calls.push(url);
+    assert.equal((init?.headers as Record<string, string>).project_id, "previewXYZ");
+    const p = Number(new URL(url).searchParams.get("page"));
+    return new Response(JSON.stringify(p === 1 ? page(100) : page(3)), { status: 200 });
+  }) as typeof fetch;
+  assert.equal((await fetchBlockfrostUtxos("https://bf.example/api/v0/", "previewXYZ", "addr_test1x", fake)).length, 103);
+  assert.equal(calls.length, 2);
+  const none = (async () => new Response("{}", { status: 404 })) as unknown as typeof fetch;
+  assert.deepEqual(await fetchBlockfrostUtxos("https://bf.example/api/v0", "p", "addr_test1x", none), []);
+});
