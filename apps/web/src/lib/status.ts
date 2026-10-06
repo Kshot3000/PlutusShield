@@ -40,6 +40,11 @@ export const MILESTONES: Milestone[] = [
     state: "done",
   },
   {
+    label: "Exploit claims, end to end",
+    detail: "A smart-contract exploit claim runs across both chains: sealed evidence filed and approved on Midnight Preprod, then paid from the Cardano Preview exploit-cover pool by an assessor-signed Settle that names the Midnight resolveClaim tx. First claim paid in full (50 tADA).",
+    state: "done",
+  },
+  {
     label: "Production oracle feeds",
     detail: "Live USDM venues (CoinGecko, Minswap, Kraken) feed a fail-closed publisher that refreshes the Preview peg every 20 minutes. Next: independent oracle operators (for example Charli3 or Orcfax).",
     state: "next",
