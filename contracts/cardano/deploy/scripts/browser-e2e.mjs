@@ -1,5 +1,6 @@
 // pnpm browser-e2e <deposit|withdraw> <amount> <tranche 0|1>
 // pnpm browser-e2e buy <coverage> <tranche 0|1> [days=14]
+// pnpm browser-e2e policies                         My policies: per-policy claim / release action column
 //   needs: a static build served at $SITE (default http://127.0.0.1:8765/PlutusShield),
 //   playwright-core ($PLAYWRIGHT_CORE, default "playwright-core") and a Chromium ($CHROME_PATH).
 //
@@ -77,6 +78,20 @@ await page.route("https://preview.koios.rest/**", async (route) => {
   const r = await fetch(req.url(), { method: req.method(), headers: { "content-type": h["content-type"] ?? "application/json", accept: h.accept ?? "application/json" }, body: req.postData() ?? undefined });
   return route.fulfill({ status: r.status, headers: { "content-type": r.headers.get("content-type") ?? "application/json", "access-control-allow-origin": "*" }, body: Buffer.from(await r.arrayBuffer()) });
 });
+
+if (mode === "policies") {
+  // /cover "My policies": every row gets an Action cell from the shared claim builder's checks.
+  await page.goto(`${SITE}/cover/`, { waitUntil: "networkidle" });
+  await page.waitForSelector("#my-policies tbody tr", { timeout: 45000 });
+  await page.waitForFunction(() => [...document.querySelectorAll("#my-policies tbody tr td:last-child")].every((td) => td.textContent.trim().length > 0), null, { timeout: 30000 });
+  const actions = await page.locator("#my-policies tbody tr td:last-child").allInnerTexts();
+  await page.locator("#my-policies").scrollIntoViewIfNeeded();
+  await page.locator("#my-policies").screenshot({ path: "/tmp/plutusshield-my-policies.png" });
+  console.log(JSON.stringify({ rows: actions.length, actions }));
+  console.log(logs.filter((l) => /error|warn/i.test(l)).slice(0, 15).join("\n"));
+  await browser.close();
+  process.exit(actions.length ? 0 : 1);
+}
 
 if (mode === "buy") {
   // /cover: currency, coverage, term, oracle check, sign, then My policies.

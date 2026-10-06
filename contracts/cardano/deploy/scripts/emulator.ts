@@ -154,7 +154,14 @@ await assert.rejects(
 log("✓ Buy during the depeg refused (feeds no longer report a fresh healthy peg)");
 
 // 6. settle the USDC policy: payout in tUSDCx, ada tranche untouched
+as(deployerAcct);
+await assert.rejects(act.settle(lucid, d, bUsd.policy.policyId, feeds, emulator.now()), /claim token/);
+log("✓ Settle refused for a wallet without the policy's claim token");
 as(buyerAcct);
+await assert.rejects(act.settle(lucid, d, bUsd.policy.policyId, feeds.slice(0, 1), emulator.now()), /1 of 2 required oracle feeds/);
+log("✓ Settle refused with only 1 of 2 required depeg attestations");
+await assert.rejects(act.expire(lucid, d, bAda.policy.policyId, emulator.now()), /can be released after/);
+log("✓ Expire refused before expiry + claim grace");
 const before = await act.readPool(lucid, d);
 const usdHeld = held(usdcUnit, await lucid.wallet().getUtxos());
 const s = await act.settle(lucid, d, bUsd.policy.policyId, feeds, emulator.now());

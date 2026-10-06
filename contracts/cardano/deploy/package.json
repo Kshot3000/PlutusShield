@@ -14,7 +14,8 @@
     "web-artifacts": "node --experimental-strip-types --no-warnings scripts/web-artifacts.ts",
     "web-lp": "node --experimental-strip-types --no-warnings scripts/web-lp.ts",
     "web-buy": "node --experimental-strip-types --no-warnings scripts/web-buy.ts",
-    "browser-e2e": "node scripts/browser-e2e.mjs"
+    "browser-e2e": "node scripts/browser-e2e.mjs",
+    "web-claim": "node --experimental-strip-types --no-warnings scripts/web-claim.ts"
   },
   "dependencies": {
     "@lucid-evolution/lucid": "0.6.7"

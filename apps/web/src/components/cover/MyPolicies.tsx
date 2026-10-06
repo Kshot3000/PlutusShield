@@ -14,6 +14,7 @@ import { useWallet } from "@/lib/wallet";
 import { PREVIEW, PREVIEW_ASSETS, explorerTx } from "@/lib/preview";
 import { walletPolicies, type PolicyStatus, type WalletPolicy } from "@/lib/tx/cover";
 import { COVER, type CoverChain } from "@/lib/useCoverChain";
+import { PolicyAction } from "./PolicyAction";
 
 const statusCopy: Record<PolicyStatus, { label: string; variant: "gold" | "accent" | "midnight" | "default" }> = {
   waiting: { label: "Waiting period", variant: "gold" },
@@ -89,7 +90,7 @@ export function MyPolicies({ chain }: { chain: CoverChain }) {
         </p>
       ) : (
         <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left text-sm">
+          <table className="w-full min-w-[820px] text-left text-sm">
             <caption className="sr-only">Your PlutusShield policies on Cardano Preview</caption>
             <thead className="text-xs text-text-dim">
               <tr className="border-b border-border">
@@ -97,7 +98,8 @@ export function MyPolicies({ chain }: { chain: CoverChain }) {
                 <th scope="col" className="py-2 pr-4 font-normal">Premium paid</th>
                 <th scope="col" className="py-2 pr-4 font-normal">Cover period</th>
                 <th scope="col" className="py-2 pr-4 font-normal">Status</th>
-                <th scope="col" className="py-2 font-normal">Bought in</th>
+                <th scope="col" className="py-2 pr-4 font-normal">Bought in</th>
+                <th scope="col" className="py-2 font-normal">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -133,7 +135,7 @@ export function MyPolicies({ chain }: { chain: CoverChain }) {
                       <span className="mt-1 block text-[11px] text-text-dim">{sub}</span>
                       {!p.holder && <span className="mt-0.5 block text-[11px] text-[var(--gold)]">Claim token isn&apos;t in this wallet</span>}
                     </td>
-                    <td className="py-3">
+                    <td className="py-3 pr-4">
                       <a
                         href={explorerTx(hash)}
                         target="_blank"
@@ -144,14 +146,20 @@ export function MyPolicies({ chain }: { chain: CoverChain }) {
                         {hash.slice(0, 8)}…{hash.slice(-6)} ↗
                       </a>
                     </td>
+                    <td className="py-3">
+                      <PolicyAction p={p} chain={chain} now={now} />
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
           <p className="mt-3 text-[11px] leading-relaxed text-text-dim">
-            Settled policies burn their tokens and leave this list. Claims settle on Cardano when a quorum of oracle feeds
-            attests the depeg; the Midnight private registry for holders is built and tested but not yet connected to this flow.
+            Claims settle on Cardano: when {Number(COVER.params.oracle.quorum)} of {COVER.params.oracle.feeds.length} oracle feeds attest a depeg inside a policy&apos;s
+            cover period, its holder files the claim here and the coverage is paid from the tranche in the same transaction. Unclaimed
+            policies can be released by anyone once the claim grace ends; the deposit always returns to the buyer. Settled and released
+            policies burn their tokens and leave this list. The Midnight private registry for holders is built and tested but not yet
+            connected to this flow.
           </p>
         </div>
       )}

@@ -32,6 +32,7 @@ import { bech32Address, capitalsOf, decodeCoverDatum, unitOf, type Deployment } 
 import { PREVIEW_MOCK_USDC_ASSET_NAME } from "../../../../packages/sdk/src/assets.ts";
 import { decodeOracleDatum } from "../../../../packages/sdk/src/chain.ts";
 import { buildBuy, saleFeeds as webSaleFeeds, slotAligned, type CoverScript } from "../../../../apps/web/src/lib/tx/cover.ts";
+import { buildExpire, buildSettle } from "../../../../apps/web/src/lib/tx/claim.ts";
 
 const inline = (cbor: string) => ({ kind: "inline" as const, value: cbor });
 const poolDatumCbor = (pool: PoolDatum) => toCborHex(coverDatumData({ kind: "Pool", pool }));
@@ -238,47 +239,20 @@ export function refreshFeeds(
   return tx.addSignerKey(oracle.keyHash).complete();
 }
 
+/**
+ * Settle and Expire delegate to the website's builders
+ * (apps/web/src/lib/tx/claim.ts), so the emulator run, `pnpm preview
+ * settle|expire`, `pnpm web-claim` and the /cover "My policies" panel all
+ * submit the same transactions.
+ */
 export async function settle(lucid: LucidEvolution, d: Deployment, policyId: string, feedUtxos: UTxO[], now: number) {
-  const pool = await readPool(lucid, d);
-  const { utxo: policyUtxo, policy } = await readPolicy(lucid, d, policyId);
-  const t = trancheOf(d.params.assets, policy.asset);
-  const tr = pool.datum.tranches[t];
-  const holder = (await lucid.wallet().getUtxos()).filter((u) => (u.assets[d.policyId + userTokenName(policyId)] ?? 0n) === 1n);
-  if (!holder.length) throw new Error("this wallet does not hold the policy's user token");
-  const tx = await lucid
-    .newTx()
-    .collectFrom([pool.utxo], redeemer({ kind: "Settle" }))
-    .collectFrom([policyUtxo], redeemer({ kind: "Settle" }))
-    .collectFrom(holder)
-    .readFrom(feedUtxos)
-    .mintAssets({ [d.policyId + refTokenName(policyId)]: -1n, [d.policyId + userTokenName(policyId)]: -1n }, VIA_POOL)
-    .attach.SpendingValidator(d.script)
-    .pay.ToContract(d.address, inline(poolDatumCbor(setTranche(pool.datum, t, tr.totalShares, tr.activeCover - policy.coverage))), nextValue(d, pool, t, pool.capitals[t] - policy.coverage))
-    .validFrom(now - 60_000)
-    .validTo(slotAligned(lucid, now + 10 * 60_000))
-    .complete();
-  return { tx, payout: policy.coverage, asset: policy.asset };
+  const r = await buildSettle(lucid, coverScriptOf(d), { policyId, feeds: feedUtxos, now });
+  return { tx: r.tx, payout: r.payout, asset: r.asset };
 }
 
 export async function expire(lucid: LucidEvolution, d: Deployment, policyId: string, now: number) {
-  const pool = await readPool(lucid, d);
-  const { utxo: policyUtxo, policy } = await readPolicy(lucid, d, policyId);
-  const t = trancheOf(d.params.assets, policy.asset);
-  const tr = pool.datum.tranches[t];
-  const tx = await lucid
-    .newTx()
-    .collectFrom([pool.utxo], redeemer({ kind: "Expire" }))
-    .collectFrom([policyUtxo], redeemer({ kind: "Expire" }))
-    .mintAssets({ [d.policyId + refTokenName(policyId)]: -1n }, VIA_POOL)
-    .attach.SpendingValidator(d.script)
-    .pay.ToContract(d.address, inline(poolDatumCbor(setTranche(pool.datum, t, tr.totalShares, tr.activeCover - policy.coverage))), pool.utxo.assets)
-    // The reference UTxO's min-ada goes back to the buyer's refund address,
-    // whoever submits this.
-    .pay.ToAddress(bech32Address(d.network, policy.refundTo), { lovelace: policyUtxo.assets.lovelace })
-    .validFrom(now)
-    .validTo(now + 10 * 60_000)
-    .complete();
-  return { tx, refundTo: bech32Address(d.network, policy.refundTo), refund: policyUtxo.assets.lovelace };
+  const r = await buildExpire(lucid, coverScriptOf(d), { policyId, now });
+  return { tx: r.tx, refundTo: r.refundTo, refund: r.refund };
 }
 
 export { Data };

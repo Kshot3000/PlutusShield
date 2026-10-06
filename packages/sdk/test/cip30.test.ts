@@ -120,3 +120,15 @@ test("plutusAddressOf decodes bech32 enterprise and base addresses to Plutus cre
   assert.throws(() => plutusAddressOf(b.slice(0, -1) + (b.endsWith("q") ? "p" : "q")), /checksum/);
   assert.throws(() => plutusAddressOf("40" + pay + "00"), /base or enterprise/);
 });
+
+test("bech32Of round-trips plutusAddressOf for enterprise, script and base addresses", async () => {
+  const { plutusAddressOf, bech32Of } = await import("../src/cip30.ts");
+  for (const a of [
+    "addr_test1vr0zk5tv56j2xaaefl4qrzzgxtdvcr6hhssa94fwh72fd5ccklyuz",
+    "addr_test1wp89ggl7ls5gwxh02w7ja6zhytqe4a6zu6m6n82s0cxw9tq4j5tgr",
+    "addr1q8hnl6vl5a6k3rw3n5g3jtte696zcl76kfatzv7gpswa9r0dj7fma6klq55y4ffm7tf0em09udnyhuk4ah92pl5x9jpqjae44v",
+  ]) {
+    assert.equal(bech32Of(plutusAddressOf(a), a.startsWith("addr_test") ? 0 : 1), a);
+  }
+  assert.throws(() => bech32Of({ payment: { type: "Key", hash: "ab" } }, 0), /28 bytes/);
+});

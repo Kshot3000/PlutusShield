@@ -325,6 +325,25 @@ export function plutusAddressOf(bech32OrHex: string): {
   return { payment, stake: { type: type & 2 ? "Script" : "Key", hash: bytesToHex(raw.slice(29, 57)) } };
 }
 
+/**
+ * Inverse of `plutusAddressOf`: the bech32 base/enterprise address for a
+ * datum `Address` (e.g. a policy's Expire refund address). `networkId` 0 =
+ * testnets (addr_test), 1 = mainnet (addr).
+ */
+export function bech32Of(
+  a: { payment: { type: "Key" | "Script"; hash: string }; stake?: { type: "Key" | "Script"; hash: string } },
+  networkId: number,
+): string {
+  const pay = a.payment.type === "Script" ? 1 : 0;
+  const type = a.stake ? pay | (a.stake.type === "Script" ? 2 : 0) : 6 | pay;
+  const body = hexToBytes(a.payment.hash + (a.stake?.hash ?? ""));
+  if (body.length !== (a.stake ? 56 : 28)) throw new Error("credential hashes must be 28 bytes");
+  const raw = new Uint8Array(1 + body.length);
+  raw[0] = (type << 4) | (networkId & 0x0f);
+  raw.set(body, 1);
+  return bech32Encode(networkId === 1 ? "addr" : "addr_test", raw);
+}
+
 /** "addr_test1qz…k9xy" for compact display. */
 export function shortAddress(bech32: string, head = 10, tail = 6): string {
   return bech32.length <= head + tail + 1 ? bech32 : `${bech32.slice(0, head)}…${bech32.slice(-tail)}`;

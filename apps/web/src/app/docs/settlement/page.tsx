@@ -44,6 +44,14 @@ depeg:  threshold_bps = 9_500        -- price below 0.95 of peg
           rules (<C>settlementCheck</C>) against example prices, so you can see which window pays, when the claim
           window closes, and what happens when feeds go offline.
         </P>
+        <P>
+          On Preview, live policies carry their action in <DocLink href="/cover#my-policies">My policies</DocLink>. Once
+          the quorum attests a depeg inside a policy&apos;s cover period, the wallet holding its claim token gets a{" "}
+          <Strong>Claim</Strong> button that signs the <C>Settle</C> directly; the coverage lands in that wallet in the
+          same transaction. After expiry plus the grace period, any wallet can <Strong>Release</Strong> an unclaimed
+          policy (<C>Expire</C>), and its deposit goes back to the buyer. Both use one shared builder (
+          <C>lib/tx/claim.ts</C>) that the emulator test run and <C>pnpm web-claim</C> also submit.
+        </P>
       </Section>
 
       <Section id="oracle-auth" title="Authenticating feeds">
