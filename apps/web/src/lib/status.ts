@@ -26,7 +26,7 @@ export const MILESTONES: Milestone[] = [
   },
   {
     label: "Midnight policy registry",
-    detail: "Compact contract with private holder proofs, claims, and key rotation. 18 simulation tests pass.",
+    detail: "Compact contract with private holder proofs, claims, and key rotation. 21 simulation tests pass.",
     state: "done",
   },
   {

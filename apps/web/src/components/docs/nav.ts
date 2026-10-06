@@ -97,4 +97,5 @@ export const SOURCE_CODE = [
   { label: "lib/plutusshield/types.ak", href: src("contracts/cardano/lib/plutusshield/types.ak"), note: "Params, datums, redeemers" },
   { label: "src/policy-cover.compact", href: src("contracts/midnight/src/policy-cover.compact"), note: "Midnight private registry" },
   { label: "packages/sdk/src", href: `${REPO}/tree/main/packages/sdk/src`, note: "Quote engine, pool ledger, codecs" },
+  { label: "packages/sdk/src/evidence.ts", href: src("packages/sdk/src/evidence.ts"), note: "Private evidence vault" },
 ];

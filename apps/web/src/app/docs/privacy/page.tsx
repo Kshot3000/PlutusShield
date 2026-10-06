@@ -21,10 +21,11 @@ export default function PrivacyPage() {
         { id: "prove-cover", label: "proveCover: the partner hook" },
         { id: "rotation", label: "Holder rotation" },
         { id: "evidence", label: "Evidence commitments" },
+        { id: "evidence-vault", label: "The evidence vault" },
         { id: "public", label: "What stays public" },
         { id: "limits", label: "Current limits" },
       ]}
-      sourcePaths={["contracts/midnight/src/policy-cover.compact", "contracts/midnight/test/policy-cover.test.mjs", "contracts/midnight/README.md"]}
+      sourcePaths={["contracts/midnight/src/policy-cover.compact", "contracts/midnight/test/policy-cover.test.mjs", "contracts/midnight/README.md", "packages/sdk/src/evidence.ts"]}
     >
       <Section id="record" title="The private record">
         <P>
@@ -106,7 +107,7 @@ amount ≥ minCoverage
         <P>
           To transfer cover, the current holder also gives the new holder the coverage opening{" "}
           <C>(amount, salt)</C> off-ledger. The new holder can check it against the public <C>coverage</C>{" "}
-          commitment before accepting. Eight simulation tests cover rotation, part of the registry&apos;s 18.
+          commitment before accepting. Eight simulation tests cover rotation, part of the registry&apos;s 21.
         </P>
       </Section>
 
@@ -117,6 +118,98 @@ amount ≥ minCoverage
           approved claim keeps it on the <C>PAID</C> record. See{" "}
           <DocLink href="/docs/settlement#assessed">Assessed claims</DocLink>.
         </P>
+        <P>
+          The contract publishes the commitment scheme as a pure circuit, so claimants, assessors, and the SDK all
+          compute the same 32 bytes:
+        </P>
+        <Formula label="policy-cover.compact · packages/sdk/src/evidence.ts">{`evidenceTag() = pad(32, "plutusshield:evidence:v1")
+
+evidenceCommitment(digest, salt) =
+  persistentHash<Vector<3, Bytes<32>>>([ evidenceTag(), digest, salt ])
+  = SHA-256(tag ‖ digest ‖ salt)
+
+digest = SHA-256(canonical JSON of the bundle)
+salt   = 32 random bytes, kept in the claimant's key file`}</Formula>
+        <P>
+          <C>fileClaim</C> can&apos;t check the opening: the bundle never enters a circuit. The assessor checks it
+          off-ledger, before calling <C>resolveClaim</C>.
+        </P>
+      </Section>
+
+      <Section id="evidence-vault" title="The evidence vault">
+        <P>
+          The <DocLink href="/claim/evidence">evidence vault</DocLink> is the client side of an exploit claim. It
+          runs entirely in the browser on WebCrypto; the same code (<C>sealEvidence</C>, <C>verifyEvidence</C>)
+          runs in Node for tooling.
+        </P>
+        <Steps
+          items={[
+            {
+              title: "Canonical bundle",
+              body: (
+                <>
+                  Policy id, protocol and affected contracts, incident type and description, start and detection
+                  times (UTC), exploit transaction ids, the loss amount and asset, and the name, size, and SHA-256 of
+                  each supporting file. Serialized as JSON with sorted keys and no whitespace (RFC 8785 ordering), so
+                  the same evidence always gives the same bytes.
+                </>
+              ),
+            },
+            {
+              title: "Commit",
+              body: <>Digest the bytes and commit with a fresh random salt, as above. The salt makes the commitment hiding: nobody can confirm a guessed bundle from the ledger, and re-filing the same evidence produces an unlinkable commitment.</>,
+            },
+            {
+              title: "Encrypt",
+              body: <>AES-256-GCM under a fresh random 256-bit key and 96-bit nonce. The file header (schema, policy id, commitment) is bound as additional data, so editing it breaks decryption. The claimant downloads two files: the encrypted bundle, which is safe to store anywhere, and the key file (AES key + salt).</>,
+            },
+            {
+              title: "File and disclose",
+              body: <>The holder submits <C>fileClaim(policyId, commitment)</C> and sends both files to the assessor privately.</>,
+              chain: "Midnight",
+            },
+            {
+              title: "Assess",
+              body: <>The assessor decrypts, checks the plaintext is the canonical encoding of a valid bundle, recomputes the commitment, compares it with <C>PolicyRecord.evidence</C>, and matches supporting files by hash. Then they judge the claim and call <C>resolveClaim</C>.</>,
+              chain: "Midnight",
+            },
+          ]}
+        />
+        <Table
+          caption="Trust model"
+          head={["Party", "Learns", "Can't do"]}
+          rows={[
+            ["Midnight ledger / public", "That a claim was filed on a policy id, and a 32-byte commitment", "Read or confirm the evidence"],
+            ["Anyone holding only the encrypted bundle", "Policy id and commitment (in the header)", "Decrypt it, or alter it without detection"],
+            ["Assessor (given the key file)", "The full bundle, and whether it is exactly what was filed", "Claim the holder filed different evidence"],
+            ["Claimant after filing", "Everything", "Swap in different evidence: any change fails the commitment check"],
+          ]}
+        />
+        <P>
+          Tests: 13 SDK tests (round trip, tamper detection on ciphertext, nonce, header, and salt, wrong and
+          mismatched keys, non-canonical plaintext, commitment determinism, attachment matching), plus 3 Midnight
+          simulation tests that check the SDK against the compiled <C>evidenceCommitment</C> circuit on random inputs
+          and run file → verify → resolve with SDK-sealed bundles.
+        </P>
+        <Callout tone="warn" title="Limits of the vault today">
+          <p>
+            <Strong>Filing isn&apos;t live.</Strong> The registry is not deployed to any Midnight network, so the
+            page shows the <C>fileClaim</C> call but can&apos;t submit it.
+          </p>
+          <p>
+            <Strong>Disclosure is all or nothing.</Strong> The key file opens the whole bundle. There is no
+            field-level selective disclosure or in-circuit proof about the evidence yet.
+          </p>
+          <p>
+            <Strong>The key file is the only copy.</Strong> Nothing is stored server-side. Lose it and the bundle
+            can&apos;t be opened; leak it and its holder can read everything.
+          </p>
+          <p>
+            <Strong>Integrity, not truth.</Strong> Verification proves the assessor has the evidence that was filed.
+            Whether the exploit happened and the loss is real is still the assessor&apos;s judgment, against the chain
+            data the transaction ids point to.
+          </p>
+        </Callout>
       </Section>
 
       <Section id="public" title="What stays public">

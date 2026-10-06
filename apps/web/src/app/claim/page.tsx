@@ -21,6 +21,7 @@ const notes = [
   {
     title: "Private on Midnight",
     body: "Exploit cover goes through the Midnight registry instead. fileClaim posts only a commitment to the evidence, keyed by the same policy id, and resolveClaim records the outcome.",
+    link: { href: "/claim/evidence", label: "Seal exploit evidence" },
   },
 ];
 
@@ -37,6 +38,14 @@ export default function ClaimPage() {
           <div key={n.title} className="glass-panel relative rounded-[1.4rem] p-6">
             <p className="text-sm font-semibold text-text">{n.title}</p>
             <p className="mt-2 text-sm leading-relaxed text-text-muted">{n.body}</p>
+            {"link" in n && n.link ? (
+              <Link
+                href={n.link.href}
+                className="mt-3 inline-flex text-sm font-medium text-midnight underline-offset-4 hover:underline"
+              >
+                {n.link.label} <span aria-hidden="true">&nbsp;→</span>
+              </Link>
+            ) : null}
           </div>
         ))}
       </div>

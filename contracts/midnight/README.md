@@ -6,7 +6,7 @@
 |---|---|---|
 | `holder` | `persistentHash("plutusshield:role:" ‖ "holder" ‖ sk)` | Ownership without a public key on-ledger |
 | `coverage` | `persistentCommit(amount, salt)` | Coverage size stays hidden |
-| `evidence` | Commitment to the claim evidence bundle | Exploit writeups and tx dumps stay off-ledger |
+| `evidence` | `evidenceCommitment(SHA-256(bundle), salt)` | Exploit writeups and tx dumps stay off-ledger |
 | `status` | `ACTIVE`, `CLAIM_PENDING`, `PAID`, `EXPIRED` | Public lifecycle |
 
 ## Circuits
@@ -23,6 +23,20 @@
 `proveCover` is the partner hook: a DEX or lending market can offer "insured-only" pools or better terms to users who prove cover, and learns nothing else.
 
 Roles are witness-derived commitments, never `ownPublicKey()`.
+
+Pure helpers (no proof, no keys): `roleCommitment`, `coverageCommitment`, `evidenceCommitment`, and the tags `issuerTag` / `holderTag` / `assessorTag` / `evidenceTag`.
+
+### Evidence commitments
+
+`fileClaim` stores whatever non-zero 32 bytes the holder passes, so the contract publishes the scheme claimants and assessors use:
+
+```
+evidenceCommitment(digest, salt) = persistentHash<Vector<3, Bytes<32>>>([pad(32, "plutusshield:evidence:v1"), digest, salt])
+                                 = SHA-256(tag ‖ digest ‖ salt)
+digest = SHA-256(canonical JSON of the evidence bundle), salt = 32 random bytes
+```
+
+`packages/sdk/src/evidence.ts` mirrors it in WebCrypto, builds the canonical bundle, encrypts it with AES-256-GCM, and verifies an opening for assessors. The web app's `/claim/evidence` page runs it in the browser. The circuit can't check the opening (the bundle never enters it); the assessor checks it off-ledger before `resolveClaim`. A fresh salt per filing keeps the commitment hiding and makes a re-filed bundle unlinkable to a rejected one.
 
 ### Holder rotation
 
@@ -43,7 +57,7 @@ pnpm compile        # compactc 0.31.1, generates prover/verifier keys for all 6 
 pnpm test           # --skip-zk compile, then node:test simulation via @midnight-ntwrk/compact-runtime 0.16.0
 ```
 
-18 tests cover:
+21 tests cover:
 
 - issuer-only registration and duplicate ids
 - threshold proofs and forged openings
@@ -56,6 +70,10 @@ pnpm test           # --skip-zk compile, then node:test simulation via @midnight
   - non-holders (including the issuer) can't rotate
   - empty, unchanged, or unknown-id rotations are rejected
   - no rotation while a claim is pending, after payout, or after expiry
+- evidence vault (imports `packages/sdk/src/evidence.ts`, so Node 22.6+ for type stripping):
+  - SDK `evidenceCommitment` equals the compiled pure circuit on random inputs, and raw `persistentHash`
+  - an SDK-sealed bundle filed with `fileClaim` verifies against the stored record, then is paid with its commitment kept
+  - a rejected claim clears the commitment; re-sealing the same evidence gives a new commitment, and the old bundle no longer matches the ledger
 
 ## Status
 

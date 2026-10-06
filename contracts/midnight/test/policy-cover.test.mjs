@@ -7,6 +7,8 @@ import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import * as RT from '@midnight-ntwrk/compact-runtime';
 import { Contract, ledger, pureCircuits, PolicyStatus } from '../src/managed/policy-cover/contract/index.js';
+// The SDK evidence vault (TypeScript, loaded via Node type stripping).
+import * as Evidence from '../../../packages/sdk/src/evidence.ts';
 
 const COIN = '0'.repeat(64);
 const ADDR = RT.sampleContractAddress();
@@ -222,3 +224,82 @@ test('cannot rotate after payout or expiry', () => {
   const expired = call(state, { sk: issuerSk, openings: {} }, 'expirePolicy', policyId);
   assert.throws(() => call(expired, holder, 'rotateHolder', policyId, newHolderCommit), /not transferable/);
 });
+
+/* ---------- evidence vault (packages/sdk/src/evidence.ts) ---------- */
+
+const hex = (b) => Buffer.from(b).toString('hex');
+const SEAL_NOW = new Date('2026-10-06T14:00:00Z');
+const exploitInput = (policyId, over = {}) => ({
+  policyId: hex(policyId),
+  protocol: { name: 'Example DEX', chain: 'cardano', contracts: ['addr_test1wexampleswapvalidator'] },
+  incident: {
+    kind: 'logic-bug',
+    description: 'Swap validator accepted a forged pool datum and the pool was drained.',
+    startedAt: '2026-10-05T03:12:00Z',
+    detectedAt: '2026-10-05T03:40:00Z',
+  },
+  txHashes: [hex(b32())],
+  loss: { amount: '1250.5', asset: 'ADA' },
+  createdAt: '2026-10-06T13:00:00Z',
+  ...over,
+});
+
+test('SDK evidenceCommitment equals the contract pure circuit on random inputs', async () => {
+  assert.equal(hex(pureCircuits.evidenceTag()), hex(Evidence.evidenceTag()));
+  for (let i = 0; i < 32; i++) {
+    const digest = b32();
+    const salt = b32();
+    assert.equal(hex(await Evidence.evidenceCommitment(digest, salt)), hex(pureCircuits.evidenceCommitment(digest, salt)));
+  }
+  // And the same formula as persistentHash over the raw runtime type.
+  const digest = b32();
+  const salt = b32();
+  const rt = RT.persistentHash(new RT.CompactTypeVector(3, new RT.CompactTypeBytes(32)), [pureCircuits.evidenceTag(), digest, salt]);
+  assert.equal(hex(rt), hex(await Evidence.evidenceCommitment(digest, salt)));
+});
+
+test('sealed evidence: fileClaim stores the SDK commitment; assessor verifies against the ledger, then pays', async () => {
+  const { state, policyId, holder } = setup();
+  const sealed = await Evidence.sealEvidence(exploitInput(policyId), { now: SEAL_NOW });
+  const { policyId: id, evidenceCommitment } = Evidence.fileClaimArgs(sealed);
+  assert.equal(hex(id), hex(policyId));
+  // The commitment the SDK produced is the contract's own formula on (digest, salt).
+  assert.equal(hex(pureCircuits.evidenceCommitment(Buffer.from(sealed.digest, 'hex'), Buffer.from(sealed.keyFile.salt, 'hex'))), sealed.commitment);
+
+  let s = call(state, holder, 'fileClaim', id, evidenceCommitment);
+  const filed = L(s).policies.lookup(policyId);
+  assert.equal(filed.status, PolicyStatus.CLAIM_PENDING);
+  assert.equal(hex(filed.evidence), sealed.commitment);
+
+  // Assessor receives the two files off-ledger and checks them against the record.
+  const v = await Evidence.verifyEvidence(Evidence.evidenceFileText(sealed.envelope), Evidence.evidenceFileText(sealed.keyFile), hex(filed.evidence));
+  assert.equal(v.ok, true);
+  assert.equal(v.bundle.loss.amount, '1250.5');
+
+  s = call(s, { sk: assessorSk, openings: {} }, 'resolveClaim', policyId, true);
+  const paid = L(s).policies.lookup(policyId);
+  assert.equal(paid.status, PolicyStatus.PAID);
+  assert.equal(hex(paid.evidence), sealed.commitment, 'approved claim keeps the evidence commitment');
+  assert.equal((await Evidence.verifyEvidence(sealed.envelope, sealed.keyFile, hex(paid.evidence))).ok, true);
+});
+
+test('rejected evidence is cleared; a re-filed bundle gets a new commitment and the old one no longer matches', async () => {
+  const { state, policyId, holder } = setup();
+  const evidence = exploitInput(policyId);
+  const first = await Evidence.sealEvidence(evidence, { now: SEAL_NOW });
+  let s = call(state, holder, 'fileClaim', policyId, Evidence.fileClaimArgs(first).evidenceCommitment);
+  s = call(s, { sk: assessorSk, openings: {} }, 'resolveClaim', policyId, false);
+  assert.equal(hex(L(s).policies.lookup(policyId).evidence), '00'.repeat(32));
+
+  // Same evidence re-sealed: fresh salt, so the ledger can't link the two filings.
+  const second = await Evidence.sealEvidence(evidence, { now: SEAL_NOW });
+  assert.equal(second.digest, first.digest);
+  assert.notEqual(second.commitment, first.commitment);
+  s = call(s, holder, 'fileClaim', policyId, Evidence.fileClaimArgs(second).evidenceCommitment);
+  const onLedger = hex(L(s).policies.lookup(policyId).evidence);
+  assert.equal((await Evidence.verifyEvidence(second.envelope, second.keyFile, onLedger)).ok, true);
+  const stale = await Evidence.verifyEvidence(first.envelope, first.keyFile, onLedger);
+  assert.equal(stale.ok, false);
+  assert.equal(stale.checks.find((c) => c.id === 'ledger').ok, false);
+});
+

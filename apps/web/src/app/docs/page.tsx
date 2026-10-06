@@ -13,7 +13,8 @@ export const metadata: Metadata = {
 
 const status = [
   { k: "Cardano validators", v: "Aiken, Plutus V3 · ADA + USDC tranches · sale circuit-breaker · 92 tests passing" },
-  { k: "Midnight registry", v: "Compact 0.31.1 · 6 circuits · 18 tests passing" },
+  { k: "Midnight registry", v: "Compact 0.31.1 · 6 circuits · 21 tests passing" },
+  { k: "Evidence vault", v: "In-browser AES-256-GCM + the registry's evidenceCommitment, checked against the compiled contract · filing not live" },
   { k: "Oracle relay", v: "Core built: venue median, TWAP, depeg-window search · 6 tests on synthetic data · publisher planned" },
   { k: "Deployment", v: "None yet. Preview tooling ready and emulator-tested, awaiting a funded deployer" },
   { k: "Audit", v: "Not audited" },
@@ -62,6 +63,11 @@ export default function DocsPage() {
             </div>
           ))}
         </dl>
+        <p className="text-[15px] leading-[1.75] text-text-muted">
+          Exploit claimants can already seal evidence in the{" "}
+          <DocLink href="/claim/evidence">evidence vault</DocLink>; the trust model is in{" "}
+          <DocLink href="/docs/privacy#evidence-vault">Privacy on Midnight</DocLink>.
+        </p>
         <Callout tone="warn" title="Preview software">
           <p>
             Nothing on this site moves funds. Read <DocLink href="/docs/risks">Risks &amp; disclosures</DocLink>{" "}

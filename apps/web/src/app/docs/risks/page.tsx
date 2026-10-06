@@ -42,7 +42,7 @@ export default function RisksPage() {
             ["Buying cover", "Closed. /cover is a quote preview"],
             ["Underwriting", "Closed. /pool is a simulator"],
             ["Real funds", "None. The protocol holds no money"],
-            ["Tests", "Cardano: 92 Aiken checks passing. Midnight: 18 simulation tests passing, full ZK compile OK"],
+            ["Tests", "Cardano: 92 Aiken checks passing. Midnight: 21 simulation tests passing, full ZK compile OK"],
           ]}
         />
         <P>

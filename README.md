@@ -81,7 +81,7 @@ PlutusShield/
 │   │   └── deploy/         # Preview runbook: keys, param application, tx builders, emulator
 │   └── midnight/           # Compact: private cover registry, holder proofs, claims
 ├── packages/
-│   └── sdk/                # Products, quote engine, Cardano datum/redeemer codecs
+│   └── sdk/                # Products, quote engine, Cardano datum/redeemer codecs, evidence vault
 │
 │   # Planned (not yet present):
 └── services/
@@ -132,7 +132,7 @@ One-time setup: repo **Settings → Pages → Build and deployment → Source: G
 
 ```bash
 pnpm test            # SDK + Aiken validators + Midnight contract simulation
-pnpm test:sdk        # quote engine + Cardano codecs (Node 22+)
+pnpm test:sdk        # quote engine, Cardano codecs, evidence vault (Node 22+)
 pnpm test:cardano    # aiken check (Aiken v1.1.24)
 pnpm test:deploy     # end-to-end Lucid Emulator run of the applied validator
 pnpm test:midnight   # Compact compile + simulation
@@ -175,7 +175,8 @@ See [contracts/cardano/README.md](contracts/cardano/README.md) for validators, d
 - [x] Expiry returns the policy deposit to the buyer, not the submitter
 - [x] Compact contract: private policy commitment + coverage proof (`contracts/midnight`)
 - [x] Quote engine with risk tiers and utilization-kinked pricing (`packages/sdk`)
-- [ ] Exploit claims flow with private evidence vault
+- [x] Private evidence vault for exploit claims: canonical bundle, in-browser AES-256-GCM, evidence commitment matching the Midnight contract, assessor verification (`/claim/evidence`, `packages/sdk/src/evidence.ts`)
+- [ ] Exploit claims flow end to end: `fileClaim` on a deployed Midnight registry, assessor resolution, approved payout from the Cardano pool
 - [x] Marketing site + app shell (`apps/web`)
 - [x] Web app: interactive quote on `/cover`
 - [x] Web app: claim checker on `/claim` (oracle quorum, TWAP trigger, claim window, sale circuit-breaker)

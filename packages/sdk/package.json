@@ -3,14 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Shared PlutusShield types, the cover quote engine, and Cardano datum/redeemer helpers",
+  "description": "Shared PlutusShield types, the cover quote engine, Cardano datum/redeemer helpers, and the private evidence vault",
   "exports": {
     ".": "./src/index.ts",
     "./cardano": "./src/cardano.ts",
     "./pool": "./src/pool.ts",
     "./assets": "./src/assets.ts",
     "./oracle": "./src/oracle.ts",
-    "./cip30": "./src/cip30.ts"
+    "./cip30": "./src/cip30.ts",
+    "./evidence": "./src/evidence.ts"
   },
   "scripts": {
     "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts"

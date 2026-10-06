@@ -206,6 +206,13 @@ policy.start         ≥ tx_upper_bound + waiting_period_ms`}</Formula>
           The assessor is a single role commitment fixed at deployment. Holder authorization works as described
           in <DocLink href="/docs/privacy">Privacy</DocLink>.
         </P>
+        <P>
+          Claimants build the commitment with the <DocLink href="/claim/evidence">evidence vault</DocLink>, which
+          encrypts the bundle in the browser and computes the contract&apos;s <C>evidenceCommitment</C>. The
+          assessor opens the bundle with the claimant&apos;s key file and checks it against the record before
+          calling <C>resolveClaim</C>. Details in{" "}
+          <DocLink href="/docs/privacy#evidence-vault">the vault&apos;s trust model</DocLink>.
+        </P>
         <Callout tone="planned">
           <p>
             Paying an approved Midnight claim from the Cardano pool isn&apos;t wired yet. The Cardano validator

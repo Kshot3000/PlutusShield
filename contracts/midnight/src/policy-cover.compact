@@ -18,6 +18,15 @@
  * Authorization follows the witness-commitment pattern (no ownPublicKey()):
  *   roleCommitment(sk, tag) = persistentHash("plutusshield:role:" || tag || sk)
  *
+ * Evidence commitments (what fileClaim stores) follow one published scheme so an
+ * assessor can check an off-ledger evidence bundle against the ledger:
+ *   evidenceCommitment(digest, salt) =
+ *     persistentHash("plutusshield:evidence:v1" || digest || salt)
+ * where digest = SHA-256 of the canonical bundle bytes and salt is 32 random
+ * bytes kept with the bundle key. packages/sdk/src/evidence.ts mirrors it.
+ * fileClaim cannot check the opening (the bundle never enters a circuit); the
+ * assessor checks it off-ledger before resolveClaim.
+ *
  * Status: compiles with compactc 0.31.1. Not deployed. Not audited.
  */
 
@@ -87,6 +96,19 @@ export pure circuit roleCommitment(sk: Bytes<32>, tag: Bytes<32>): Bytes<32> {
     pad(32, "plutusshield:role:"),
     tag,
     sk
+  ]);
+}
+
+export pure circuit evidenceTag(): Bytes<32> {
+  return pad(32, "plutusshield:evidence:v1");
+}
+
+/* Hiding commitment to an evidence bundle: digest = SHA-256(canonical bundle). */
+export pure circuit evidenceCommitment(bundleDigest: Bytes<32>, salt: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<3, Bytes<32>>>([
+    evidenceTag(),
+    bundleDigest,
+    salt
   ]);
 }
 
