@@ -7,6 +7,11 @@
  * oracle sale circuit-breaker in the browser, then builds the Buy with the
  * same lib/tx/cover.ts the `pnpm web-buy` CLI and the emulator run use, asks
  * the wallet to sign, submits, and waits for the block.
+ *
+ * The builder also makes this policy's Midnight key (holder secret + coverage
+ * opening) and puts only its registration commitment in the datum. The key is
+ * saved to localStorage before the wallet prompt and offered as a backup file
+ * when the Buy lands.
  */
 import { useMemo, useRef, useState } from "react";
 import { useNow } from "@/lib/useNow";
@@ -22,6 +27,9 @@ import { PREVIEW_ASSETS, explorerTx } from "@/lib/preview";
 import { CHAIN_API } from "@/lib/chainRead";
 import { BUY_WINDOW_MS, POLICY_REF_LOVELACE, maxCoverage, quoteBuy, saleCheck, type FeedState } from "@/lib/tx/cover";
 import { COVER, type CoverChain } from "@/lib/useCoverChain";
+import { savePolicyKey } from "@/lib/policyKeys";
+import type { PolicyKey } from "@plutusshield/sdk/midnight";
+import { PolicyKeyBackup } from "./MidnightKey";
 
 type Phase =
   | { kind: "idle" }
@@ -29,7 +37,7 @@ type Phase =
   | { kind: "signing" }
   | { kind: "submitting" }
   | { kind: "confirming"; hash: string }
-  | { kind: "done"; hash: string; summary: string }
+  | { kind: "done"; hash: string; summary: string; key: PolicyKey; stored: boolean }
   | { kind: "error"; message: string };
 
 const P = COVER.params;
@@ -96,27 +104,43 @@ export function BuyCover({ chain }: { chain: CoverChain }) {
     try {
       setPhase({ kind: "building" });
       const { lucidFor, COVER_SCRIPT, waitForTx } = await import("@/lib/tx/browser");
-      const { buildBuy, placeholderCommitment } = await import("@/lib/tx/cover");
+      const { buildBuy, withBuyTx } = await import("@/lib/tx/cover");
       const lucid = await lucidFor(api);
       const feeds = await lucid.utxosAt(COVER_SCRIPT.oracleAddress!);
+      // No `holder`: the builder makes fresh Midnight holder secrets on this device.
       const built = await buildBuy(lucid, COVER_SCRIPT, {
         tranche: t,
         coverage: units,
         days: BigInt(days),
-        // Placeholder until the Midnight registry step is wired into buying.
-        midnightCommitment: placeholderCommitment(),
+        network: "preview",
         now: Date.now(),
         feeds,
         maxPremium: q.premium,
       });
+      let key: PolicyKey = { ...built.policyKey, asset: a.ticker };
+      // Keep the key before the wallet prompt, so nothing between signing and the block can lose it.
+      let stored = true;
+      try {
+        savePolicyKey(key);
+      } catch {
+        stored = false;
+      }
       setPhase({ kind: "signing" });
       const signed = await built.tx.sign.withWallet().complete();
       setPhase({ kind: "submitting" });
       const hash = await signed.submit();
+      key = withBuyTx(key, hash);
+      try {
+        savePolicyKey(key);
+      } catch {
+        stored = false;
+      }
       setPhase({ kind: "confirming", hash });
       await waitForTx(hash, ac.current.signal);
       setPhase({
         kind: "done",
+        key,
+        stored,
         hash,
         summary: `Covered ${fmt(units)} ${a.ticker} for ${days} days. Premium paid: ${fmt(built.premium, 6)} ${a.ticker}. Cover starts ${new Date(Number(built.policy.start)).toLocaleString("en-US", { hour: "numeric", minute: "2-digit", month: "short", day: "numeric" })}.`,
       });
@@ -129,12 +153,13 @@ export function BuyCover({ chain }: { chain: CoverChain }) {
   }
 
   const status: Partial<Record<Phase["kind"], string>> = {
-    building: "Reading the pool and oracle feeds, building your transaction…",
+    building: "Reading the pool and oracle feeds, making your Midnight key, building your transaction…",
     signing: "Approve the transaction in your wallet.",
     submitting: "Submitting to Cardano Preview…",
     confirming: "Submitted. Waiting for it to land in a block (usually under a minute)…",
   };
-  const reset = () => (phase.kind === "done" || phase.kind === "error" ? setPhase({ kind: "idle" }) : undefined);
+  // A key that couldn't be saved in this browser only lives in the done panel: keep it on screen.
+  const reset = () => ((phase.kind === "done" && phase.stored) || phase.kind === "error" ? setPhase({ kind: "idle" }) : undefined);
   const termChips = [14, 30, 90, 180, 365].filter((d) => d >= MIN_DAYS && d <= MAX_DAYS);
 
   return (
@@ -153,7 +178,8 @@ export function BuyCover({ chain }: { chain: CoverChain }) {
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-text-muted">
             Pays out the full coverage if a quorum of oracle feeds sees USDM below $0.95 for 24 hours during your term.
-            Signed in your wallet and checked by the validator. Testnet funds only.
+            Signed in your wallet and checked by the validator. Your browser also makes a private Midnight key for the policy;
+            only its commitment goes on-chain. Testnet funds only.
           </p>
         </div>
       </div>
@@ -302,6 +328,7 @@ export function BuyCover({ chain }: { chain: CoverChain }) {
                 </p>
               </div>
             )}
+            {phase.kind === "done" && <PolicyKeyBackup policyKey={phase.key} stored={phase.stored} />}
             {phase.kind === "error" && <p className="text-[var(--danger)]">{phase.message}</p>}
           </div>
         </div>

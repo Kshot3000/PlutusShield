@@ -472,7 +472,7 @@
             },
             {
               "title": "midnight_commitment",
-              "description": "32-byte Midnight coverage commitment (persistentCommit(amount, salt)),\n mirrored into `policy-cover.compact` by `registerPolicy`.",
+              "description": "32-byte Midnight registration commitment made by the buyer:\n registrationCommitment(policy_id, holder, coverage) in\n `policy-cover.compact`, which `registerPolicy` checks.",
               "$ref": "#/definitions/ByteArray"
             },
             {

@@ -17,6 +17,7 @@ export default function PrivacyPage() {
       toc={[
         { id: "record", label: "The private record" },
         { id: "commitments", label: "Commitments" },
+        { id: "policy-key", label: "From a Cardano Buy to Midnight" },
         { id: "authorization", label: "Authorization without public keys" },
         { id: "prove-cover", label: "proveCover: the partner hook" },
         { id: "rotation", label: "Holder rotation" },
@@ -25,7 +26,7 @@ export default function PrivacyPage() {
         { id: "public", label: "What stays public" },
         { id: "limits", label: "Current limits" },
       ]}
-      sourcePaths={["contracts/midnight/src/policy-cover.compact", "contracts/midnight/test/policy-cover.test.mjs", "contracts/midnight/README.md", "packages/sdk/src/evidence.ts"]}
+      sourcePaths={["contracts/midnight/src/policy-cover.compact", "contracts/midnight/test/policy-cover.test.mjs", "contracts/midnight/README.md", "packages/sdk/src/midnight.ts", "packages/sdk/src/evidence.ts"]}
     >
       <Section id="record" title="The private record">
         <P>
@@ -59,6 +60,42 @@ coverageCommitment(amount, salt) = persistentCommit<Uint<64>>(amount, salt)`}</F
           caller&apos;s local wallet supplies them when it builds a proof (<C>localSecretKey()</C>,{" "}
           <C>coverageAmount(id)</C>, <C>coverageSalt(id)</C>), and they never touch the ledger. Separate role
           tags mean the same key produces unrelated commitments for different roles.
+        </P>
+      </Section>
+
+      <Section id="policy-key" title="From a Cardano Buy to Midnight">
+        <P>
+          When you buy on <C>/cover</C>, your browser makes a <Strong>policy key</Strong> before the wallet
+          prompt: a random 32-byte holder secret and a random coverage salt. Only one 32-byte value from it goes
+          on Cardano, in the policy datum&apos;s <C>midnight_commitment</C>:
+        </P>
+        <Formula label="packages/sdk/src/midnight.ts = policy-cover.compact">{`holder       = roleCommitment(holderSecret, holderTag())
+             = SHA-256(pad32("plutusshield:role:") ‖ pad32("holder") ‖ holderSecret)
+coverage     = coverageCommitment(amount, salt)
+             = SHA-256(salt ‖ u64le(amount))                  // persistentCommit<Uint<64>>
+registration = registrationCommitment(policyId, holder, coverage)
+             = SHA-256(pad32("plutusshield:register:v1") ‖ policyId ‖ holder ‖ coverage)
+
+Cardano PolicyDatum.midnight_commitment = registration`}</Formula>
+        <P>
+          <C>registerPolicy(policyId, holder, coverage, expiry, cardanoCommitment)</C> takes that datum field
+          and refuses any holder or coverage commitment that doesn&apos;t reproduce it. The issuer can delay a
+          registration, but it can&apos;t register a different key or amount than the one the buyer committed
+          to. Because the stored record is public, anyone can recompute the binding against the Cardano datum.
+        </P>
+        <P>
+          The policy key is the private proof of ownership on Midnight: <C>proveCover</C>,{" "}
+          <C>fileClaim</C>, and <C>rotateHolder</C> all check the holder secret through the{" "}
+          <C>localSecretKey</C> witness. It&apos;s saved in your browser (localStorage, keyed by policy id)
+          before you sign, and you can download it as plain JSON or as a passphrase-encrypted backup
+          (PBKDF2-SHA-256, 600,000 iterations, then AES-256-GCM). <C>My policies</C> shows whether each
+          policy&apos;s key is on this device and whether it re-derives the on-chain commitment. You can also restore a key from a backup there.
+        </P>
+        <P>
+          The SDK formulas are checked against the compiled contract&apos;s pure circuits on random inputs. A
+          policy registered from an SDK-made key proves cover with that key. A wrong secret, a wrong salt, a
+          swapped holder, an inflated amount, or another policy&apos;s id is rejected (
+          <C>contracts/midnight/test/policy-cover.test.mjs</C>).
         </P>
       </Section>
 
@@ -107,7 +144,7 @@ amount ≥ minCoverage
         <P>
           To transfer cover, the current holder also gives the new holder the coverage opening{" "}
           <C>(amount, salt)</C> off-ledger. The new holder can check it against the public <C>coverage</C>{" "}
-          commitment before accepting. Eight simulation tests cover rotation, part of the registry&apos;s 21.
+          commitment before accepting. Eight simulation tests cover rotation, part of the registry&apos;s 26.
         </P>
       </Section>
 
@@ -237,9 +274,10 @@ salt   = 32 random bytes, kept in the claimant's key file`}</Formula>
           </p>
           <p>
             <Strong>The issuer relays between chains.</Strong> <C>registerPolicy</C> and{" "}
-            <C>expirePolicy</C> are issuer-only, so Midnight mirrors Cardano only as faithfully as the issuer
-            relays it. There is no trustless bridge. On Cardano, by contrast, <C>Expire</C> is time-locked and
-            callable by anyone.
+            <C>expirePolicy</C> are issuer-only. <C>registerPolicy</C> can&apos;t substitute a holder or amount
+            the Cardano datum didn&apos;t commit to, but the issuer decides when (and whether) to register, and
+            when to expire. There is no trustless bridge. On Cardano, by contrast, <C>Expire</C> is time-locked
+            and callable by anyone.
           </p>
         </Callout>
         <Callout tone="planned">

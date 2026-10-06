@@ -100,7 +100,8 @@ export default function HowCoverWorksPage() {
                   transaction mints one reference token, locked at the script with a <C>PolicyDatum</C>, and one
                   user token for the buyer. That tranche&apos;s <C>active_cover</C> grows by the coverage
                   amount. The buy must reference a fresh healthy-peg reading from every oracle feed, and cover starts
-                  only after the waiting period. See <DocLink href="#buy-rules">the purchase rules</DocLink>.
+                  only after the waiting period. The buyer&apos;s browser also makes a private Midnight policy key
+                  and writes only its commitment into the datum. See <DocLink href="#buy-rules">the purchase rules</DocLink>.
                 </>
               ),
             },
@@ -110,7 +111,8 @@ export default function HowCoverWorksPage() {
               body: (
                 <>
                   After the Cardano mint confirms, the issuer mirrors the policy into the private registry, keyed
-                  by the same 32-byte policy id. The record holds a holder commitment and a coverage commitment. See{" "}
+                  by the same 32-byte policy id. The record holds a holder commitment and a coverage commitment,
+                  and the circuit refuses any pair that doesn&apos;t open the datum&apos;s commitment. See{" "}
                   <DocLink href="/docs/privacy">Privacy</DocLink>.
                 </>
               ),

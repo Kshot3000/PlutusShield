@@ -13,7 +13,7 @@
 
 | Circuit | Caller | Effect |
 |---|---|---|
-| `registerPolicy(id, holder, coverage, expiry)` | Issuer | Mirror a confirmed Cardano mint |
+| `registerPolicy(id, holder, coverage, expiry, cardanoCommitment)` | Issuer | Mirror a confirmed Cardano mint; refuses a holder/coverage pair that doesn't open the Cardano datum's commitment |
 | `proveCover(id, minCoverage)` | Holder | Prove ACTIVE cover of at least `minCoverage` without revealing the amount or the holder |
 | `rotateHolder(id, newHolderCommitment)` | Holder | Re-key an `ACTIVE` policy to a new holder commitment (wallet rotation or private transfer) |
 | `fileClaim(id, evidenceCommitment)` | Holder | Move to `CLAIM_PENDING` |
@@ -24,7 +24,25 @@
 
 Roles are witness-derived commitments, never `ownPublicKey()`.
 
-Pure helpers (no proof, no keys): `roleCommitment`, `coverageCommitment`, `evidenceCommitment`, and the tags `issuerTag` / `holderTag` / `assessorTag` / `evidenceTag`.
+Pure helpers (no proof, no keys): `roleCommitment`, `coverageCommitment`, `registrationCommitment`, `evidenceCommitment`, and the tags `issuerTag` / `holderTag` / `assessorTag` / `registrationTag` / `evidenceTag`.
+
+### Cardano binding and policy keys
+
+Every Buy on Cardano (the `/cover` page, `pnpm web-buy`, `pnpm preview buy` and the emulator all use the same builder, `apps/web/src/lib/tx/cover.ts`) makes a **policy key** on the buyer's device: a random 32-byte holder secret and a random 32-byte coverage salt. Only one value derived from it goes on Cardano, the policy datum's `midnight_commitment`:
+
+```
+holder       = roleCommitment(holderSecret, holderTag())        = SHA-256(pad32("plutusshield:role:") ‖ pad32("holder") ‖ holderSecret)
+coverage     = coverageCommitment(amount, salt)                 = SHA-256(salt ‖ u64le(amount))      (persistentCommit<Uint<64>>)
+registration = registrationCommitment(policyId, holder, coverage) = SHA-256(pad32("plutusshield:register:v1") ‖ policyId ‖ holder ‖ coverage)
+
+PolicyDatum.midnight_commitment = registration      (policyId = the datum's policy_id, amount = its coverage)
+```
+
+`registerPolicy` takes the datum field as `cardanoCommitment` and asserts `registrationCommitment(policyId, holder, coverage) == cardanoCommitment`. The issuer can delay or skip a registration, but can't register a holder key or coverage the buyer didn't commit to. The record is public, so anyone can recompute the binding from the ledger and the Cardano datum.
+
+`packages/sdk/src/midnight.ts` implements the three formulas in WebCrypto plus the key file (`plutusshield/policy-key@1`), a passphrase-encrypted backup (`plutusshield/policy-key-envelope@1`: PBKDF2-SHA-256 with 600k iterations, then AES-256-GCM with the policy id and commitment as AAD), `checkPolicyKey` (re-derive and compare with a datum), `holderPrivateState` (the `localSecretKey` / `coverageAmount` / `coverageSalt` witness state) and `registerPolicyArgs`. The web app saves the key to `localStorage` before the wallet prompt, offers both backups after the Buy, and shows per-policy key status, export and restore in **My policies**.
+
+The holder secret is the private proof of ownership on Midnight: `proveCover`, `fileClaim` and `rotateHolder` check it. Losing it means you can't act on Midnight (the Cardano claim token is separate). Anyone who has the plain key file can act as you there.
 
 ### Evidence commitments
 
@@ -57,7 +75,7 @@ pnpm compile        # compactc 0.31.1, generates prover/verifier keys for all 6 
 pnpm test           # --skip-zk compile, then node:test simulation via @midnight-ntwrk/compact-runtime 0.16.0
 ```
 
-21 tests cover:
+26 tests cover:
 
 - issuer-only registration and duplicate ids
 - threshold proofs and forged openings
@@ -74,6 +92,12 @@ pnpm test           # --skip-zk compile, then node:test simulation via @midnight
   - SDK `evidenceCommitment` equals the compiled pure circuit on random inputs, and raw `persistentHash`
   - an SDK-sealed bundle filed with `fileClaim` verifies against the stored record, then is paid with its commitment kept
   - a rejected claim clears the commitment; re-sealing the same evidence gives a new commitment, and the old bundle no longer matches the ledger
+- Cardano Buy to Midnight registration (imports `packages/sdk/src/midnight.ts`):
+  - SDK `holderCommitment` / `roleCommitment` / `coverageCommitment` / `registrationCommitment` equal the compiled pure circuits on 24 random inputs, including `Uint<64>` edge amounts, and raw `persistentCommit`
+  - the issuer registers from an SDK policy key with the datum commitment; the record recomputes to the datum; the holder proves cover with `holderPrivateState(key)` (and not above the amount) and can file a claim
+  - a wrong holder secret, a wrong coverage salt, or another policy's key can't prove or claim
+  - `registerPolicy` rejects a swapped holder, an inflated coverage, a replay under another policy id, and a random (pre-wiring placeholder) datum commitment
+  - a key restored from an encrypted backup still proves cover
 
 ## Status
 

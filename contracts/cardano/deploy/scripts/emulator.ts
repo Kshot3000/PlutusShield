@@ -23,6 +23,7 @@ import { buildParams, deployment, loadConfig, unitOf } from "../lib/cover.ts";
 import { keyInfo, sigPolicy } from "../lib/keys.ts";
 import * as act from "../lib/actions.ts";
 import { listWalletPolicies } from "../../../../apps/web/src/lib/tx/cover.ts";
+import { checkPolicyKey } from "../../../../packages/sdk/src/midnight.ts";
 
 const log = (...a: unknown[]) => console.log("  ", ...a);
 const U = 1_000_000n;
@@ -95,13 +96,14 @@ await submit("oracle attests healthy peg", await act.publishFeeds(lucid, { ...or
   { name: "feed-c", datum: { coveredAsset: covered, priceBps: 9_995n, windowStart: pegNow - DAY_MS, windowEnd: pegNow } },
 ]), oracle.privateKey);
 as(buyerAcct);
-const commitment = "c0441700".repeat(8);
+// Fixed holder secrets so the emulator run is reproducible; the browser generates fresh ones per Buy.
+const holder = { holderSecret: "c0441700".repeat(8), coverageSalt: "5a17".repeat(16) };
 const usdBefore = held(usdcUnit, await lucid.wallet().getUtxos());
-const bUsd = await act.buy(lucid, d, { asset: USDC, coverage: 10_000n * U, days: 30n, midnightCommitment: commitment, now: emulator.now(), feeds: await oracleFeeds() });
+const bUsd = await act.buy(lucid, d, { asset: USDC, coverage: 10_000n * U, days: 30n, holder, now: emulator.now(), feeds: await oracleFeeds() });
 await submit(`Buy 10k tUSDCx cover, premium ${bUsd.premium}`, bUsd.tx);
 assert.equal(held(usdcUnit, await lucid.wallet().getUtxos()), usdBefore - bUsd.premium, "premium paid in tUSDCx");
 assert.ok(bUsd.policy.start >= BigInt(emulator.now()) + params.saleGuard.waitingPeriodMs - 60_000n, "cover starts after the waiting period");
-const bAda = await act.buy(lucid, d, { asset: ADA, coverage: 5_000n * U, days: 14n, midnightCommitment: commitment, now: emulator.now(), feeds: await oracleFeeds() });
+const bAda = await act.buy(lucid, d, { asset: ADA, coverage: 5_000n * U, days: 14n, holder, now: emulator.now(), feeds: await oracleFeeds() });
 await submit(`Buy 5k ADA cover, premium ${bAda.premium}`, bAda.tx);
 pool = await act.readPool(lucid, d);
 assert.equal(pool.datum.tranches[1].activeCover, 10_000n * U);
@@ -111,6 +113,16 @@ assert.equal(pool.capitals[1], 500_000n * U + bUsd.premium);
 const mine = await listWalletPolicies(lucid, act.coverScriptOf(d), emulator.now());
 assert.deepEqual(new Set(mine.map((p) => p.policy.policyId)), new Set([bUsd.policy.policyId, bAda.policy.policyId]));
 assert.ok(mine.every((p) => p.holder && p.buyer && p.status === "waiting"), "fresh policies sit in their waiting period");
+// Midnight binding: each on-chain datum carries the registration commitment of the buyer's policy key.
+for (const b of [bUsd, bAda]) {
+  const onChain = mine.find((p) => p.policy.policyId === b.policy.policyId)!;
+  assert.equal(onChain.policy.midnightCommitment, b.policyKey.registrationCommitment, "datum midnight_commitment = policy key registration commitment");
+  assert.equal(b.policyKey.coverage, onChain.policy.coverage.toString());
+  assert.equal(b.policyKey.expiry, onChain.policy.expiry.toString());
+  assert.ok((await checkPolicyKey(b.policyKey, onChain.policy.midnightCommitment)).ok, "policy key opens the on-chain commitment");
+  assert.ok(!(await checkPolicyKey({ ...b.policyKey, holderSecret: "11".repeat(32) }, onChain.policy.midnightCommitment)).ok, "a different holder secret does not");
+}
+assert.notEqual(bUsd.policy.midnightCommitment, bAda.policy.midnightCommitment, "same secrets, different policy id -> different commitment");
 as(deployerAcct);
 assert.equal((await listWalletPolicies(lucid, act.coverScriptOf(d), emulator.now())).length, 0, "other wallets see none");
 as(buyerAcct);
@@ -126,7 +138,7 @@ await submit("oracle: feed-c reports 0.93", await act.publishFeeds(lucid, { ...o
 ]), oracle.privateKey);
 as(buyerAcct);
 await assert.rejects(
-  act.buy(lucid, d, { asset: ADA, coverage: 1_000n * U, days: 14n, midnightCommitment: commitment, now: emulator.now(), feeds: await oracleFeeds() }),
+  act.buy(lucid, d, { asset: ADA, coverage: 1_000n * U, days: 14n, holder, now: emulator.now(), feeds: await oracleFeeds() }),
   /circuit-breaker.*Blocked: feed-c/s,
 );
 log("✓ Buy refused while one feed reports a depeg (healthy 2-of-3 is not enough)");
@@ -148,7 +160,7 @@ assert.equal(feeds.length, 2);
 //     nobody can buy new cover
 as(buyerAcct);
 await assert.rejects(
-  act.buy(lucid, d, { asset: USDC, coverage: 1_000n * U, days: 14n, midnightCommitment: commitment, now: emulator.now(), feeds: await oracleFeeds() }),
+  act.buy(lucid, d, { asset: USDC, coverage: 1_000n * U, days: 14n, holder, now: emulator.now(), feeds: await oracleFeeds() }),
   /circuit-breaker/,
 );
 log("✓ Buy during the depeg refused (feeds no longer report a fresh healthy peg)");

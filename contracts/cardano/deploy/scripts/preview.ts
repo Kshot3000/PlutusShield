@@ -12,10 +12,10 @@
  *   pnpm preview settle <policyId>
  *   pnpm preview expire <policyId>
  */
-import { randomBytes } from "node:crypto";
 import { ADA, DAY_MS, textHex, type AssetClass } from "../../../../packages/sdk/src/cardano.ts";
 import { deployment, loadConfig, unitOf } from "../lib/cover.ts";
-import { loadKey, sigPolicy } from "../lib/keys.ts";
+import { loadKey, savePolicyKey, sigPolicy } from "../lib/keys.ts";
+import { withBuyTx } from "../../../../apps/web/src/lib/tx/cover.ts";
 import { previewLucid, readDeploymentFile, reviveParams, toJson, writeDeploymentFile } from "../lib/chain.ts";
 import * as act from "../lib/actions.ts";
 import type { TxSignBuilder } from "@lucid-evolution/lucid";
@@ -126,17 +126,17 @@ switch (cmd) {
   }
   case "buy": {
     const asset = assetArg(args[0]);
-    // Placeholder Midnight commitment until the Midnight registration step is wired in.
+    // Fresh Midnight holder secrets; the policy key is printed so it can be kept (it is the Midnight proof of ownership).
     const r = await act.buy(lucid, needPlan(), {
       asset,
       coverage: BigInt(args[1]) * U,
       days: BigInt(args[2] ?? "14"),
-      midnightCommitment: randomBytes(32).toString("hex"),
       now: Date.now(),
       feeds: await oracleFeeds(),
     });
-    console.log(toJson({ policyId: r.policy.policyId, premium: r.premium, asset: unitOf(asset), start: r.policy.start, expiry: r.policy.expiry }));
-    await submit(`Buy ${args[1]} ${args[0]} cover`, r.tx);
+    console.log(toJson({ policyId: r.policy.policyId, midnightCommitment: r.policy.midnightCommitment, premium: r.premium, asset: unitOf(asset), start: r.policy.start, expiry: r.policy.expiry }));
+    const hash = await submit(`Buy ${args[1]} ${args[0]} cover`, r.tx);
+    console.log(`Midnight policy key: ${savePolicyKey(withBuyTx(r.policyKey, hash))}`);
     break;
   }
   case "peg": {

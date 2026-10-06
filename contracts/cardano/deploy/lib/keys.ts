@@ -54,3 +54,17 @@ export function sigPolicy(keyHash: string): { script: Script; policyId: string }
   const script = scriptFromNative({ type: "sig", keyHash });
   return { script, policyId: mintingPolicyToId(script) };
 }
+
+/**
+ * Keep a Buy's Midnight policy key (holder secret + coverage opening) next to
+ * the signing keys: .keys/policy-keys/<policyId>.json, mode 600, never
+ * committed. It is the only way to prove or claim the policy on Midnight.
+ */
+export function savePolicyKey(key: { policyId: string }): string {
+  const dir = join(KEYS_DIR, "policy-keys");
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  const file = join(dir, `${key.policyId}.json`);
+  writeFileSync(file, `${JSON.stringify(key, null, 2)}\n`, { mode: 0o600 });
+  chmodSync(file, 0o600);
+  return file;
+}

@@ -15,6 +15,7 @@ import { PREVIEW, PREVIEW_ASSETS, explorerTx } from "@/lib/preview";
 import { walletPolicies, type PolicyStatus, type WalletPolicy } from "@/lib/tx/cover";
 import { COVER, type CoverChain } from "@/lib/useCoverChain";
 import { PolicyAction } from "./PolicyAction";
+import { MidnightKeyCell } from "./MidnightKey";
 
 const statusCopy: Record<PolicyStatus, { label: string; variant: "gold" | "accent" | "midnight" | "default" }> = {
   waiting: { label: "Waiting period", variant: "gold" },
@@ -90,7 +91,7 @@ export function MyPolicies({ chain }: { chain: CoverChain }) {
         </p>
       ) : (
         <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[820px] text-left text-sm">
+          <table className="w-full min-w-[1040px] text-left text-sm">
             <caption className="sr-only">Your PlutusShield policies on Cardano Preview</caption>
             <thead className="text-xs text-text-dim">
               <tr className="border-b border-border">
@@ -99,6 +100,7 @@ export function MyPolicies({ chain }: { chain: CoverChain }) {
                 <th scope="col" className="py-2 pr-4 font-normal">Cover period</th>
                 <th scope="col" className="py-2 pr-4 font-normal">Status</th>
                 <th scope="col" className="py-2 pr-4 font-normal">Bought in</th>
+                <th scope="col" className="py-2 pr-4 font-normal">Midnight key</th>
                 <th scope="col" className="py-2 font-normal">Action</th>
               </tr>
             </thead>
@@ -146,6 +148,9 @@ export function MyPolicies({ chain }: { chain: CoverChain }) {
                         {hash.slice(0, 8)}…{hash.slice(-6)} ↗
                       </a>
                     </td>
+                    <td className="py-3 pr-4">
+                      <MidnightKeyCell policyId={p.policy.policyId} midnightCommitment={p.policy.midnightCommitment} holder={p.holder} />
+                    </td>
                     <td className="py-3">
                       <PolicyAction p={p} chain={chain} now={now} />
                     </td>
@@ -158,8 +163,14 @@ export function MyPolicies({ chain }: { chain: CoverChain }) {
             Claims settle on Cardano: when {Number(COVER.params.oracle.quorum)} of {COVER.params.oracle.feeds.length} oracle feeds attest a depeg inside a policy&apos;s
             cover period, its holder files the claim here and the coverage is paid from the tranche in the same transaction. Unclaimed
             policies can be released by anyone once the claim grace ends; the deposit always returns to the buyer. Settled and released
-            policies burn their tokens and leave this list. The Midnight private registry for holders is built and tested but not yet
-            connected to this flow.
+            policies burn their tokens and leave this list.
+          </p>
+          <p className="mt-2 text-[11px] leading-relaxed text-text-dim">
+            <span className="text-midnight">Midnight key:</span> every Buy makes a private key in your browser and writes only its
+            commitment into the policy datum. That key is what the Midnight <span className="font-mono">policy-cover</span> registry
+            checks when you prove cover or file a claim there, without revealing your wallet or the amount. &ldquo;On this device&rdquo;
+            means the saved key re-derives this policy&apos;s on-chain commitment. Keys stay in this browser until you export them;
+            on another device, use &ldquo;Restore from backup&rdquo;. Policies bought before Midnight keys shipped (Oct 6, 2026) have none.
           </p>
         </div>
       )}

@@ -110,8 +110,10 @@ export default function RisksPage() {
         <List>
           <li>
             Cardano and Midnight are <Strong>not trustlessly linked</Strong>. The issuer mirrors policies into
-            Midnight (<C>registerPolicy</C>) and expires them there (<C>expirePolicy</C>). If the issuer is wrong
-            or offline, the two chains can disagree.
+            Midnight (<C>registerPolicy</C>) and expires them there (<C>expirePolicy</C>). It can&apos;t register
+            a holder key or amount the buyer didn&apos;t commit to in the Cardano datum, but if the issuer is slow,
+            offline, or wrong about expiry, the two chains can disagree. Lose your Midnight policy key and you
+            can&apos;t prove or claim on Midnight; the Cardano claim token is unaffected.
           </li>
           <li>
             The Midnight assessor is one role commitment fixed at deployment. Assessed claims depend on that

@@ -27,6 +27,15 @@
  * fileClaim cannot check the opening (the bundle never enters a circuit); the
  * assessor checks it off-ledger before resolveClaim.
  *
+ * Cardano binding: the Buy datum's 32-byte `midnight_commitment` is
+ *   registrationCommitment(policyId, holderCommitment, coverage) =
+ *     persistentHash("plutusshield:register:v1" || policyId || holder || coverage)
+ * computed by the buyer's browser before signing. registerPolicy takes that
+ * datum field and refuses a holder/coverage pair that doesn't open it, and the
+ * stored record is public, so anyone can recompute it against the Cardano
+ * datum: the issuer cannot register a holder key or coverage the buyer did not
+ * commit to. packages/sdk/src/midnight.ts mirrors it.
+ *
  * Status: compiles with compactc 0.31.1. Not deployed. Not audited.
  */
 
@@ -112,6 +121,24 @@ export pure circuit evidenceCommitment(bundleDigest: Bytes<32>, salt: Bytes<32>)
   ]);
 }
 
+export pure circuit registrationTag(): Bytes<32> {
+  return pad(32, "plutusshield:register:v1");
+}
+
+/* What the Cardano Buy datum carries: binds policy id, holder key and coverage. */
+export pure circuit registrationCommitment(
+  policyId: Bytes<32>,
+  holderCommitment: Bytes<32>,
+  coverage: Bytes<32>
+): Bytes<32> {
+  return persistentHash<Vector<4, Bytes<32>>>([
+    registrationTag(),
+    policyId,
+    holderCommitment,
+    coverage
+  ]);
+}
+
 export pure circuit coverageCommitment(amount: Uint<64>, salt: Bytes<32>): Bytes<32> {
   return persistentCommit<Uint<64>>(amount, salt);
 }
@@ -141,19 +168,27 @@ circuit assertHolder(rec: PolicyRecord): [] {
 
 /*
  * Issuer registers a policy after the Cardano mint confirms.
- * holderCommitment and coverage are produced client-side by the buyer.
+ * holderCommitment and coverage are produced client-side by the buyer, who
+ * also put registrationCommitment(policyId, holder, coverage) in the Cardano
+ * policy datum. The issuer passes that datum field as cardanoCommitment and
+ * the circuit refuses any holder/coverage pair that doesn't open it.
  */
 export circuit registerPolicy(
   policyId: Bytes<32>,
   holderCommitment: Bytes<32>,
   coverage: Bytes<32>,
-  expiry: Uint<64>
+  expiry: Uint<64>,
+  cardanoCommitment: Bytes<32>
 ): [] {
   assertIssuer();
   const id = disclose(policyId);
   assert(!policies.member(id), "policy already registered");
   assert(disclose(holderCommitment) != pad(32, ""), "empty holder commitment");
   assert(disclose(coverage) != pad(32, ""), "empty coverage commitment");
+  assert(
+    disclose(registrationCommitment(policyId, holderCommitment, coverage)) == disclose(cardanoCommitment),
+    "registration does not match the Cardano commitment"
+  );
   policies.insert(id, PolicyRecord {
     holder: disclose(holderCommitment),
     coverage: disclose(coverage),

@@ -9,6 +9,8 @@ import * as RT from '@midnight-ntwrk/compact-runtime';
 import { Contract, ledger, pureCircuits, PolicyStatus } from '../src/managed/policy-cover/contract/index.js';
 // The SDK evidence vault (TypeScript, loaded via Node type stripping).
 import * as Evidence from '../../../packages/sdk/src/evidence.ts';
+// The SDK holder-registration helpers the web Buy flow uses.
+import * as Holder from '../../../packages/sdk/src/midnight.ts';
 
 const COIN = '0'.repeat(64);
 const ADDR = RT.sampleContractAddress();
@@ -19,7 +21,7 @@ const assessorSk = b32();
 const holderSk = b32();
 const strangerSk = b32();
 
-const { roleCommitment, coverageCommitment, issuerTag, holderTag, assessorTag } = pureCircuits;
+const { roleCommitment, coverageCommitment, registrationCommitment, issuerTag, holderTag, assessorTag } = pureCircuits;
 
 // Private state is the caller's local wallet: secret key + coverage openings.
 const witnesses = {
@@ -53,7 +55,8 @@ function setup() {
   const salt = b32();
   const holderCommit = roleCommitment(holderSk, holderTag());
   const covCommit = coverageCommitment(amount, salt);
-  state = call(state, { sk: issuerSk, openings: {} }, 'registerPolicy', policyId, holderCommit, covCommit, 1_800_000_000n);
+  const cardano = registrationCommitment(policyId, holderCommit, covCommit);
+  state = call(state, { sk: issuerSk, openings: {} }, 'registerPolicy', policyId, holderCommit, covCommit, 1_800_000_000n, cardano);
   const holder = { sk: holderSk, openings: { [Buffer.from(policyId).toString('hex')]: { amount, salt } } };
   return { state, policyId, amount, salt, holder };
 }
@@ -70,7 +73,7 @@ test('issuer registers a policy; record stores only commitments', () => {
 test('non-issuer cannot register', () => {
   const state = deploy();
   assert.throws(
-    () => call(state, { sk: strangerSk, openings: {} }, 'registerPolicy', b32(), b32(), b32(), 1n),
+    () => call(state, { sk: strangerSk, openings: {} }, 'registerPolicy', b32(), b32(), b32(), 1n, b32()),
     /not the issuer/,
   );
 });
@@ -78,7 +81,7 @@ test('non-issuer cannot register', () => {
 test('duplicate policy id rejected', () => {
   const { state, policyId } = setup();
   assert.throws(
-    () => call(state, { sk: issuerSk, openings: {} }, 'registerPolicy', policyId, b32(), b32(), 1n),
+    () => call(state, { sk: issuerSk, openings: {} }, 'registerPolicy', policyId, b32(), b32(), 1n, b32()),
     /already registered/,
   );
 });
@@ -303,3 +306,101 @@ test('rejected evidence is cleared; a re-filed bundle gets a new commitment and 
   assert.equal(stale.checks.find((c) => c.id === 'ledger').ok, false);
 });
 
+
+/* ---------- Cardano Buy -> Midnight holder registration (SDK parity) ---------- */
+
+const ISSUER = { sk: issuerSk, openings: {} };
+const hexToU8 = (h) => new Uint8Array(Buffer.from(h, 'hex'));
+
+test('SDK holder / coverage / registration commitments equal the contract pure circuits on random inputs', async () => {
+  assert.equal(hex(pureCircuits.registrationTag()), hex(Holder.registrationTag()));
+  assert.equal(hex(holderTag()), hex(Holder.holderTag()));
+  const amounts = [0n, 1n, 255n, 256n, 5_000_000n, 25_000_000_000n, (1n << 63n) + 7n, (1n << 64n) - 1n];
+  for (let i = 0; i < 24; i++) {
+    const sk = b32();
+    const salt = b32();
+    const id = b32();
+    const amount = i < amounts.length ? amounts[i] : BigInt(`0x${hex(randomBytes(8))}`);
+    const h = roleCommitment(sk, holderTag());
+    const c = coverageCommitment(amount, salt);
+    assert.equal(hex(await Holder.holderCommitment(sk)), hex(h));
+    assert.equal(hex(await Holder.roleCommitment(sk, issuerTag())), hex(roleCommitment(sk, issuerTag())));
+    assert.equal(hex(await Holder.coverageCommitment(amount, salt)), hex(c), `coverage ${amount}`);
+    assert.equal(hex(await Holder.registrationCommitment(id, h, c)), hex(registrationCommitment(id, h, c)));
+  }
+  // coverageCommitment is persistentCommit<Uint<64>> in the raw runtime too.
+  const salt = b32();
+  assert.equal(hex(RT.persistentCommit(new RT.CompactTypeUnsignedInteger((1n << 64n) - 1n, 8), 42n, salt)), hex(await Holder.coverageCommitment(42n, salt)));
+});
+
+// What the web Buy does: a fresh policy key whose registration commitment goes in the Cardano datum.
+async function boughtWithSdkKey(coverage = 100_000_000n) {
+  const policyId = hex(b32());
+  const key = await Holder.makePolicyKey({ network: 'preview', policyId, coverage, asset: 'tADA', expiry: 1_800_000_000_000n });
+  const datumCommitment = key.registrationCommitment; // = PolicyDatum.midnight_commitment on Cardano
+  return { key, datumCommitment, policyId: hexToU8(policyId) };
+}
+
+function registerFromKey(state, key, cardanoCommitment = Holder.registerPolicyArgs(key).cardanoCommitment) {
+  const a = Holder.registerPolicyArgs(key);
+  return call(state, ISSUER, 'registerPolicy', a.policyId, a.holderCommitment, a.coverage, a.expiry, cardanoCommitment);
+}
+
+test('issuer registers from an SDK policy key; the holder proves cover with the key, nothing else', async () => {
+  const { key, datumCommitment, policyId } = await boughtWithSdkKey();
+  let s = registerFromKey(deploy(), key, hexToU8(datumCommitment));
+  const rec = L(s).policies.lookup(policyId);
+  assert.equal(hex(rec.holder), key.holderCommitment);
+  assert.equal(hex(rec.coverage), key.coverageCommitment);
+  // Anyone can recompute the Cardano datum commitment from the public record.
+  assert.equal(hex(registrationCommitment(policyId, rec.holder, rec.coverage)), datumCommitment);
+  assert.deepEqual(await Holder.checkPolicyKey(key, datumCommitment), { ok: true, consistent: true, matchesDatum: true, reason: undefined });
+
+  s = call(s, Holder.holderPrivateState(key), 'proveCover', policyId, 100_000_000n);
+  assert.equal(L(s).coverProofs, 1n);
+  assert.throws(() => call(s, Holder.holderPrivateState(key), 'proveCover', policyId, 100_000_001n), /below requested minimum/);
+  // The same key can claim (and the claim is filed against the same record).
+  s = call(s, Holder.holderPrivateState(key), 'fileClaim', policyId, b32());
+  assert.equal(L(s).policies.lookup(policyId).status, PolicyStatus.CLAIM_PENDING);
+});
+
+test('a wrong holder secret or coverage salt cannot prove cover on an SDK-registered policy', async () => {
+  const { key, policyId } = await boughtWithSdkKey();
+  const s = registerFromKey(deploy(), key);
+  const wrongSecret = Holder.holderPrivateState({ ...key, holderSecret: hex(b32()) });
+  assert.throws(() => call(s, wrongSecret, 'proveCover', policyId, 1n), /does not hold/);
+  assert.throws(() => call(s, wrongSecret, 'fileClaim', policyId, b32()), /does not hold/);
+  const wrongSalt = Holder.holderPrivateState({ ...key, coverageSalt: hex(b32()) });
+  assert.throws(() => call(s, wrongSalt, 'proveCover', policyId, 1n), /does not match commitment/);
+  // A different policy's key with the right shape is still a stranger here.
+  const other = await boughtWithSdkKey();
+  assert.throws(() => call(s, Holder.holderPrivateState({ ...other.key, policyId: key.policyId }), 'proveCover', policyId, 1n), /does not hold/);
+});
+
+test('registerPolicy refuses a holder or coverage the Cardano datum did not commit to', async () => {
+  const { key, datumCommitment } = await boughtWithSdkKey();
+  const a = Holder.registerPolicyArgs(key);
+  const state = deploy();
+  const cardano = hexToU8(datumCommitment);
+  // Issuer swaps in its own holder key.
+  const issuerHolder = roleCommitment(b32(), holderTag());
+  assert.throws(() => call(state, ISSUER, 'registerPolicy', a.policyId, issuerHolder, a.coverage, a.expiry, cardano), /does not match the Cardano commitment/);
+  // Issuer inflates (or shrinks) the committed coverage.
+  const bigger = coverageCommitment(BigInt(key.coverage) * 10n, hexToU8(key.coverageSalt));
+  assert.throws(() => call(state, ISSUER, 'registerPolicy', a.policyId, a.holderCommitment, bigger, a.expiry, cardano), /does not match the Cardano commitment/);
+  // Right pair under another policy id (replaying one buyer's registration onto another policy).
+  assert.throws(() => call(state, ISSUER, 'registerPolicy', b32(), a.holderCommitment, a.coverage, a.expiry, cardano), /does not match the Cardano commitment/);
+  // A random datum commitment (e.g. pre-wiring placeholder policies) can't be registered at all.
+  assert.throws(() => call(state, ISSUER, 'registerPolicy', a.policyId, a.holderCommitment, a.coverage, a.expiry, b32()), /does not match the Cardano commitment/);
+  // And the correct one goes through.
+  assert.equal(L(registerFromKey(state, key, cardano)).activePolicies, 1n);
+});
+
+test('a policy key restored from an encrypted backup still proves cover', async () => {
+  const { key, policyId } = await boughtWithSdkKey(42_000_000n);
+  const s = registerFromKey(deploy(), key);
+  const backup = Holder.policyKeyFileText(await Holder.encryptPolicyKey(key, 'night shift passphrase', 1_000));
+  const restored = await Holder.readPolicyKeyFile(backup, 'night shift passphrase');
+  const s2 = call(s, Holder.holderPrivateState(restored), 'proveCover', policyId, 42_000_000n);
+  assert.equal(L(s2).coverProofs, 1n);
+});

@@ -128,8 +128,9 @@ pub type PolicyDatum {
   start: Int,
   expiry: Int,
   trigger: Trigger,
-  /// 32-byte Midnight coverage commitment (persistentCommit(amount, salt)),
-  /// mirrored into `policy-cover.compact` by `registerPolicy`.
+  /// 32-byte Midnight registration commitment made by the buyer:
+  /// registrationCommitment(policy_id, holder, coverage) in
+  /// `policy-cover.compact`, which `registerPolicy` checks.
   midnight_commitment: ByteArray,
   /// Who gets the policy reference UTxO's min-ada back when the policy is
   /// retired by `Expire`. Set by the buyer at purchase (normally their own

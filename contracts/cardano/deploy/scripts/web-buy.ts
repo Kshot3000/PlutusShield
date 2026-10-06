@@ -20,14 +20,15 @@ import {
   buildBuy,
   coverScriptFrom,
   listWalletPolicies,
-  placeholderCommitment,
   saleCheck,
+  withBuyTx,
   feedOfUtxo,
 } from "../../../../apps/web/src/lib/tx/cover.ts";
 import { publishFeeds } from "../lib/actions.ts";
 import { loadConfig } from "../lib/cover.ts";
 import { previewLucid, readDeploymentFile, toJson, writeDeploymentFile } from "../lib/chain.ts";
-import { DEPLOY_DIR, loadKey, sigPolicy } from "../lib/keys.ts";
+import { DEPLOY_DIR, loadKey, savePolicyKey, sigPolicy } from "../lib/keys.ts";
+import { checkPolicyKey } from "../../../../packages/sdk/src/midnight.ts";
 
 const [cmd = "policies", which, amt, daysArg = "14"] = process.argv.slice(2);
 const art = JSON.parse(readFileSync(join(DEPLOY_DIR, "..", "..", "..", "apps", "web", "src", "data", "preview-deployment.json"), "utf8"));
@@ -102,16 +103,23 @@ switch (cmd) {
       tranche,
       coverage,
       days: BigInt(daysArg),
-      // Placeholder until Midnight registration is wired into the Buy flow.
-      midnightCommitment: placeholderCommitment(),
+      // No `holder`: fresh Midnight holder secrets, exactly like the browser.
       now: Date.now(),
       feeds: s.use.map((f) => f.utxo),
     });
-    console.log(toJson({ policyId: built.policy.policyId, tranche, premium: built.premium, start: new Date(Number(built.policy.start)).toISOString(), expiry: new Date(Number(built.policy.expiry)).toISOString() }));
+    console.log(toJson({ policyId: built.policy.policyId, midnightCommitment: built.policy.midnightCommitment, tranche, premium: built.premium, start: new Date(Number(built.policy.start)).toISOString(), expiry: new Date(Number(built.policy.expiry)).toISOString() }));
     const hash = await (await built.tx.sign.withWallet().complete()).submit();
     console.log(`Buy ${amt} ${which} cover (${daysArg}d): ${hash}; waiting…`);
+    const keyFile = savePolicyKey(withBuyTx(built.policyKey, hash));
+    console.log(`Midnight policy key (holder secret; keep it private): ${keyFile}`);
     await confirm(hash);
     console.log("confirmed", { before: built.before, after: built.after });
+    // Read the datum back from chain: the key must open the on-chain midnight_commitment.
+    const landed = (await listWalletPolicies(lucid, c)).find((p) => p.policy.policyId === built.policy.policyId);
+    if (!landed) throw new Error("policy datum not found after confirmation");
+    const chk = await checkPolicyKey(built.policyKey, landed.policy.midnightCommitment);
+    console.log(`policy datum ${landed.ref}: midnight_commitment ${landed.policy.midnightCommitment} ${chk.ok ? "opens with the saved key" : `DOES NOT match the key (${chk.reason})`}`);
+    if (!chk.ok) process.exitCode = 1;
     record(`web-buy Buy ${amt} ${which} cover ${daysArg}d (website builder, premium ${built.premium})`, hash);
     break;
   }

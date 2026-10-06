@@ -107,7 +107,7 @@ PolicyDatum {
   coverage, premium:   Int        base units of `asset`
   start, expiry:       Int        POSIX ms
   trigger:             Trigger    must equal the product's trigger
-  midnight_commitment: ByteArray  32-byte Midnight coverage commitment
+  midnight_commitment: ByteArray  32-byte Midnight registration commitment (buyer's policy key)
   refund_to:           Address    receives the reference UTxO's min-ada on Expire (set by the buyer)
 }
 
@@ -171,7 +171,7 @@ A claim must burn both the reference token and the user token, and it pays exact
 
 ## Pairing with Midnight
 
-`policy_id` is the same 32-byte id the Midnight `policy-cover.compact` registry is keyed by. `midnight_commitment` holds the coverage commitment (`persistentCommit(amount, salt)`) that the issuer passes to `registerPolicy`. When the purchase is mirrored on Midnight, the holder can prove "I hold ACTIVE cover ≥ X" with `proveCover` without revealing their wallet. When the Cardano policy settles or expires, the Midnight record moves to `PAID` or `EXPIRED`.
+`policy_id` is the same 32-byte id the Midnight `policy-cover.compact` registry is keyed by. `midnight_commitment` holds `registrationCommitment(policy_id, holder, coverage)`, made in the buyer's browser from a private policy key (holder secret + coverage salt, `packages/sdk/src/midnight.ts`). The validator only checks it is 32 bytes; `registerPolicy` on Midnight refuses any holder/coverage pair that doesn't open it. When the purchase is mirrored on Midnight, the holder can prove "I hold ACTIVE cover ≥ X" with `proveCover` without revealing their wallet. When the Cardano policy settles or expires, the Midnight record moves to `PAID` or `EXPIRED`.
 
 For the MVP parametric product, coverage and premium are **public on Cardano**, because the pool has to lock capital against them. Midnight adds holder unlinkability and partner proofs, not size privacy. Hiding size for parametric cover needs batched or bucketed pool accounting, which is on the roadmap.
 

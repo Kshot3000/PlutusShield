@@ -1,6 +1,8 @@
 // pnpm browser-e2e <deposit|withdraw> <amount> <tranche 0|1>
 // pnpm browser-e2e buy <coverage> <tranche 0|1> [days=14]
 // pnpm browser-e2e policies                         My policies: per-policy claim / release action column
+//   E2E_POLICY_KEY=<policy key json> also restores that Midnight key into its row from the file,
+//   checks the row turns "On this device", and exports + inspects an encrypted backup.
 //   needs: a static build served at $SITE (default http://127.0.0.1:8765/PlutusShield),
 //   playwright-core ($PLAYWRIGHT_CORE, default "playwright-core") and a Chromium ($CHROME_PATH).
 //
@@ -85,9 +87,33 @@ if (mode === "policies") {
   await page.waitForSelector("#my-policies tbody tr", { timeout: 45000 });
   await page.waitForFunction(() => [...document.querySelectorAll("#my-policies tbody tr td:last-child")].every((td) => td.textContent.trim().length > 0), null, { timeout: 30000 });
   const actions = await page.locator("#my-policies tbody tr td:last-child").allInnerTexts();
+  let midnight = null;
+  if (process.env.E2E_POLICY_KEY) {
+    const key = JSON.parse(readFileSync(process.env.E2E_POLICY_KEY, "utf8"));
+    const row = page.locator("#my-policies tbody tr", { has: page.locator(`a[href*="${key.txHash}"]`) });
+    await row.waitFor({ timeout: 30000 });
+    const cell = row.locator("td").nth(5);
+    const before = (await cell.innerText()).split("\n")[0];
+    await cell.locator('input[type="file"]').setInputFiles(process.env.E2E_POLICY_KEY);
+    await cell.getByText("On this device").waitFor({ timeout: 15000 });
+    const stored = await page.evaluate((id) => JSON.parse(localStorage.getItem("plutusshield:policy-keys:v1") ?? "{}")[id]?.registrationCommitment ?? null, key.policyId);
+    await cell.getByRole("button", { name: /encrypted backup/i }).click();
+    await cell.getByPlaceholder("Passphrase", { exact: true }).fill("e2e passphrase 123");
+    await cell.getByPlaceholder("Repeat passphrase").fill("e2e passphrase 123");
+    const [dl] = await Promise.all([page.waitForEvent("download", { timeout: 60000 }), cell.getByRole("button", { name: /Encrypted backup/ }).click()]);
+    const env = JSON.parse(readFileSync(await dl.path(), "utf8"));
+    midnight = {
+      before,
+      after: (await cell.innerText()).split("\n")[0],
+      storedMatchesKey: stored === key.registrationCommitment,
+      download: dl.suggestedFilename(),
+      envelope: { schema: env.schema, kdf: env.kdf?.name, iterations: env.kdf?.iterations, policyId: env.policyId === key.policyId, leaksSecret: JSON.stringify(env).includes(key.holderSecret) },
+    };
+  }
   await page.locator("#my-policies").scrollIntoViewIfNeeded();
   await page.locator("#my-policies").screenshot({ path: "/tmp/plutusshield-my-policies.png" });
-  console.log(JSON.stringify({ rows: actions.length, actions }));
+  const keys = await page.locator("#my-policies tbody tr td:nth-child(6)").allInnerTexts();
+  console.log(JSON.stringify({ rows: actions.length, actions, midnightKeys: keys.map((k) => k.split("\n")[0]), midnight }));
   console.log(logs.filter((l) => /error|warn/i.test(l)).slice(0, 15).join("\n"));
   await browser.close();
   process.exit(actions.length ? 0 : 1);

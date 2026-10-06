@@ -32,6 +32,7 @@ import { bech32Address, capitalsOf, decodeCoverDatum, unitOf, type Deployment } 
 import { PREVIEW_MOCK_USDC_ASSET_NAME } from "../../../../packages/sdk/src/assets.ts";
 import { decodeOracleDatum } from "../../../../packages/sdk/src/chain.ts";
 import { buildBuy, saleFeeds as webSaleFeeds, slotAligned, type CoverScript } from "../../../../apps/web/src/lib/tx/cover.ts";
+import type { HolderSecrets } from "../../../../packages/sdk/src/midnight.ts";
 import { buildExpire, buildSettle } from "../../../../apps/web/src/lib/tx/claim.ts";
 
 const inline = (cbor: string) => ({ kind: "inline" as const, value: cbor });
@@ -175,7 +176,8 @@ export async function buy(
     asset: AssetClass;
     coverage: bigint;
     days: bigint;
-    midnightCommitment: string;
+    /** Midnight holder secrets; omitted = fresh ones (the returned policyKey holds them). */
+    holder?: HolderSecrets;
     now: number;
     /** Candidate oracle feed UTxOs; the healthy, fresh ones become reference inputs. */
     feeds: UTxO[];

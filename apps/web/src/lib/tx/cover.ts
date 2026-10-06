@@ -12,16 +12,24 @@
  * validator: premium floor + capacity caps (pool.buy), the policy datum and
  * token names (cardano.ts), and the sale circuit-breaker (oracle.healthy over
  * each feed's newest reading).
+ *
+ * Midnight: every Buy makes a fresh policy key on the buyer's device (holder
+ * secret + coverage salt, @plutusshield/sdk/midnight) and puts its
+ * registrationCommitment in the policy datum's midnight_commitment, the value
+ * policy-cover.compact's registerPolicy checks. The key is returned to the
+ * caller to keep; it never goes on-chain.
  */
 import type { LucidEvolution, UTxO } from "@lucid-evolution/lucid";
 import {
   BPS,
+  DAY_MS,
   buildPolicyDatum,
   coverDatumData,
   coverParamsFromJson,
   earliestStart,
   mintActionData,
   poolActionData,
+  policyIdFrom,
   refTokenName,
   toCborHex,
   userTokenName,
@@ -36,6 +44,7 @@ import { decodeOracleDatum, readPoolState, type ChainUtxo, type LivePolicy } fro
 import { healthy, latestPerFeed, type FeedUtxo } from "@plutusshield/sdk/oracle";
 import { buy as buyStep, type PoolLedger } from "@plutusshield/sdk/pool";
 import { plutusAddressOf } from "@plutusshield/sdk/cip30";
+import { makePolicyKey, type HolderSecrets, type PolicyKey } from "@plutusshield/sdk/midnight";
 import { poolScriptFrom, readLivePool, unitOf, type PoolScript } from "./lp.ts";
 
 /** The pool script plus everything a Buy needs to know about the deployment. */
@@ -178,8 +187,14 @@ export interface BuyArgs {
   tranche: number;
   coverage: bigint;
   days: bigint;
-  /** 32-byte hex commitment to the Midnight policy registration. */
-  midnightCommitment: string;
+  /**
+   * The buyer's Midnight holder secrets for this policy. Omit to generate fresh
+   * ones (what the browser does); the derived registration commitment becomes
+   * the datum's midnight_commitment and the full key comes back as `policyKey`.
+   */
+  holder?: HolderSecrets;
+  /** Network label written into the policy key. Default "preview". */
+  network?: string;
   /** Wall-clock ms the tx is built at. */
   now: number;
   /** Candidate oracle feed UTxOs; each feed's newest, healthy, fresh reading becomes a reference input. */
@@ -216,15 +231,24 @@ export async function buildBuy(lucid: LucidEvolution, c: CoverScript, a: BuyArgs
 
   const start = slotAligned(lucid, Number(earliestStart(c.params.saleGuard, BigInt(upper))));
   const refundTo: Address = plutusAddressOf(a.refundTo ?? (await lucid.wallet().address()));
+  const poolRef = { txHash: pool.utxo.txHash, outputIndex: pool.utxo.outputIndex };
+  // The Midnight registry key is the Cardano policy id, so the commitment is made per pool UTxO spent.
+  const policyKey: PolicyKey = await makePolicyKey({
+    network: a.network ?? "preview",
+    policyId: policyIdFrom(poolRef),
+    coverage: a.coverage,
+    secrets: a.holder,
+    expiry: BigInt(start) + a.days * DAY_MS,
+  });
   const policy = buildPolicyDatum({
-    poolRef: { txHash: pool.utxo.txHash, outputIndex: pool.utxo.outputIndex },
+    poolRef,
     terms: c.params.product,
     asset: c.params.assets[t].asset,
     coverage: a.coverage,
     premium: step.premium,
     start: BigInt(start),
     days: a.days,
-    midnightCommitment: a.midnightCommitment,
+    midnightCommitment: policyKey.registrationCommitment,
     refundTo,
   });
   const ref = c.scriptHash + refTokenName(policy.policyId);
@@ -241,15 +265,15 @@ export async function buildBuy(lucid: LucidEvolution, c: CoverScript, a: BuyArgs
     .validFrom(Math.max(a.now - BUY_LOWER_SLACK_MS, lucid.slotToUnixTime(0)))
     .validTo(upper)
     .complete();
-  return { tx, policy, premium: step.premium, tranche: t, upper, before: pool.ledgers[t], after: step.pool };
+  if (policy.expiry.toString() !== policyKey.expiry || policy.policyId !== policyKey.policyId) throw new Error("policy key does not match the policy datum");
+  return { tx, policy, policyKey, premium: step.premium, tranche: t, upper, before: pool.ledgers[t], after: step.pool };
 }
 
-/** Random 32-byte commitment placeholder until Midnight registration is wired into the Buy flow. */
-export function placeholderCommitment(): string {
-  const b = new Uint8Array(32);
-  globalThis.crypto.getRandomValues(b);
-  return Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
-}
+/** The policy-datum output of a Buy is always output #1 (pool continues at #0). */
+export const POLICY_DATUM_OUTPUT = 1;
+
+/** Stamp a built policy key with its submitted Buy transaction. */
+export const withBuyTx = (key: PolicyKey, txHash: string): PolicyKey => ({ ...key, txHash, outRef: `${txHash}#${POLICY_DATUM_OUTPUT}` });
 
 // ---------------------------------------------------------------- policies
 
