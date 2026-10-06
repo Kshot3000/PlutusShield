@@ -33,7 +33,7 @@ export default function PoolPage() {
       <UnderwriterSimulator />
       <div className="mt-10 grid gap-4 sm:grid-cols-3">
         {rules.map((r) => (
-          <div key={r.title} className="card-surface p-5">
+          <div key={r.title} className="glass-panel relative rounded-[1.4rem] p-6">
             <p className="text-sm font-semibold text-text">{r.title}</p>
             <p className="mt-2 text-sm leading-relaxed text-text-muted">{r.body}</p>
           </div>

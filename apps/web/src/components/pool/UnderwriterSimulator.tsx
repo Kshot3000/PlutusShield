@@ -142,7 +142,7 @@ export function UnderwriterSimulator() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-      <div className="card-surface p-6 sm:p-8">
+      <div className="glass-panel relative p-6 sm:p-8">
         <p className="font-mono-label text-[10px] text-text-dim">1 · Deposit</p>
         <label className="mt-3 block text-sm text-text-muted" htmlFor="lp-amount">
           Capital to underwrite (ADA)
@@ -215,7 +215,7 @@ export function UnderwriterSimulator() {
         </p>
       </div>
 
-      <div className="card-surface flex flex-col p-6 sm:p-8" aria-live="polite">
+      <div className="glass-panel relative flex flex-col p-6 sm:p-8" aria-live="polite">
         {sim.ok ? (
           <>
             <p className="font-mono-label text-[10px] text-text-dim">Projected net return</p>
@@ -236,7 +236,7 @@ export function UnderwriterSimulator() {
                 ["Share price", `${sim.sharePrice.toFixed(6)} ADA`],
                 ["Pool ownership", pct(sim.projection.ownership, 3)],
                 ["Premium income", `${fmt(sim.projection.premiumIncome)} ADA`],
-                ["Claims share", `−${fmt(sim.projection.claimLoss)} ADA`],
+                ["Claims share", sim.projection.claimLoss > 0 ? `−${fmt(sim.projection.claimLoss)} ADA` : "0.00 ADA"],
                 ["Break-even claim rate", pct(sim.projection.breakEvenClaimRate)],
                 ["Withdrawable right away", `${fmt(sim.withdrawable)} ADA`],
               ].map(([k, v]) => (
@@ -265,7 +265,7 @@ export function UnderwriterSimulator() {
         <button
           type="button"
           disabled
-          className="mt-8 h-11 w-full rounded-full bg-accent text-sm font-medium text-[var(--text-inverse)] opacity-50"
+          className="mt-8 h-11 w-full rounded-full bg-[linear-gradient(180deg,#ffffff_0%,#dde3f6_100%)] text-sm font-medium text-[var(--text-inverse)] opacity-40"
         >
           Deposits open on testnet
         </button>

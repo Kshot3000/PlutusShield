@@ -43,8 +43,9 @@ const columns = [
 
 export function Footer() {
   return (
-    <footer className="mt-auto border-t border-border bg-bg-elevated">
-      <Container className="py-14">
+    <footer className="relative mt-auto overflow-hidden">
+      <div className="hairline-x absolute inset-x-0 top-0" aria-hidden="true" />
+      <Container className="relative pb-10 pt-20">
         <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div className="max-w-sm">
             <Logo />
@@ -58,8 +59,8 @@ export function Footer() {
           </div>
           {columns.map((col) => (
             <div key={col.title}>
-              <h3 className="font-mono-label text-[10px] text-text-dim">{col.title}</h3>
-              <ul className="mt-4 space-y-2.5">
+              <h3 className="font-mono-label text-[9.5px] text-text-dim">{col.title}</h3>
+              <ul className="mt-5 space-y-3">
                 {col.links.map((link) => (
                   <li key={link.href}>
                     {"external" in link && link.external ? (
@@ -67,14 +68,14 @@ export function Footer() {
                         href={link.href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm text-text-muted transition-colors hover:text-text"
+                        className="text-[14px] text-text-muted transition-colors duration-300 hover:text-text"
                       >
                         {link.label}
                       </a>
                     ) : (
                       <Link
                         href={link.href}
-                        className="text-sm text-text-muted transition-colors hover:text-text"
+                        className="text-[14px] text-text-muted transition-colors duration-300 hover:text-text"
                       >
                         {link.label}
                       </Link>
@@ -85,7 +86,13 @@ export function Footer() {
             </div>
           ))}
         </div>
-        <div className="mt-12 flex flex-col gap-3 border-t border-border pt-6 text-xs text-text-dim sm:flex-row sm:items-center sm:justify-between">
+        <p
+          className="pointer-events-none mt-20 select-none whitespace-nowrap text-center font-display text-[17vw] leading-[0.8] text-transparent [-webkit-text-stroke:1px_rgba(197,208,255,0.12)] lg:text-[13.5rem]"
+          aria-hidden="true"
+        >
+          Plutus<em>Shield</em>
+        </p>
+        <div className="mt-10 flex flex-col gap-3 border-t border-[var(--hairline)] pt-6 text-xs text-text-dim sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} PlutusShield. MIT licensed.</p>
           <p className="max-w-md sm:text-right">
             Not an offer of insurance or investment advice. Pre-release software under active design.

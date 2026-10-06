@@ -36,7 +36,7 @@ export function QuoteCalculator() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-      <div className="card-surface p-6 sm:p-8">
+      <div className="glass-panel relative p-6 sm:p-8">
         <p className="font-mono-label text-[10px] text-text-dim">1 · Choose cover</p>
         <div className="mt-3 grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label="Cover product">
           {Object.values(PRODUCTS).map((prod) => {
@@ -109,7 +109,7 @@ export function QuoteCalculator() {
         </div>
       </div>
 
-      <div className="card-surface flex flex-col p-6 sm:p-8" aria-live="polite">
+      <div className="glass-panel relative flex flex-col p-6 sm:p-8" aria-live="polite">
         <p className="font-mono-label text-[10px] text-text-dim">Indicative premium</p>
         {result.ok ? (
           <>
@@ -148,7 +148,7 @@ export function QuoteCalculator() {
         <button
           type="button"
           disabled
-          className="mt-8 h-11 w-full rounded-full bg-accent text-sm font-medium text-[var(--text-inverse)] opacity-50"
+          className="mt-8 h-11 w-full rounded-full bg-[linear-gradient(180deg,#ffffff_0%,#dde3f6_100%)] text-sm font-medium text-[var(--text-inverse)] opacity-40"
         >
           Purchase opens on testnet
         </button>

@@ -51,10 +51,10 @@ export default function DocsPage() {
               href={doc.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="card-surface block h-full p-6 transition-colors hover:bg-bg-card-hover hover:border-border-strong"
+              className="glass-panel lift relative block h-full p-7 hover:bg-white/[0.02]"
             >
               <Badge variant="accent">{doc.tag}</Badge>
-              <h2 className="mt-4 text-lg font-semibold tracking-tight text-text">
+              <h2 className="mt-5 font-display text-[1.65rem] leading-tight text-text">
                 {doc.title}
                 <span className="ml-2 text-text-dim" aria-hidden="true">
                   ↗

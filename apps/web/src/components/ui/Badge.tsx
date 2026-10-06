@@ -4,7 +4,7 @@ type BadgeVariant = "default" | "accent" | "gold" | "cardano" | "midnight";
 
 const variants: Record<BadgeVariant, string> = {
   default:
-    "border-border bg-bg-muted text-text-muted",
+    "border-[var(--hairline)] bg-white/[0.03] text-text-muted",
   accent:
     "border-[color-mix(in_srgb,var(--accent)_35%,transparent)] bg-[var(--accent-glow)] text-accent-strong",
   gold:
@@ -26,7 +26,7 @@ export function Badge({
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono-label text-[10px] font-medium tracking-wider ${variants[variant]} ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono-label text-[10px] font-medium backdrop-blur-sm ${variants[variant]} ${className}`}
     >
       {children}
     </span>

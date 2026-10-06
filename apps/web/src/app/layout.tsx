@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Instrument_Sans, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
@@ -14,6 +14,7 @@ const instrumentSerif = Instrument_Serif({
   variable: "--font-instrument-serif",
   subsets: ["latin"],
   weight: "400",
+  style: ["normal", "italic"],
   display: "swap",
 });
 
@@ -23,7 +24,19 @@ const jetbrains = JetBrains_Mono({
   display: "swap",
 });
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.NEXT_PUBLIC_BASE_PATH
+    ? `https://kshot3000.github.io${process.env.NEXT_PUBLIC_BASE_PATH}`
+    : "http://localhost:3000");
+
+export const viewport: Viewport = {
+  themeColor: "#05060b",
+  colorScheme: "dark",
+};
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: "PlutusShield — DeFi insurance for Cardano & Midnight",
     template: "%s · PlutusShield",
@@ -52,10 +65,11 @@ export default function RootLayout({
       lang="en"
       className={`${instrumentSans.variable} ${instrumentSerif.variable} ${jetbrains.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-bg text-text">
+      <body className="relative flex min-h-full flex-col bg-bg text-text">
+        <div className="noise pointer-events-none fixed inset-0 z-[60]" aria-hidden="true" />
         <a
           href="#main"
-          className="sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:m-0 focus:inline-flex focus:h-auto focus:w-auto focus:overflow-visible focus:rounded-lg focus:bg-accent focus:px-3 focus:py-2 focus:text-sm focus:text-[var(--text-inverse)] focus:[clip:auto]"
+          className="sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:m-0 focus:inline-flex focus:h-auto focus:w-auto focus:overflow-visible focus:rounded-lg focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:text-[var(--text-inverse)] focus:[clip:auto]"
         >
           Skip to content
         </a>
