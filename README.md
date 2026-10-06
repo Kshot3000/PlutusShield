@@ -4,7 +4,7 @@
 
 PlutusShield is protection you can verify on-chain, with privacy where it actually matters. Cardano handles settlement, premiums, and underwriting liquidity. Midnight handles the sensitive parts: policy terms, claims evidence, and underwriter positions, using zero-knowledge proofs and selective disclosure.
 
-> **Status: pre-testnet.** This repo holds the product vision and docs, a Next.js site and app shell (`apps/web`) with a working cover quote calculator, the shared quote engine (`packages/sdk`), and the first Midnight Compact contract (`contracts/midnight`, compiles and passes off-chain simulation tests). Nothing is deployed, no pools are live, and no policies are on sale yet. Quote figures use model parameters against an example pool.
+> **Status: pre-testnet.** This repo holds the product vision and docs, a Next.js site and app shell (`apps/web`) with a working cover quote calculator, the shared quote engine and Cardano datum codecs (`packages/sdk`), the Cardano validators for parametric depeg cover (`contracts/cardano`, Aiken: underwriting pool, policy NFTs, oracle-quorum settlement; 48 passing tests), and the Midnight Compact policy registry (`contracts/midnight`, passes off-chain simulation tests). Nothing is deployed or audited, no pools are live, and no policies are on sale yet. Quote figures use model parameters against an example pool.
 
 ---
 
@@ -75,12 +75,12 @@ PlutusShield/
 ├── apps/
 │   └── web/                # Marketing site + dApp shell (Next.js / TypeScript)
 ├── contracts/
+│   ├── cardano/            # Aiken: underwriting pool, policy NFTs, oracle-quorum payout
 │   └── midnight/           # Compact: private cover registry, holder proofs, claims
 ├── packages/
-│   └── sdk/                # Products, risk tiers, kinked-utilization quote engine
+│   └── sdk/                # Products, quote engine, Cardano datum/redeemer codecs
 │
 │   # Planned (not yet present):
-├── contracts/cardano/      # Aiken validators: pool, policy, claims, payout
 └── services/
     ├── api/                # TypeScript API: quotes, policy lifecycle, indexer
     └── oracle-relay/       # Oracle aggregation + trigger evaluation
@@ -112,8 +112,10 @@ See [apps/web/README.md](apps/web/README.md) for routes and design notes.
 ### Tests
 
 ```bash
-pnpm test            # SDK quote engine + Midnight contract simulation
-pnpm test:sdk        # quote engine only (Node 22+)
+pnpm test            # SDK + Aiken validators + Midnight contract simulation
+pnpm test:sdk        # quote engine + Cardano codecs (Node 22+)
+pnpm test:cardano    # aiken check (Aiken v1.1.24)
+pnpm test:midnight   # Compact compile + simulation
 ```
 
 ### Midnight contract
@@ -128,17 +130,25 @@ pnpm test            # fast compile + off-chain circuit tests
 
 See [contracts/midnight/README.md](contracts/midnight/README.md).
 
-### Cardano contracts (planned)
+### Cardano contracts
+
+Requires [Aiken v1.1.24](https://github.com/aiken-lang/aiken/releases/tag/v1.1.24) (pinned in `aiken.toml`).
 
 ```bash
-# cd contracts/cardano && aiken check && aiken build
+cd contracts/cardano
+aiken check          # 48 unit tests: pool, buy, settle, expire, oracle auth, pricing
+aiken build          # regenerates plutus.json (CIP-57 blueprint)
 ```
+
+See [contracts/cardano/README.md](contracts/cardano/README.md) for validators, datum/redeemer shapes, and trust assumptions.
 
 ## Roadmap (high level)
 
 - [x] Vision, architecture, and product docs
-- [ ] Aiken validators: underwriting pool, policy mint, payout
-- [ ] Parametric trigger: multi-oracle stablecoin depeg (first product)
+- [x] Aiken validators: underwriting pool, policy mint, payout (`contracts/cardano`)
+- [x] Parametric trigger: multi-oracle stablecoin depeg (on-chain quorum check)
+- [ ] Testnet deployment (Preview) + oracle feed integration
+- [ ] Sale circuit-breaker against buying into an active depeg
 - [x] Compact contract: private policy commitment + coverage proof (`contracts/midnight`)
 - [x] Quote engine with risk tiers and utilization-kinked pricing (`packages/sdk`)
 - [ ] Exploit claims flow with private evidence vault

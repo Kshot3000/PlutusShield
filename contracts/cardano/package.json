@@ -1,0 +1,11 @@
+{
+  "name": "@plutusshield/cardano-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PlutusShield Aiken validators for Cardano: underwriting pool, policy NFTs, parametric depeg settlement",
+  "scripts": {
+    "check": "aiken check",
+    "build": "aiken build",
+    "test": "aiken check"
+  }
+}

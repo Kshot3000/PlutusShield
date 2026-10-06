@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Shared PlutusShield types and the cover quote engine",
+  "description": "Shared PlutusShield types, the cover quote engine, and Cardano datum/redeemer helpers",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./cardano": "./src/cardano.ts"
   },
   "scripts": {
     "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts"

@@ -34,4 +34,4 @@ The tests cover issuer-only registration, duplicate ids, threshold proofs, forge
 
 ## Status
 
-Compiles and passes local simulation. Not deployed to any Midnight network, not audited. Expiry is issuer-driven for now; time-locked self-expiry comes with the Cardano validators.
+Compiles and passes local simulation. Not deployed to any Midnight network, not audited. Expiry here is issuer-driven and mirrors the Cardano side, where `Expire` in `contracts/cardano` is time-locked (expiry + claim grace) and callable by anyone.

@@ -9,8 +9,11 @@
     "build": "pnpm --filter @plutusshield/web build",
     "lint": "pnpm --filter @plutusshield/web lint",
     "start": "pnpm --filter @plutusshield/web start",
-    "test": "pnpm --filter @plutusshield/sdk test && pnpm --filter @plutusshield/midnight-contracts test",
+    "test": "pnpm --filter @plutusshield/sdk test && pnpm --filter @plutusshield/cardano-contracts test && pnpm --filter @plutusshield/midnight-contracts test",
     "test:sdk": "pnpm --filter @plutusshield/sdk test",
+    "test:cardano": "pnpm --filter @plutusshield/cardano-contracts test",
+    "test:midnight": "pnpm --filter @plutusshield/midnight-contracts test",
+    "build:cardano": "pnpm --filter @plutusshield/cardano-contracts build",
     "compile:midnight": "pnpm --filter @plutusshield/midnight-contracts compile"
   },
   "engines": {

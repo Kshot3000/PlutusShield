@@ -6,7 +6,7 @@ PlutusShield spans two chains and one application surface.
 - **Midnight** — private policy terms, claims evidence, and underwriter positions. Compact circuits prove eligibility and claim validity without publishing sensitive data.
 - **App + API** — quotes, wallet connect, policy management, and claims UX.
 
-> Status: design. No contracts are deployed yet.
+> Status: pre-testnet. The Cardano validators (`contracts/cardano`, Aiken, 48 tests) and the Midnight policy registry (`contracts/midnight`, Compact) compile and pass local tests. Nothing is deployed or audited.
 
 ## System overview
 
@@ -60,16 +60,26 @@ flowchart LR
 
 Public Cardano state should never need private Midnight witnesses to verify that a payout was authorized — only that a valid proof / attestation was accepted.
 
-## Layers (planned repo layout)
+## Layers (repo layout)
 
 ```
-contracts/cardano/     Aiken validators: pool, policy mint, settle
-contracts/midnight/    Compact: policy commitment, evidence, disclosure
-services/api/          Quotes, indexer, oracle relay hooks
-services/oracle-relay/ Multi-oracle aggregation + trigger eval
-apps/web/              Marketing site + dApp
-packages/sdk/          Shared TS types / client
+contracts/cardano/     Aiken validators: pool, policy mint, settle        (built)
+contracts/midnight/    Compact: policy commitment, evidence, disclosure   (built)
+services/api/          Quotes, indexer, oracle relay hooks                (planned)
+services/oracle-relay/ Multi-oracle aggregation + trigger eval            (planned)
+apps/web/              Marketing site + dApp                              (built: site, /cover quote)
+packages/sdk/          Shared TS types, quote engine, Cardano datum codecs (built)
 ```
+
+## Cardano on-chain layer
+
+One parameterised multi-validator, `cover`, serves as both the minting policy and the lock script (see [contracts/cardano/README.md](../contracts/cardano/README.md)):
+
+- **Pool UTxO** (pool NFT + capital, `PoolDatum { total_shares, active_cover }`). LPs deposit and withdraw against pro-rata LP share tokens. Withdrawals can't push utilization above the product cap, so active cover stays fully collateralized.
+- **Buy.** The buyer pays a premium into the pool, at or above an integer floor that mirrors the SDK quote engine. The buy mints a reference token (locked with `PolicyDatum`) and a user token (to the buyer). `policy_id = blake2b_256(cbor(pool input))`, the same 32-byte id the Midnight registry uses. `midnight_commitment` carries the Midnight coverage commitment.
+- **Settle.** The holder burns both tokens and the pool pays exactly `coverage`. Settlement requires that a quorum of reference inputs holding allowlisted oracle-feed NFTs attest TWAP < threshold for at least the window, entirely within `[start, expiry]`, and that the claim is filed within the grace period.
+- **Expire.** After expiry plus grace, anyone can burn the reference token to release locked capital.
+- **No admin key.** Product terms, oracle allowlist, quorum, and pool currency are validator parameters.
 
 ## MVP vs later
 
