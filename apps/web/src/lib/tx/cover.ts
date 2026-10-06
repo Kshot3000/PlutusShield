@@ -52,6 +52,13 @@ export function coverScriptFrom(j: Parameters<typeof poolScriptFrom>[0] & { para
 
 /** A Buy must land within this long of being built (its validity upper bound). */
 export const BUY_WINDOW_MS = 10 * 60_000;
+/**
+ * How far before `now` the validity interval opens. The validator ignores a
+ * Buy's lower bound, so this is pure slack for a skewed client clock or a
+ * submit node a little behind the tip (either rejects with
+ * OutsideValidityIntervalUTxO when the interval opens "in the future").
+ */
+export const BUY_LOWER_SLACK_MS = 5 * 60_000;
 /** Min-ada locked with the policy reference token; returned to `refundTo` at expiry. */
 export const POLICY_REF_LOVELACE = 2_500_000n;
 
@@ -231,7 +238,7 @@ export async function buildBuy(lucid: LucidEvolution, c: CoverScript, a: BuyArgs
     .pay.ToContract(c.address, inline(toCborHex(coverDatumData({ kind: "Pool", pool: setCover(pool.datum, t, step.pool.activeCover) }))), value)
     .pay.ToContract(c.address, inline(toCborHex(coverDatumData({ kind: "Policy", policy }))), { lovelace: POLICY_REF_LOVELACE, [ref]: 1n })
     .readFrom(peg)
-    .validFrom(a.now - 60_000)
+    .validFrom(Math.max(a.now - BUY_LOWER_SLACK_MS, lucid.slotToUnixTime(0)))
     .validTo(upper)
     .complete();
   return { tx, policy, premium: step.premium, tranche: t, upper, before: pool.ledgers[t], after: step.pool };

@@ -33,7 +33,14 @@ await page.exposeFunction("__e2e", async (method, arg) => {
     return assetsToValue(total).to_cbor_hex();
   }
   if (method === "signTx") return (await w.signTx(CML.Transaction.from_cbor_hex(arg))).to_cbor_hex();
-  if (method === "submitTx") return await w.submitTx(arg);
+  if (method === "submitTx") {
+    try {
+      return await w.submitTx(arg);
+    } catch (e) {
+      console.error(`[node] submitTx failed: ${String(e?.message ?? e).slice(0, 2000)}`);
+      throw e;
+    }
+  }
   throw new Error(`unknown ${method}`);
 });
 await page.addInitScript(({ addrHex }) => {
