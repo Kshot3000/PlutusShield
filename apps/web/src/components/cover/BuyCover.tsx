@@ -315,7 +315,7 @@ const feedCopy = (f: FeedState, now: number, maxAgeH: number) => {
   const old = age(now - Number(f.reading.windowEnd));
   const price = `$${(Number(f.reading.priceBps) / 10_000).toFixed(4)}`;
   if (f.state === "depeg") return `${price}, below the $0.95 trigger`;
-  if (f.state === "stale") return `${price}, ${old} old (max ${maxAgeH} h)`;
+  if (f.state === "stale") return `${price}, ${old} old (too old by landing; max ${maxAgeH} h)`;
   return `${price}, ${old} old`;
 };
 
@@ -342,7 +342,7 @@ function OracleStatus({ sale, now, error }: { sale: ReturnType<typeof saleCheck>
               ? `Open: all ${sale.feeds.length} feeds report a healthy peg. Fresh for another ${age(sale.freshUntil! - (now + BUY_WINDOW_MS))}.`
               : sale.feeds.some((f) => f.state === "depeg")
                 ? "Paused: a feed reports USDM below its peg, so nobody can buy into a known loss."
-                : `Paused: the oracle readings are older than ${MAX_AGE_H} h. The Preview test oracle is refreshed by its operator; a browser can't publish feeds. Check back soon.`}
+                : `Paused: the oracle readings are too old. A sale needs every reading under ${MAX_AGE_H} h old when it lands (up to ${BUY_WINDOW_MS / 60_000} min after you sign). The Preview test oracle is refreshed by its operator; a browser can't publish feeds. Check back soon.`}
           </p>
           <ul className="mt-2.5 grid gap-1 text-xs">
             {sale.feeds.map((f) => (
