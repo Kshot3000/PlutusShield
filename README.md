@@ -4,7 +4,7 @@
 
 PlutusShield is protection you can verify on-chain, with privacy where it actually matters. Cardano handles settlement, premiums, and underwriting liquidity. Midnight handles the sensitive parts: policy terms, claims evidence, and underwriter positions, using zero-knowledge proofs and selective disclosure.
 
-> **Status: scaffold.** This repo currently holds the product vision, architecture, and design docs. There are no deployed contracts, no live pools, and no policies on sale yet. Anything described below as a feature is the design we are building toward.
+> **Status: scaffold + marketing site.** This repo holds the product vision, architecture, design docs, and a Next.js marketing site / app shell under `apps/web`. There are no deployed contracts, no live pools, and no policies on sale yet. Anything described as a live metric is a design preview.
 
 ---
 
@@ -66,10 +66,14 @@ Full comparison: [docs/COMPETITIVE.md](docs/COMPETITIVE.md).
 PlutusShield/
 ├── README.md               # You are here
 ├── LICENSE                 # MIT
+├── package.json            # pnpm workspace root
+├── pnpm-workspace.yaml
 ├── docs/
 │   ├── ARCHITECTURE.md     # System design, privacy boundaries, MVP scope
 │   ├── PRODUCT.md          # Cover types, stakeholders, UX pillars
 │   └── COMPETITIVE.md      # Landscape: builders and products
+├── apps/
+│   └── web/                # Marketing site + dApp shell (Next.js / TypeScript)
 │
 │   # Planned (not yet present):
 ├── contracts/
@@ -78,30 +82,41 @@ PlutusShield/
 ├── services/
 │   ├── api/                # TypeScript API: quotes, policy lifecycle, indexer
 │   └── oracle-relay/       # Oracle aggregation + trigger evaluation
-├── apps/
-│   └── web/                # Website + app (Next.js / TypeScript)
 └── packages/
     └── sdk/                # Shared TS types and client SDK
 ```
 
 ## Quick start
 
-> The code isn't in yet. These commands are placeholders and will be filled in as each package lands.
+### Web (marketing site + app shell)
 
 ```bash
-# Clone
 git clone https://github.com/Kshot3000/PlutusShield.git
 cd PlutusShield
+pnpm install
+pnpm dev
+```
 
+Open [http://localhost:3000](http://localhost:3000).
+
+From `apps/web` only:
+
+```bash
+cd apps/web
+pnpm install   # or: npm install
+pnpm dev       # or: npm run dev
+```
+
+See [apps/web/README.md](apps/web/README.md) for routes and design notes.
+
+### Contracts / API (planned)
+
+```bash
 # Cardano contracts (planned)
 # cd contracts/cardano && aiken check && aiken build
 
 # Midnight contracts (planned)
 # cd contracts/midnight && compact compile ...
-
-# API + web (planned)
-# pnpm install
-# pnpm dev
 ```
 
 ## Roadmap (high level)
@@ -111,6 +126,7 @@ cd PlutusShield
 - [ ] Parametric trigger: multi-oracle stablecoin depeg (first product)
 - [ ] Compact contracts: private policy commitment + coverage proof
 - [ ] Exploit claims flow with private evidence vault
+- [x] Marketing site + app shell (`apps/web`)
 - [ ] Web app: quote → buy → manage → claim
 - [ ] External audits of Cardano and Midnight contracts before any mainnet capital
 

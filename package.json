@@ -1,0 +1,16 @@
+{
+  "name": "plutusshield",
+  "private": true,
+  "version": "0.1.0",
+  "description": "DeFi and smart-contract insurance for Cardano and Midnight",
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "dev": "pnpm --filter @plutusshield/web dev",
+    "build": "pnpm --filter @plutusshield/web build",
+    "lint": "pnpm --filter @plutusshield/web lint",
+    "start": "pnpm --filter @plutusshield/web start"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
