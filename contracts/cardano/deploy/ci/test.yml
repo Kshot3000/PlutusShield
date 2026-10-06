@@ -1,3 +1,5 @@
+# Proposed CI workflow. Move to .github/workflows/test.yml (needs a token with
+# the `workflow` scope; the automation that pushed this commit lacked it).
 name: Test
 
 on:
