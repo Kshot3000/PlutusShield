@@ -1,0 +1,214 @@
+/*
+ * policy-cover.compact — PlutusShield private cover registry (Midnight)
+ *
+ * Mirrors each Cardano policy NFT (by 32-byte policy id) with a private record:
+ *   - the holder is a commitment to a local secret, never a raw public key
+ *   - the coverage amount is a hiding commitment (persistentCommit), never public
+ *   - claims carry only an evidence commitment; evidence stays off-ledger
+ *
+ * What a holder can prove without revealing size or identity:
+ *   proveCover(policyId, minCoverage) succeeds iff the caller owns an ACTIVE
+ *   policy whose committed coverage is >= minCoverage. Partners (DEXes,
+ *   lending markets) can gate "insured-only" flows on this.
+ *
+ * Authorization follows the witness-commitment pattern (no ownPublicKey()):
+ *   roleCommitment(sk, tag) = persistentHash("plutusshield:role:" || tag || sk)
+ *
+ * Status: compiles with compactc 0.31.1. Not deployed. Not audited.
+ */
+
+pragma language_version >= 0.23;
+
+import CompactStandardLibrary;
+
+export enum PolicyStatus {
+  NONE,
+  ACTIVE,
+  CLAIM_PENDING,
+  PAID,
+  EXPIRED
+}
+
+export struct PolicyRecord {
+  holder: Bytes<32>,
+  coverage: Bytes<32>,
+  expiry: Uint<64>,
+  status: PolicyStatus,
+  evidence: Bytes<32>
+}
+
+/* ---------- public ledger ---------- */
+
+/* Issuer = PlutusShield underwriting authority (governance-rotatable later). */
+export ledger issuer: Bytes<32>;
+/* Assessor = claims committee commitment for non-parametric claims. */
+export ledger assessor: Bytes<32>;
+
+export ledger policies: Map<Bytes<32>, PolicyRecord>;
+export ledger activePolicies: Counter;
+export ledger claimsFiled: Counter;
+export ledger claimsPaid: Counter;
+export ledger coverProofs: Counter;
+
+/* ---------- private witnesses ---------- */
+
+witness localSecretKey(): Bytes<32>;
+witness coverageAmount(policyId: Bytes<32>): Uint<64>;
+witness coverageSalt(policyId: Bytes<32>): Bytes<32>;
+
+/* ---------- constructor ---------- */
+
+constructor(assessorCommitment: Bytes<32>) {
+  issuer = disclose(roleCommitment(localSecretKey(), issuerTag()));
+  assessor = disclose(assessorCommitment);
+}
+
+/* ---------- helpers ---------- */
+
+export pure circuit issuerTag(): Bytes<32> {
+  return pad(32, "issuer");
+}
+
+export pure circuit holderTag(): Bytes<32> {
+  return pad(32, "holder");
+}
+
+export pure circuit assessorTag(): Bytes<32> {
+  return pad(32, "assessor");
+}
+
+export pure circuit roleCommitment(sk: Bytes<32>, tag: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<3, Bytes<32>>>([
+    pad(32, "plutusshield:role:"),
+    tag,
+    sk
+  ]);
+}
+
+export pure circuit coverageCommitment(amount: Uint<64>, salt: Bytes<32>): Bytes<32> {
+  return persistentCommit<Uint<64>>(amount, salt);
+}
+
+circuit assertIssuer(): [] {
+  assert(
+    disclose(roleCommitment(localSecretKey(), issuerTag())) == issuer,
+    "caller is not the issuer"
+  );
+}
+
+circuit assertAssessor(): [] {
+  assert(
+    disclose(roleCommitment(localSecretKey(), assessorTag())) == assessor,
+    "caller is not the assessor"
+  );
+}
+
+circuit assertHolder(rec: PolicyRecord): [] {
+  assert(
+    disclose(roleCommitment(localSecretKey(), holderTag())) == rec.holder,
+    "caller does not hold this policy"
+  );
+}
+
+/* ---------- lifecycle ---------- */
+
+/*
+ * Issuer registers a policy after the Cardano mint confirms.
+ * holderCommitment and coverage are produced client-side by the buyer.
+ */
+export circuit registerPolicy(
+  policyId: Bytes<32>,
+  holderCommitment: Bytes<32>,
+  coverage: Bytes<32>,
+  expiry: Uint<64>
+): [] {
+  assertIssuer();
+  const id = disclose(policyId);
+  assert(!policies.member(id), "policy already registered");
+  assert(disclose(holderCommitment) != pad(32, ""), "empty holder commitment");
+  assert(disclose(coverage) != pad(32, ""), "empty coverage commitment");
+  policies.insert(id, PolicyRecord {
+    holder: disclose(holderCommitment),
+    coverage: disclose(coverage),
+    expiry: disclose(expiry),
+    status: PolicyStatus.ACTIVE,
+    evidence: pad(32, "")
+  });
+  activePolicies.increment(1);
+}
+
+/*
+ * Holder proves "I hold ACTIVE cover of at least minCoverage" for policyId.
+ * Reveals nothing about the exact amount or the holder's key.
+ */
+export circuit proveCover(policyId: Bytes<32>, minCoverage: Uint<64>): [] {
+  const id = disclose(policyId);
+  assert(policies.member(id), "unknown policy");
+  const rec = policies.lookup(id);
+  assert(rec.status == PolicyStatus.ACTIVE, "policy not active");
+  assertHolder(rec);
+  const amount = coverageAmount(id);
+  const salt = coverageSalt(id);
+  assert(
+    disclose(coverageCommitment(amount, salt)) == rec.coverage,
+    "coverage opening does not match commitment"
+  );
+  assert(disclose(amount >= minCoverage), "coverage below requested minimum");
+  coverProofs.increment(1);
+}
+
+/* Holder files a claim; only a commitment to the evidence bundle goes on-ledger. */
+export circuit fileClaim(policyId: Bytes<32>, evidenceCommitment: Bytes<32>): [] {
+  const id = disclose(policyId);
+  assert(policies.member(id), "unknown policy");
+  const rec = policies.lookup(id);
+  assert(rec.status == PolicyStatus.ACTIVE, "policy not claimable");
+  assertHolder(rec);
+  assert(disclose(evidenceCommitment) != pad(32, ""), "empty evidence commitment");
+  policies.insert(id, PolicyRecord {
+    holder: rec.holder,
+    coverage: rec.coverage,
+    expiry: rec.expiry,
+    status: PolicyStatus.CLAIM_PENDING,
+    evidence: disclose(evidenceCommitment)
+  });
+  claimsFiled.increment(1);
+}
+
+/* Assessor resolves a pending claim. Approved -> PAID (Cardano settles payout). */
+export circuit resolveClaim(policyId: Bytes<32>, approved: Boolean): [] {
+  assertAssessor();
+  const id = disclose(policyId);
+  assert(policies.member(id), "unknown policy");
+  const rec = policies.lookup(id);
+  assert(rec.status == PolicyStatus.CLAIM_PENDING, "no pending claim");
+  const ok = disclose(approved);
+  policies.insert(id, PolicyRecord {
+    holder: rec.holder,
+    coverage: rec.coverage,
+    expiry: rec.expiry,
+    status: ok ? PolicyStatus.PAID : PolicyStatus.ACTIVE,
+    evidence: ok ? rec.evidence : pad(32, "")
+  });
+  if (ok) {
+    claimsPaid.increment(1);
+    activePolicies.decrement(1);
+  }
+}
+
+/* Issuer expires a policy past its term (mirrors Cardano expiry / burn). */
+export circuit expirePolicy(policyId: Bytes<32>): [] {
+  assertIssuer();
+  const id = disclose(policyId);
+  assert(policies.member(id), "unknown policy");
+  const rec = policies.lookup(id);
+  assert(rec.status == PolicyStatus.ACTIVE, "only active policies expire");
+  policies.insert(id, PolicyRecord {
+    holder: rec.holder,
+    coverage: rec.coverage,
+    expiry: rec.expiry,
+    status: PolicyStatus.EXPIRED,
+    evidence: rec.evidence
+  });
+  activePolicies.decrement(1);
+}

@@ -8,7 +8,10 @@
     "dev": "pnpm --filter @plutusshield/web dev",
     "build": "pnpm --filter @plutusshield/web build",
     "lint": "pnpm --filter @plutusshield/web lint",
-    "start": "pnpm --filter @plutusshield/web start"
+    "start": "pnpm --filter @plutusshield/web start",
+    "test": "pnpm --filter @plutusshield/sdk test && pnpm --filter @plutusshield/midnight-contracts test",
+    "test:sdk": "pnpm --filter @plutusshield/sdk test",
+    "compile:midnight": "pnpm --filter @plutusshield/midnight-contracts compile"
   },
   "engines": {
     "node": ">=20"

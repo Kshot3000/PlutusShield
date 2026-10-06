@@ -1,0 +1,15 @@
+{
+  "name": "@plutusshield/midnight-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "PlutusShield Compact contracts for Midnight: private cover registry, holder proofs, claims",
+  "scripts": {
+    "compile": "compact compile +0.31.1 src/policy-cover.compact src/managed/policy-cover",
+    "compile:fast": "compact compile +0.31.1 --skip-zk src/policy-cover.compact src/managed/policy-cover",
+    "test": "pnpm run compile:fast && node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "0.16.0"
+  }
+}

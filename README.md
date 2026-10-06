@@ -4,7 +4,7 @@
 
 PlutusShield is protection you can verify on-chain, with privacy where it actually matters. Cardano handles settlement, premiums, and underwriting liquidity. Midnight handles the sensitive parts: policy terms, claims evidence, and underwriter positions, using zero-knowledge proofs and selective disclosure.
 
-> **Status: scaffold + marketing site.** This repo holds the product vision, architecture, design docs, and a Next.js marketing site / app shell under `apps/web`. There are no deployed contracts, no live pools, and no policies on sale yet. Anything described as a live metric is a design preview.
+> **Status: pre-testnet.** This repo holds the product vision and docs, a Next.js site and app shell (`apps/web`) with a working cover quote calculator, the shared quote engine (`packages/sdk`), and the first Midnight Compact contract (`contracts/midnight`, compiles and passes off-chain simulation tests). Nothing is deployed, no pools are live, and no policies are on sale yet. Quote figures use model parameters against an example pool.
 
 ---
 
@@ -74,16 +74,16 @@ PlutusShield/
 │   └── COMPETITIVE.md      # Landscape: builders and products
 ├── apps/
 │   └── web/                # Marketing site + dApp shell (Next.js / TypeScript)
+├── contracts/
+│   └── midnight/           # Compact: private cover registry, holder proofs, claims
+├── packages/
+│   └── sdk/                # Products, risk tiers, kinked-utilization quote engine
 │
 │   # Planned (not yet present):
-├── contracts/
-│   ├── cardano/            # Aiken validators: pool, policy, claims, payout
-│   └── midnight/           # Compact contracts: private policy, evidence, proofs
-├── services/
-│   ├── api/                # TypeScript API: quotes, policy lifecycle, indexer
-│   └── oracle-relay/       # Oracle aggregation + trigger evaluation
-└── packages/
-    └── sdk/                # Shared TS types and client SDK
+├── contracts/cardano/      # Aiken validators: pool, policy, claims, payout
+└── services/
+    ├── api/                # TypeScript API: quotes, policy lifecycle, indexer
+    └── oracle-relay/       # Oracle aggregation + trigger evaluation
 ```
 
 ## Quick start
@@ -109,14 +109,29 @@ pnpm dev       # or: npm run dev
 
 See [apps/web/README.md](apps/web/README.md) for routes and design notes.
 
-### Contracts / API (planned)
+### Tests
 
 ```bash
-# Cardano contracts (planned)
-# cd contracts/cardano && aiken check && aiken build
+pnpm test            # SDK quote engine + Midnight contract simulation
+pnpm test:sdk        # quote engine only (Node 22+)
+```
 
-# Midnight contracts (planned)
-# cd contracts/midnight && compact compile ...
+### Midnight contract
+
+Requires the Compact toolchain (`compact` CLI with compiler 0.31.1).
+
+```bash
+cd contracts/midnight
+pnpm compile         # full compile incl. prover/verifier keys
+pnpm test            # fast compile + off-chain circuit tests
+```
+
+See [contracts/midnight/README.md](contracts/midnight/README.md).
+
+### Cardano contracts (planned)
+
+```bash
+# cd contracts/cardano && aiken check && aiken build
 ```
 
 ## Roadmap (high level)
@@ -124,10 +139,12 @@ See [apps/web/README.md](apps/web/README.md) for routes and design notes.
 - [x] Vision, architecture, and product docs
 - [ ] Aiken validators: underwriting pool, policy mint, payout
 - [ ] Parametric trigger: multi-oracle stablecoin depeg (first product)
-- [ ] Compact contracts: private policy commitment + coverage proof
+- [x] Compact contract: private policy commitment + coverage proof (`contracts/midnight`)
+- [x] Quote engine with risk tiers and utilization-kinked pricing (`packages/sdk`)
 - [ ] Exploit claims flow with private evidence vault
 - [x] Marketing site + app shell (`apps/web`)
-- [ ] Web app: quote → buy → manage → claim
+- [x] Web app: interactive quote on `/cover`
+- [ ] Web app: buy → manage → claim
 - [ ] External audits of Cardano and Midnight contracts before any mainnet capital
 
 ## Disclaimer

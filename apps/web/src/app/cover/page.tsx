@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
-import {
-  AppShell,
-  ComingSoonPanel,
-  PlaceholderMetric,
-} from "@/components/AppShell";
+import { AppShell } from "@/components/AppShell";
+import { QuoteCalculator } from "@/components/cover/QuoteCalculator";
 
 export const metadata: Metadata = {
   title: "Cover",
-  description: "Browse and quote PlutusShield cover products — design preview.",
+  description: "Quote PlutusShield depeg, exploit, and SLA cover for Cardano and Midnight.",
 };
 
 export default function CoverPage() {
@@ -15,17 +12,9 @@ export default function CoverPage() {
     <AppShell
       active="cover"
       title="Cover"
-      description="Exploit, parametric, and SLA cover products. Quotes and purchases are not available yet — this is a design preview."
+      description="Price depeg, exploit, and SLA cover with the PlutusShield quote engine. Purchases open on testnet once the Cardano validators ship."
     >
-      <div className="mb-8 grid gap-4 sm:grid-cols-3">
-        <PlaceholderMetric label="Products listed" hint="3 types designed" />
-        <PlaceholderMetric label="Quote rate" hint="Engine not live" />
-        <PlaceholderMetric label="Coverage caps" hint="Coming soon" />
-      </div>
-      <ComingSoonPanel
-        title="Cover marketplace coming soon"
-        body="First product target: parametric stablecoin depeg cover on Cardano with multi-oracle triggers. Exploit cover follows with Midnight evidence vaults."
-      />
+      <QuoteCalculator />
     </AppShell>
   );
 }
