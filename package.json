@@ -7,8 +7,9 @@
   "scripts": {
     "dev": "pnpm --filter @plutusshield/web dev",
     "build": "pnpm --filter @plutusshield/web build",
+    "build:pages": "pnpm --filter @plutusshield/web build:pages",
+    "preview": "pnpm --filter @plutusshield/web preview",
     "lint": "pnpm --filter @plutusshield/web lint",
-    "start": "pnpm --filter @plutusshield/web start",
     "test": "pnpm --filter @plutusshield/sdk test && pnpm --filter @plutusshield/cardano-contracts test && pnpm --filter @plutusshield/midnight-contracts test",
     "test:sdk": "pnpm --filter @plutusshield/sdk test",
     "test:cardano": "pnpm --filter @plutusshield/cardano-contracts test",

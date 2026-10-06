@@ -4,6 +4,8 @@
 
 PlutusShield is protection you can verify on-chain, with privacy where it actually matters. Cardano handles settlement, premiums, and underwriting liquidity. Midnight handles the sensitive parts: policy terms, claims evidence, and underwriter positions, using zero-knowledge proofs and selective disclosure.
 
+**Live site:** [kshot3000.github.io/PlutusShield](https://kshot3000.github.io/PlutusShield/) — static export of `apps/web`, deployed to GitHub Pages on every push to `main`.
+
 > **Status: pre-testnet.** This repo holds the product vision and docs, a Next.js site and app shell (`apps/web`) with a working cover quote calculator, the shared quote engine and Cardano datum codecs (`packages/sdk`), the Cardano validators for parametric depeg cover (`contracts/cardano`, Aiken: underwriting pool, policy NFTs, oracle-quorum settlement; 48 passing tests), and the Midnight Compact policy registry (`contracts/midnight`, passes off-chain simulation tests). Nothing is deployed or audited, no pools are live, and no policies are on sale yet. Quote figures use model parameters against an example pool.
 
 ---
@@ -108,6 +110,22 @@ pnpm dev       # or: npm run dev
 ```
 
 See [apps/web/README.md](apps/web/README.md) for routes and design notes.
+
+### Deploy (GitHub Pages)
+
+The site is a fully static export (`output: "export"`), so it runs without a Node server.
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml) builds `apps/web` with
+`NEXT_PUBLIC_BASE_PATH=/PlutusShield` and publishes `apps/web/out` with the official
+`actions/deploy-pages` action on every push to `main` (or via **Run workflow**).
+
+Public URL: **https://kshot3000.github.io/PlutusShield/**
+
+```bash
+pnpm build:pages   # static export with the /PlutusShield base path → apps/web/out
+pnpm preview       # serve apps/web/out locally
+```
+
+One-time setup: repo **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 
 ### Tests
 
