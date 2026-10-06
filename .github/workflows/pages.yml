@@ -47,6 +47,8 @@ jobs:
           # e.g. "/PlutusShield" for https://kshot3000.github.io/PlutusShield/
           NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
           NEXT_PUBLIC_SITE_URL: ${{ steps.pages.outputs.base_url }}
+          # Preview Blockfrost project id (repo secret) so live /pool can read chain + submit LP txs
+          NEXT_PUBLIC_BLOCKFROST_PREVIEW_ID: ${{ secrets.BLOCKFROST_PREVIEW_ID }}
           NEXT_TELEMETRY_DISABLED: 1
 
       - name: Upload Pages artifact
