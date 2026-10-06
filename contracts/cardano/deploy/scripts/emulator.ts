@@ -5,8 +5,9 @@
  *   1  mint mock tUSDCx            (deployer native script)
  *   2  InitPool                     [ada, tUSDCx] tranches, pool NFT
  *   3  Deposit ada, Deposit tUSDCx  separate LP tokens lp00 / lp01
- *   4  oracle attests a healthy peg, then Buy USDC + Buy ada policies
+ *   4  oracle attests a healthy peg on all 3 feeds, then Buy USDC + Buy ada
  *      (premium paid in the policy's asset, cover starts after the waiting period)
+ *   4b one feed turns depegged: a new Buy is refused even with a healthy 2-of-3
  *   5  oracle publishes 2-of-3 depeg feeds; a new Buy is refused (circuit-breaker)
  *   6  Settle the USDC policy       payout in tUSDCx from the USDC tranche
  *   7  Expire the ada policy        submitted by a third party, deposit refunded to the buyer
@@ -80,7 +81,7 @@ const held = (unit: string, utxos = lp) => utxos.reduce((n, u) => n + (u.assets[
 assert.equal(held(d.policyId + lpTokenName(1)), 500_000n * U);
 assert.ok(held(d.policyId + lpTokenName(0)) > 0n);
 
-// 4. oracle attests a healthy peg (2 of 3 feeds at ~1.00 over the last 24h),
+// 4. oracle attests a healthy peg (all 3 feeds at ~1.00 over the last 24h),
 //    then the buyer buys a USDC policy and an ada policy
 const oracleFeeds = async () =>
   (await lucid.utxosAt(oracle.address)).filter((u) => Object.keys(u.assets).some((k) => k.startsWith(oraclePolicy.policyId)));
@@ -90,6 +91,7 @@ const pegNow = BigInt(emulator.now());
 await submit("oracle attests healthy peg", await act.publishFeeds(lucid, { ...oraclePolicy, keyHash: oracle.keyHash }, oracle.address, [
   { name: "feed-a", datum: { coveredAsset: covered, priceBps: 9_990n, windowStart: pegNow - DAY_MS, windowEnd: pegNow } },
   { name: "feed-b", datum: { coveredAsset: covered, priceBps: 10_005n, windowStart: pegNow - DAY_MS, windowEnd: pegNow } },
+  { name: "feed-c", datum: { coveredAsset: covered, priceBps: 9_995n, windowStart: pegNow - DAY_MS, windowEnd: pegNow } },
 ]), oracle.privateKey);
 as(buyerAcct);
 const commitment = "c0441700".repeat(8);
@@ -105,6 +107,21 @@ assert.equal(pool.datum.tranches[1].activeCover, 10_000n * U);
 assert.equal(pool.datum.tranches[0].activeCover, 5_000n * U);
 assert.equal(pool.capitals[1], 500_000n * U + bUsd.premium);
 
+// 4b. feed-c now reports 0.93. feed-a and feed-b are still a fresh healthy
+//     quorum, but sales need every feed, using its newest reading.
+emulator.awaitSlot(60);
+as(oracleAcct);
+const cNow = BigInt(emulator.now());
+await submit("oracle: feed-c reports 0.93", await act.publishFeeds(lucid, { ...oraclePolicy, keyHash: oracle.keyHash }, oracle.address, [
+  { name: "feed-c", datum: { coveredAsset: covered, priceBps: 9_300n, windowStart: cNow - 3_600_000n, windowEnd: cNow } },
+]), oracle.privateKey);
+as(buyerAcct);
+await assert.rejects(
+  act.buy(lucid, d, { asset: ADA, coverage: 1_000n * U, days: 14n, midnightCommitment: commitment, now: emulator.now(), feeds: await oracleFeeds() }),
+  /circuit-breaker.*Blocked: feed-c/s,
+);
+log("✓ Buy refused while one feed reports a depeg (healthy 2-of-3 is not enough)");
+
 // 5. depeg: 2 of 3 feeds report 0.91 for 26h inside the USDC policy's term
 const start = Number(bUsd.policy.start) + 3_600_000;
 const end = start + 26 * 3_600_000;
@@ -115,7 +132,7 @@ await submit("oracle publishes feed-a, feed-b", await act.publishFeeds(lucid, { 
   { name: "feed-a", datum: feedDatum(9_100n) },
   { name: "feed-b", datum: feedDatum(9_150n) },
 ]), oracle.privateKey);
-const feeds = (await oracleFeeds()).filter((u) => (act.readOracleDatum(u)?.priceBps ?? 10_000n) < 9_500n);
+const feeds = (await oracleFeeds()).filter((u) => act.readOracleDatum(u)?.windowStart === BigInt(start));
 assert.equal(feeds.length, 2);
 
 // 5b. circuit-breaker: with the depeg on record (and the peg readings stale),
@@ -125,7 +142,7 @@ await assert.rejects(
   act.buy(lucid, d, { asset: USDC, coverage: 1_000n * U, days: 14n, midnightCommitment: commitment, now: emulator.now(), feeds: await oracleFeeds() }),
   /circuit-breaker/,
 );
-log("✓ Buy during the depeg refused (no fresh healthy-peg quorum)");
+log("✓ Buy during the depeg refused (feeds no longer report a fresh healthy peg)");
 
 // 6. settle the USDC policy: payout in tUSDCx, ada tranche untouched
 as(buyerAcct);

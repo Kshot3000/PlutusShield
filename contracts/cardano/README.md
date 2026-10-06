@@ -4,7 +4,7 @@ Aiken (Plutus V3) validators for the MVP product: **parametric stablecoin depeg 
 
 Pools are **multi-asset**: one pool UTxO holds an independent tranche per accepted currency, by default **ada** and **USDC** (Circle **USDCx** on mainnet, a mock tUSDCx on Preview). Each policy is priced, collateralized, and paid out in one tranche's asset.
 
-> **Status:** compiles with Aiken v1.1.24 (stdlib v4.0.0) and passes 89 `aiken check` tests. The whole flow, including the sale circuit-breaker, ADA and USDC buys, a USDC settlement, and an expiry refund, passes in the Lucid Emulator against the applied script (`deploy/`, `pnpm test:deploy`). Not deployed to any network yet (see the [Preview runbook](deploy/README.md)) and not audited. No real funds.
+> **Status:** compiles with Aiken v1.1.24 (stdlib v4.0.0) and passes 92 `aiken check` tests. The whole flow, including the sale circuit-breaker, ADA and USDC buys, a USDC settlement, and an expiry refund, passes in the Lucid Emulator against the applied script (`deploy/`, `pnpm test:deploy`). Not deployed to any network yet (see the [Preview runbook](deploy/README.md)) and not audited. No real funds.
 
 ## Layout
 
@@ -130,7 +130,7 @@ OracleDatum { covered_asset, price_bps, window_start, window_end }   (on oracle 
 |---|---|
 | `Deposit { tranche }` | capital increases by `amount > 0`; mints exactly `amount * total_shares / capital` of `lp ‖ tranche` (or `amount` into an empty tranche) |
 | `Withdraw { tranche, shares }` | burns exactly `shares` of `lp ‖ tranche`; capital decreases by exactly `shares * capital / total_shares`; **capital lock:** `active_cover ≤ remaining capital × max_utilization` for that tranche |
-| `Buy` | `PolicyDatum.asset` must be an accepted asset (selects `t`); mints exactly one ref + one user token for `policy_id = blake2b_256(cbor(pool input ref))`; ref token goes to the script with a `PolicyDatum` whose product and trigger equal the params; term is a whole number of days within the product bounds; **waiting period:** `start ≥` tx upper bound `+ waiting_period_ms` (no backdating, no last-minute buys); **circuit-breaker:** `quorum` distinct allowlisted feeds report a healthy peg (`price_bps ≥ threshold_bps`) with `window_end ≥` tx upper bound `− max_price_age_ms`; single-policy and utilization caps **on tranche `t`**; tranche `t` capital increases by `premium ≥ required_premium(…, assets[t].min_premium, …)`; `active_cover += coverage` |
+| `Buy` | `PolicyDatum.asset` must be an accepted asset (selects `t`); mints exactly one ref + one user token for `policy_id = blake2b_256(cbor(pool input ref))`; ref token goes to the script with a `PolicyDatum` whose product and trigger equal the params; term is a whole number of days within the product bounds; **waiting period:** `start ≥` tx upper bound `+ waiting_period_ms` (no backdating, no last-minute buys); **circuit-breaker:** **every** allowlisted feed reports a healthy peg (`price_bps ≥ threshold_bps`) with `window_end ≥` tx upper bound `− max_price_age_ms`; single-policy and utilization caps **on tranche `t`**; tranche `t` capital increases by `premium ≥ required_premium(…, assets[t].min_premium, …)`; `active_cover += coverage` |
 | `Settle` | burns exactly that policy's ref + user token; the claim tx's upper bound `≤ expiry + claim_grace`; **oracle quorum** (below); tranche `t` capital decreases by exactly `coverage` (paid in the policy's asset); `active_cover -= coverage` |
 | `Expire` | anyone, once the tx lower bound `> expiry + claim_grace`; burns the ref token (and optionally the user token); capital unchanged; tranche `t` `active_cover -= coverage`; **an output pays `refund_to` at least the reference UTxO's lovelace** (the submitter can't keep the buyer's deposit) |
 
@@ -159,7 +159,7 @@ price_bps     >= trigger.threshold_bps          e.g. TWAP ≥ 0.95
 window_end    >= upper - sale_guard.max_price_age_ms
 ```
 
-`Buy` needs `quorum` distinct feeds to attest it, using the same authentication as `Settle`. If any feed has flipped to a depeg reading, or the readings are stale, the quorum fails and nothing can be sold. On top of that, `start ≥ upper + waiting_period_ms`, and because trigger windows must start at or after `start`, a depeg that begins during the waiting period is never covered.
+`Buy` needs a fresh healthy-peg reading from **every** allowlisted feed, using the same authentication as `Settle`. It is unanimity, not quorum, because the buyer chooses the reference inputs: with a 2-of-3 rule they could leave out the one feed that already shows a depeg. So if any feed is depegged, stale, or missing, nothing can be sold (fail closed; settlement still uses the quorum). Residual: each reading is a separate UTxO, so a superseded healthy reading stays usable until it ages past `max_price_age_ms`. On top of that, `start ≥ upper + waiting_period_ms`, and because trigger windows must start at or after `start`, a depeg that begins during the waiting period is never covered.
 
 ### Solvency invariant
 
@@ -197,7 +197,7 @@ See also the gap list in the [Preview runbook](deploy/README.md#known-gaps-befor
 
 ```bash
 # Aiken v1.1.24: https://github.com/aiken-lang/aiken/releases/tag/v1.1.24
-aiken check     # 89 tests
+aiken check     # 92 tests
 aiken build     # regenerates plutus.json
 # or from the repo root
 pnpm test:cardano

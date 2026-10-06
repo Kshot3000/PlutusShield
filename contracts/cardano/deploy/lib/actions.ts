@@ -162,21 +162,36 @@ export function readOracleDatum(u: UTxO): OracleDatum | undefined {
 }
 
 /**
- * Feed UTxOs that pass the Buy circuit-breaker for a tx landing by `saleBy`:
- * allowlisted, exactly one feed token, healthy peg, fresh. One per feed name.
+ * Feed UTxOs for the Buy circuit-breaker, for a tx landing by `saleBy`.
+ *
+ * The validator needs a fresh healthy-peg reading from EVERY allowlisted feed.
+ * An honest client also uses only the newest reading per feed (by
+ * `window_end`): an older healthy reading may still be within the max age
+ * while a newer one already reports a depeg. Returns the newest reading per
+ * feed when it passes, and the names of the feeds that are missing, stale, or
+ * depegged.
  */
-export function healthyFeeds(d: Deployment, candidates: UTxO[], saleBy: number): UTxO[] {
+export function saleFeeds(d: Deployment, candidates: UTxO[], saleBy: number): { ok: UTxO[]; blocked: string[] } {
   const o = d.params.oracle;
-  const byName = new Map<string, UTxO>();
+  const latest = new Map<string, { u: UTxO; datum: OracleDatum }>();
   for (const u of candidates) {
     const names = Object.entries(u.assets).filter(([k]) => k.startsWith(o.policyId));
     if (names.length !== 1 || names[0][1] !== 1n) continue;
     const name = names[0][0].slice(o.policyId.length);
-    if (!o.feeds.includes(name) || byName.has(name)) continue;
+    if (!o.feeds.includes(name)) continue;
     const datum = readOracleDatum(u);
-    if (datum && isHealthyReading(datum, d.params.product.trigger, d.params.saleGuard, BigInt(saleBy))) byName.set(name, u);
+    if (!datum) continue;
+    const prev = latest.get(name);
+    if (!prev || datum.windowEnd > prev.datum.windowEnd) latest.set(name, { u, datum });
   }
-  return [...byName.values()];
+  const ok: UTxO[] = [];
+  const blocked: string[] = [];
+  for (const name of o.feeds) {
+    const r = latest.get(name);
+    if (r && isHealthyReading(r.datum, d.params.product.trigger, d.params.saleGuard, BigInt(saleBy))) ok.push(r.u);
+    else blocked.push(Buffer.from(name, "hex").toString("utf8"));
+  }
+  return { ok, blocked };
 }
 
 export async function buy(
@@ -201,11 +216,11 @@ export async function buy(
   const premium = requiredPremium(premiumTerms(d.params.product, d.params.assets[t]), args.coverage, args.days, capital, tr.activeCover);
   // The tx must land by `upper`; cover starts after the waiting period.
   const upper = slotAligned(lucid, args.now + 10 * 60_000);
-  const peg = healthyFeeds(d, args.feeds, upper);
-  if (peg.length < Number(d.params.oracle.quorum)) {
+  const { ok: peg, blocked } = saleFeeds(d, args.feeds, upper);
+  if (blocked.length) {
     throw new Error(
-      `sale circuit-breaker: need ${d.params.oracle.quorum} fresh healthy-peg feeds (price >= ${d.params.product.trigger.thresholdBps} bps, ` +
-        `window_end within ${Number(d.params.saleGuard.maxPriceAgeMs) / 60_000} min), found ${peg.length}. ` +
+      `sale circuit-breaker: every allowlisted feed needs a fresh healthy-peg reading (price >= ${d.params.product.trigger.thresholdBps} bps, ` +
+        `window_end within ${Number(d.params.saleGuard.maxPriceAgeMs) / 60_000} min). Blocked: ${blocked.join(", ")}. ` +
         `Publish fresh readings (Preview: \`pnpm preview peg\`) or wait for the depeg to clear.`,
     );
   }

@@ -70,8 +70,9 @@ export interface OracleConfig { policyId: string; feeds: string[]; quorum: bigin
 
 /**
  * Sale circuit-breaker (Aiken `SaleGuard`). Every Buy must land at least
- * `waitingPeriodMs` before the policy starts, and must reference a quorum of
- * healthy-peg feeds (price >= trigger threshold) no older than `maxPriceAgeMs`.
+ * `waitingPeriodMs` before the policy starts, and must reference a healthy-peg
+ * reading (price >= trigger threshold) no older than `maxPriceAgeMs` from
+ * EVERY allowlisted feed, not just a quorum.
  */
 export interface SaleGuard { waitingPeriodMs: bigint; maxPriceAgeMs: bigint }
 

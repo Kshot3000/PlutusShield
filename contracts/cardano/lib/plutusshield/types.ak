@@ -75,10 +75,11 @@ pub type SaleGuard {
   /// gap is never covered, because trigger windows must start at or after
   /// `start`. 0 disables the waiting period.
   waiting_period_ms: Int,
-  /// A `Buy` must reference at least `oracle.quorum` distinct allowlisted
-  /// feeds reporting a healthy peg (`price_bps >= trigger.threshold_bps`)
-  /// whose `window_end` is no older than this, measured from the Buy's
-  /// validity upper bound. Must be > 0: the check is always on.
+  /// A `Buy` must reference EVERY allowlisted feed (not just a quorum, so a
+  /// buyer can't omit one that shows a depeg), each reporting a healthy peg
+  /// (`price_bps >= trigger.threshold_bps`) with a `window_end` no older than
+  /// this, measured from the Buy's validity upper bound. Must be > 0: the
+  /// check is always on.
   max_price_age_ms: Int,
 }
 
@@ -167,8 +168,8 @@ pub type PoolAction {
   /// subject to the tranche's capital lock.
   Withdraw { tranche: Int, shares: Int }
   /// Buyer pays the premium, in the policy's asset, into that tranche and
-  /// mints a policy (ref + user token). Needs a fresh healthy-peg oracle
-  /// quorum and respects the waiting period (`CoverParams.sale_guard`).
+  /// mints a policy (ref + user token). Needs fresh healthy-peg readings
+  /// from every allowlisted feed and respects the waiting period (`CoverParams.sale_guard`).
   Buy
   /// Holder burns the policy and receives `coverage` from its tranche.
   Settle

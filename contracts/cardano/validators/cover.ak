@@ -347,9 +347,10 @@ fn validate_buy(
     // No backdating, plus the waiting period: cover starts no earlier than
     // `waiting_period_ms` after the latest moment the tx can land.
     sale_by + guard.waiting_period_ms <= p.start,
-    // Circuit-breaker: no sales into a depeg. A quorum of allowlisted feeds
-    // must report the covered asset at or above the trigger threshold, with
-    // readings at most `max_price_age_ms` old when the tx lands.
+    // Circuit-breaker: no sales into a depeg. Every allowlisted feed must
+    // report the covered asset at or above the trigger threshold, with
+    // readings at most `max_price_age_ms` old when the tx lands. (All feeds,
+    // not a quorum, so a buyer can't omit the one already showing a depeg.)
     oracle.healthy(
       self.reference_inputs,
       params.oracle,
@@ -1102,11 +1103,12 @@ test usdc_withdraw_respects_usdc_capital_lock() fail {
 
 // ---------------------------------------------------------------- buy (ada)
 
-/// Two fresh healthy-peg readings, 30 minutes old at `sale_by`.
+/// One reading per allowlisted feed (all three), ending at `window_end`.
 fn peg_feeds(price: Int, window_end: Int) -> List<Input> {
   [
     feed("feed-a", oracle_policy, price, window_end - 86_400_000, window_end),
     feed("feed-b", oracle_policy, price, window_end - 86_400_000, window_end),
+    feed("feed-c", oracle_policy, price, window_end - 86_400_000, window_end),
   ]
 }
 
@@ -1195,12 +1197,27 @@ test buy_during_active_depeg_fails() fail {
 }
 
 test buy_with_one_feed_depegged_fails() fail {
+  // a healthy 2-of-3 quorum plus one feed already at 0.92
   let p = policy(coverage, 40_000_000, t0, expiry)
   let tx = Transaction {
     ..buy_tx(p, sale_by),
     reference_inputs: [
       feed("feed-a", oracle_policy, 10_000, sale_by - 86_400_000, sale_by),
-      feed("feed-b", oracle_policy, 9_200, sale_by - 86_400_000, sale_by),
+      feed("feed-b", oracle_policy, 10_000, sale_by - 86_400_000, sale_by),
+      feed("feed-c", oracle_policy, 9_200, sale_by - 86_400_000, sale_by),
+    ],
+  }
+  spend_pool(base_pool(), Buy, tx)
+}
+
+test buy_omitting_the_depegged_feed_fails() fail {
+  // cherry-picking: attach only the two healthy feeds and leave out feed-c
+  let p = policy(coverage, 40_000_000, t0, expiry)
+  let tx = Transaction {
+    ..buy_tx(p, sale_by),
+    reference_inputs: [
+      feed("feed-a", oracle_policy, 10_000, sale_by - 86_400_000, sale_by),
+      feed("feed-b", oracle_policy, 10_000, sale_by - 86_400_000, sale_by),
     ],
   }
   spend_pool(base_pool(), Buy, tx)
@@ -1236,6 +1253,7 @@ test buy_with_forged_peg_feed_fails() fail {
         sale_by - 86_400_000,
         sale_by,
       ),
+      feed("feed-c", oracle_policy, 10_000, sale_by - 86_400_000, sale_by),
     ],
   }
   spend_pool(base_pool(), Buy, tx)

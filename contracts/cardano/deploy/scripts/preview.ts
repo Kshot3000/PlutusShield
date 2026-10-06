@@ -6,7 +6,7 @@
  *   pnpm preview init                                  InitPool with the planned seed
  *   pnpm preview deposit <ada|usdc> <amount>           whole units
  *   pnpm preview withdraw <ada|usdc> <shares>          whole share units
- *   pnpm preview peg [priceBps=10000] [feed-a,feed-b]  test oracle: fresh healthy-peg readings (needed before buy)
+ *   pnpm preview peg [priceBps=10000] [feeds=all]      test oracle: fresh healthy-peg readings from every feed (needed before buy)
  *   pnpm preview buy <ada|usdc> <coverage> <days>      premium = validator floor; refund address = deployer
  *   pnpm preview feeds <priceBps> <startMs> <endMs> [feed-a,feed-b]
  *   pnpm preview settle <policyId>
@@ -112,7 +112,8 @@ switch (cmd) {
     break;
   }
   case "peg": {
-    const [price = "10000", names = "feed-a,feed-b"] = args;
+    // Buy needs a fresh healthy reading from EVERY allowlisted feed.
+    const [price = "10000", names = cfg.oracle.feeds.join(",")] = args;
     const now = BigInt(Date.now());
     const feeds = names.split(",").map((name) => ({
       name,

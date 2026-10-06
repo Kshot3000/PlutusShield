@@ -6,7 +6,7 @@ PlutusShield is protection you can verify on-chain, with privacy where it actual
 
 **Live site:** [kshot3000.github.io/PlutusShield](https://kshot3000.github.io/PlutusShield/) — static export of `apps/web`, deployed to GitHub Pages on every push to `main`.
 
-> **Status: pre-testnet.** This repo holds the product vision and docs, a Next.js site and app shell (`apps/web`) with a working cover quote calculator, the shared quote engine and Cardano datum codecs (`packages/sdk`), the Cardano validators for parametric depeg cover (`contracts/cardano`, Aiken: underwriting pool, policy NFTs, oracle-quorum settlement, ADA + USDC (USDCx) tranches, a sale circuit-breaker against buying into a depeg; 89 passing tests, plus an end-to-end emulator run and a Preview deploy runbook), and the Midnight Compact policy registry (`contracts/midnight`, passes off-chain simulation tests). Nothing is deployed or audited, no pools are live, and no policies are on sale yet. Quote figures use model parameters against an example pool.
+> **Status: pre-testnet.** This repo holds the product vision and docs, a Next.js site and app shell (`apps/web`) with a working cover quote calculator, the shared quote engine and Cardano datum codecs (`packages/sdk`), the Cardano validators for parametric depeg cover (`contracts/cardano`, Aiken: underwriting pool, policy NFTs, oracle-quorum settlement, ADA + USDC (USDCx) tranches, a sale circuit-breaker against buying into a depeg; 92 passing tests, plus an end-to-end emulator run and a Preview deploy runbook), and the Midnight Compact policy registry (`contracts/midnight`, passes off-chain simulation tests). Nothing is deployed or audited, no pools are live, and no policies are on sale yet. Quote figures use model parameters against an example pool.
 
 ---
 
@@ -156,7 +156,7 @@ Requires [Aiken v1.1.24](https://github.com/aiken-lang/aiken/releases/tag/v1.1.2
 
 ```bash
 cd contracts/cardano
-aiken check          # 89 unit tests: ADA/USDC tranches, pool, buy, sale circuit-breaker, settle, expire refund, oracle auth, pricing
+aiken check          # 92 unit tests: ADA/USDC tranches, pool, buy, sale circuit-breaker, settle, expire refund, oracle auth, pricing
 aiken build          # regenerates plutus.json (CIP-57 blueprint)
 ```
 
@@ -171,7 +171,7 @@ See [contracts/cardano/README.md](contracts/cardano/README.md) for validators, d
 - [x] Preview deploy tooling + runbook, full flow verified in the Lucid Emulator
 - [ ] Testnet deployment (Preview): fund deployer, init pool, first buy (see runbook)
 - [ ] Real oracle feed integration
-- [x] Sale circuit-breaker: no buys into an active depeg (healthy-peg oracle quorum + waiting period)
+- [x] Sale circuit-breaker: no buys into an active depeg (every allowlisted feed must report a fresh healthy peg, plus a waiting period)
 - [x] Expiry returns the policy deposit to the buyer, not the submitter
 - [x] Compact contract: private policy commitment + coverage proof (`contracts/midnight`)
 - [x] Quote engine with risk tiers and utilization-kinked pricing (`packages/sdk`)

@@ -56,11 +56,13 @@ pub fn attests_peg(
 /// reference inputs, have a datum satisfying `pred`. Unauthenticated or
 /// malformed oracle UTxOs are ignored, never trusted. A feed is counted at
 /// most once.
-fn quorum_agrees(
+/// How many distinct allowlisted feeds, among the reference inputs, carry a
+/// well-formed datum satisfying `pred`. A feed referenced twice counts once.
+fn agreeing_feeds(
   reference_inputs: List<Input>,
   config: OracleConfig,
   pred: fn(OracleDatum) -> Bool,
-) -> Bool {
+) -> Int {
   let agreeing = list.foldr(
     reference_inputs,
     [],
@@ -88,7 +90,15 @@ fn quorum_agrees(
       }
     },
   )
-  config.quorum >= 1 && list.length(agreeing) >= config.quorum
+  list.length(agreeing)
+}
+
+fn quorum_agrees(
+  reference_inputs: List<Input>,
+  config: OracleConfig,
+  pred: fn(OracleDatum) -> Bool,
+) -> Bool {
+  config.quorum >= 1 && agreeing_feeds(reference_inputs, config, pred) >= config.quorum
 }
 
 /// Settlement: a quorum of feeds attests the trigger inside [start, expiry].
@@ -106,20 +116,26 @@ pub fn triggered(
   )
 }
 
-/// Sale circuit-breaker: a quorum of feeds reports the covered asset at or
-/// above the trigger threshold, with readings no older than `fresh_after`.
-/// No healthy quorum (depeg under way, stale or missing feeds) means no sale.
+/// Sale circuit-breaker: EVERY allowlisted feed reports the covered asset at
+/// or above the trigger threshold, with readings no older than `fresh_after`.
+///
+/// Unanimity, not quorum: the buyer chooses which reference inputs to attach,
+/// so a quorum rule would let them leave out a feed that already shows a
+/// depeg and buy with the healthy ones. Requiring all feeds fails closed: one
+/// depegged, stale, or missing feed pauses sales. It never affects settlement,
+/// which still uses the quorum in `triggered`.
 pub fn healthy(
   reference_inputs: List<Input>,
   config: OracleConfig,
   trigger: Trigger,
   fresh_after: Int,
 ) -> Bool {
-  quorum_agrees(
+  let all = list.length(config.feeds)
+  all >= 1 && agreeing_feeds(
     reference_inputs,
     config,
     fn(d) { attests_peg(d, trigger, fresh_after) },
-  )
+  ) == all
 }
 
 // ---------------------------------------------------------------- tests
@@ -208,11 +224,12 @@ fn peg(price: Int, window_end: Int) -> Data {
   d
 }
 
-test healthy_quorum_allows_sale() {
+test all_feeds_healthy_allows_sale() {
   healthy(
     [
       feed("feed-a", oracle_policy, peg(10_000, 5_000_000)),
       feed("feed-b", oracle_policy, peg(9_980, 5_000_000)),
+      feed("feed-c", oracle_policy, peg(9_990, 4_500_000)),
     ],
     config,
     trigger,
@@ -225,6 +242,7 @@ test exactly_at_threshold_counts_as_healthy() {
     [
       feed("feed-a", oracle_policy, peg(9_500, 5_000_000)),
       feed("feed-b", oracle_policy, peg(9_500, 5_000_000)),
+      feed("feed-c", oracle_policy, peg(9_500, 5_000_000)),
     ],
     config,
     trigger,
@@ -233,11 +251,12 @@ test exactly_at_threshold_counts_as_healthy() {
 }
 
 test depeg_reading_blocks_sale() {
-  // one feed healthy, the other already below the threshold
+  // two feeds healthy (a quorum), the third already below the threshold
   !healthy(
     [
       feed("feed-a", oracle_policy, peg(10_000, 5_000_000)),
-      feed("feed-b", oracle_policy, peg(9_400, 5_000_000)),
+      feed("feed-b", oracle_policy, peg(10_000, 5_000_000)),
+      feed("feed-c", oracle_policy, peg(9_400, 5_000_000)),
     ],
     config,
     trigger,
@@ -245,11 +264,30 @@ test depeg_reading_blocks_sale() {
   )
 }
 
+test omitting_a_feed_blocks_sale() {
+  // a quorum of healthy feeds is not enough: a buyer could otherwise leave out
+  // the feed that already shows the depeg
+  !healthy(
+    [
+      feed("feed-a", oracle_policy, peg(10_000, 5_000_000)),
+      feed("feed-b", oracle_policy, peg(10_000, 5_000_000)),
+    ],
+    config,
+    trigger,
+    4_000_000,
+  )
+}
+
+test no_allowlisted_feeds_blocks_sale() {
+  !healthy([], OracleConfig { ..config, feeds: [] }, trigger, 0)
+}
+
 test stale_reading_blocks_sale() {
   !healthy(
     [
       feed("feed-a", oracle_policy, peg(10_000, 5_000_000)),
-      feed("feed-b", oracle_policy, peg(10_000, 3_999_999)),
+      feed("feed-b", oracle_policy, peg(10_000, 5_000_000)),
+      feed("feed-c", oracle_policy, peg(10_000, 3_999_999)),
     ],
     config,
     trigger,
@@ -267,7 +305,8 @@ test healthy_reading_for_another_asset_is_ignored() {
   !healthy(
     [
       feed("feed-a", oracle_policy, peg(10_000, 5_000_000)),
-      feed("feed-b", oracle_policy, other),
+      feed("feed-b", oracle_policy, peg(10_000, 5_000_000)),
+      feed("feed-c", oracle_policy, other),
     ],
     config,
     trigger,
@@ -279,7 +318,8 @@ test healthy_needs_distinct_feeds() {
   !healthy(
     [
       feed("feed-a", oracle_policy, peg(10_000, 5_000_000)),
-      feed("feed-a", oracle_policy, peg(10_000, 5_000_000)),
+      feed("feed-b", oracle_policy, peg(10_000, 5_000_000)),
+      feed("feed-b", oracle_policy, peg(10_000, 5_000_000)),
     ],
     config,
     trigger,
