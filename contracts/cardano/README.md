@@ -4,7 +4,7 @@ Aiken (Plutus V3) validators for the MVP product: **parametric stablecoin depeg 
 
 Pools are **multi-asset**: one pool UTxO holds an independent tranche per accepted currency, by default **ada** and **USDC** (Circle **USDCx** on mainnet, a mock tUSDCx on Preview). Each policy is priced, collateralized, and paid out in one tranche's asset.
 
-> **Status:** compiles with Aiken v1.1.24 (stdlib v4.0.0) and passes 92 `aiken check` tests. The whole flow, including the sale circuit-breaker, ADA and USDC buys, a USDC settlement, and an expiry refund, passes in the Lucid Emulator against the applied script (`deploy/`, `pnpm test:deploy`). Not deployed to any network yet (see the [Preview runbook](deploy/README.md)) and not audited. No real funds.
+> **Status:** compiles with Aiken v1.1.24 (stdlib v4.0.0) and passes 92 `aiken check` tests. The whole flow passes in the Lucid Emulator (`deploy/`, `pnpm test:deploy`). **Also live on Cardano Preview** — pool address and txs in [deploy/deployments/preview.json](deploy/deployments/preview.json); runbook in [deploy/README.md](deploy/README.md). Not audited. Test value only.
 
 ## Layout
 

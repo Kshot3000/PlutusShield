@@ -43,12 +43,40 @@ const assetArg = (s: string): AssetClass =>
 const oracleFeeds = async () =>
   (await lucid.utxosAt(oracle.address)).filter((u) => Object.keys(u.assets).some((k) => k.startsWith(oraclePolicy.policyId)));
 
+/** Koios Preview sometimes returns collateral_output.asset_list as the string "[]".
+ * Lucid's schema then throws ParseError even though the tx is already on-chain.
+ * Fall back to raw /tx_info when awaitTx dies that way. */
+async function awaitConfirmed(hash: string) {
+  try {
+    await lucid.awaitTx(hash);
+    return;
+  } catch (e) {
+    const msg = String(e);
+    if (!msg.includes("ParseError") && !msg.includes("asset_list")) throw e;
+    console.log("awaitTx ParseError (Koios schema quirk); polling /tx_info…");
+    const base = process.env.KOIOS_URL ?? "https://preview.koios.rest/api/v1";
+    for (let i = 0; i < 60; i++) {
+      const res = await fetch(`${base}/tx_info`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ _tx_hashes: [hash] }),
+      });
+      if (res.ok) {
+        const rows = (await res.json()) as unknown[];
+        if (Array.isArray(rows) && rows.length > 0) return;
+      }
+      await new Promise((r) => setTimeout(r, 5_000));
+    }
+    throw new Error(`tx ${hash} not confirmed after Koios fallback poll`);
+  }
+}
+
 async function submit(label: string, tx: TxSignBuilder, ...extra: string[]) {
   let s = tx.sign.withWallet();
   for (const k of extra) s = s.sign.withPrivateKey(k);
   const hash = await (await s.complete()).submit();
   console.log(`${label}: submitted ${hash}; waiting for confirmation…`);
-  await lucid.awaitTx(hash);
+  await awaitConfirmed(hash);
   console.log(`confirmed https://preview.cexplorer.io/tx/${hash}`);
   file.txs = { ...(file.txs ?? {}), [`${new Date().toISOString()} ${label}`]: hash };
   writeDeploymentFile(file);

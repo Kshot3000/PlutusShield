@@ -5,3 +5,6 @@
 # Local scratch outputs
 deployments/*.local.json
 deployments/*.dryrun.plutus.json
+
+# Applied blueprint is large and reproducible via `pnpm plan`
+deployments/preview.plutus.json
