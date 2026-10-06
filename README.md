@@ -178,6 +178,7 @@ See [contracts/cardano/README.md](contracts/cardano/README.md) for validators, d
 - [ ] Exploit claims flow with private evidence vault
 - [x] Marketing site + app shell (`apps/web`)
 - [x] Web app: interactive quote on `/cover`
+- [x] Web app: claim checker on `/claim` (oracle quorum, TWAP trigger, claim window, sale circuit-breaker)
 - [ ] Web app: buy → manage → claim
 - [ ] External audits of Cardano and Midnight contracts before any mainnet capital
 

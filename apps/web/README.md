@@ -18,6 +18,7 @@ Marketing site and dApp shell for **PlutusShield** — DeFi insurance for Cardan
 | `/app` | "Your shield" dashboard: empty state, and the Road to Preview milestone tracker (`src/lib/status.ts`) |
 | `/cover` | Quote calculator: product, ADA/USDC tranche, amount and term with validation, tier, premium breakdown, policy timeline (waiting period / cover / claim grace), what goes on-chain, Preview buy steps |
 | `/pool` | Underwriter simulator: tranche, capital, tier, utilization and claims scenarios, LP shares and capital lock, Preview deposit steps |
+| `/claim` | Claim checker: example USDM market across three venues, venue-failure and feed-outage toggles, a time scrubber; verdicts from the SDK mirrors of `oracle.ak` (`settlementCheck`, `healthy`) and the relay window search, plus the attested `OracleDatum` CBOR |
 | `/docs` | Protocol docs hub plus six pages: how cover works, pricing, underwriting pool, settlement (incl. the sale circuit-breaker), privacy, risks |
 | `404` | Branded not-found page (GitHub Pages serves `404.html` for unknown paths) |
 
@@ -63,7 +64,7 @@ npm run dev
 **URL:** https://kshot3000.github.io/PlutusShield/
 
 - `next.config.ts` sets `output: "export"`, `trailingSlash: true`, and unoptimized images, so
-  every route (`/`, `/app`, `/cover`, `/pool`, `/docs/*`, `404`) is pre-rendered to plain HTML. The quote
+  every route (`/`, `/app`, `/cover`, `/pool`, `/claim`, `/docs/*`, `404`) is pre-rendered to plain HTML. The quote
   calculator and pool simulator run entirely client-side.
 - `basePath` / `assetPrefix` come from `NEXT_PUBLIC_BASE_PATH`. It is empty for local dev and
   set to `/PlutusShield` by the Pages workflow (from `actions/configure-pages`). If the site

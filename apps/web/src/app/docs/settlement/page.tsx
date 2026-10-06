@@ -39,6 +39,11 @@ export default function SettlementPage() {
 
 depeg:  threshold_bps = 9_500        -- price below 0.95 of peg
         window_ms     = 86_400_000   -- over a window of at least 24h`}</Formula>
+        <P>
+          Try it in the <DocLink href="/claim">claim checker</DocLink>. It runs the SDK&apos;s exact mirror of these
+          rules (<C>settlementCheck</C>) against example prices, so you can see which window pays, when the claim
+          window closes, and what happens when feeds go offline.
+        </P>
       </Section>
 
       <Section id="oracle-auth" title="Authenticating feeds">

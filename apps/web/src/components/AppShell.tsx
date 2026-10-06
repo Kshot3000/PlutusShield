@@ -8,6 +8,7 @@ const tabs = [
   { href: "/app", label: "Overview" },
   { href: "/cover", label: "Cover" },
   { href: "/pool", label: "Pool" },
+  { href: "/claim", label: "Claims" },
   { href: "/docs", label: "Docs" },
 ];
 
@@ -19,7 +20,7 @@ export function AppShell({
 }: {
   title: string;
   description: string;
-  active: "app" | "cover" | "pool" | "docs";
+  active: "app" | "cover" | "pool" | "claim" | "docs";
   children?: ReactNode;
 }) {
   return (
@@ -58,6 +59,7 @@ export function AppShell({
                 (active === "app" && tab.href === "/app") ||
                 (active === "cover" && tab.href === "/cover") ||
                 (active === "pool" && tab.href === "/pool") ||
+                (active === "claim" && tab.href === "/claim") ||
                 (active === "docs" && tab.href === "/docs");
               return (
                 <Link

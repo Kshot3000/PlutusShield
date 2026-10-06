@@ -48,7 +48,7 @@ export default function AppPage() {
             Choose ADA or USDC, set a size and term, and see the exact premium the validator would accept, with the
             waiting period, peg check, and payout spelled out before you ever connect a wallet.
           </p>
-          <div className="relative mt-7 grid gap-3 sm:grid-cols-2">
+          <div className="relative mt-7 grid gap-3 sm:grid-cols-3">
             <Link
               href="/cover"
               className="group rounded-2xl border border-[var(--hairline)] bg-white/[0.02] p-4 transition-colors hover:border-[color-mix(in_srgb,var(--accent)_45%,transparent)] hover:bg-[var(--accent-glow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
@@ -65,9 +65,19 @@ export default function AppPage() {
             >
               <p className="font-mono-label text-[9.5px] text-text-dim">Underwriters</p>
               <p className="mt-1.5 text-sm font-semibold text-text">
-                Simulate the pool <span className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
+                Simulate pool <span className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
               </p>
               <p className="mt-1 text-xs text-text-muted">Shares, premiums, claim stress</p>
+            </Link>
+            <Link
+              href="/claim"
+              className="group rounded-2xl border border-[var(--hairline)] bg-white/[0.02] p-4 transition-colors hover:border-[color-mix(in_srgb,var(--midnight)_45%,transparent)] hover:bg-[var(--midnight-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              <p className="font-mono-label text-[9.5px] text-text-dim">Holders</p>
+              <p className="mt-1.5 text-sm font-semibold text-text">
+                Check a claim <span className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
+              </p>
+              <p className="mt-1 text-xs text-text-muted">Oracle quorum, window, payout</p>
             </Link>
           </div>
         </section>

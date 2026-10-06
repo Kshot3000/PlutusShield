@@ -19,7 +19,10 @@ export function Header() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const inApp =
-    pathname.startsWith("/app") || pathname.startsWith("/cover") || pathname.startsWith("/pool");
+    pathname.startsWith("/app") ||
+    pathname.startsWith("/cover") ||
+    pathname.startsWith("/pool") ||
+    pathname.startsWith("/claim");
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);

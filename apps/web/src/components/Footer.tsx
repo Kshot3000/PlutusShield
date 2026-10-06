@@ -8,6 +8,7 @@ const columns = [
     links: [
       { href: "/cover", label: "Quote cover" },
       { href: "/pool", label: "Underwrite" },
+      { href: "/claim", label: "Claim checker" },
       { href: "/app", label: "App" },
     ],
   },
