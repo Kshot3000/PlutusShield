@@ -7,6 +7,7 @@ import {
   attestsPeg,
   findDepegWindow,
   healthy,
+  latestPerFeed,
   medianSeries,
   pegReading,
   settlementCheck,
@@ -149,13 +150,33 @@ test("aiken parity: malformed datum, wrong policy, unlisted feed, or 2 tokens ar
   }
 });
 
-test("aiken parity: sale circuit-breaker", () => {
-  assert.ok(healthy([feed("feed-a", peg(10_000n, 5_000_000n)), feed("feed-b", peg(9_980n, 5_000_000n))], config, trigger, 4_000_000n).ok);
-  assert.ok(healthy([feed("feed-a", peg(9_500n, 5_000_000n)), feed("feed-b", peg(9_500n, 5_000_000n))], config, trigger, 5_000_000n).ok);
-  assert.ok(!healthy([feed("feed-a", peg(10_000n, 5_000_000n)), feed("feed-b", peg(9_400n, 5_000_000n))], config, trigger, 4_000_000n).ok);
-  assert.ok(!healthy([feed("feed-a", peg(10_000n, 5_000_000n)), feed("feed-b", peg(10_000n, 3_999_999n))], config, trigger, 4_000_000n).ok);
+test("aiken parity: sale circuit-breaker needs every feed", () => {
+  const a = feed("feed-a", peg(10_000n, 5_000_000n));
+  const b = feed("feed-b", peg(10_000n, 5_000_000n));
+  assert.ok(healthy([a, feed("feed-b", peg(9_980n, 5_000_000n)), feed("feed-c", peg(9_990n, 4_500_000n))], config, trigger, 4_000_000n).ok);
+  assert.ok(healthy(["feed-a", "feed-b", "feed-c"].map((n) => feed(n, peg(9_500n, 5_000_000n))), config, trigger, 5_000_000n).ok, "exactly at threshold");
+  assert.ok(!healthy([a, b, feed("feed-c", peg(9_400n, 5_000_000n))], config, trigger, 4_000_000n).ok, "one feed depegged");
+  const omitted = healthy([a, b], config, trigger, 4_000_000n);
+  assert.ok(!omitted.ok, "a healthy quorum that omits a feed is not enough");
+  assert.deepEqual(omitted.missing, [textHex("feed-c")]);
+  assert.ok(!healthy([a, b, feed("feed-c", peg(10_000n, 3_999_999n))], config, trigger, 4_000_000n).ok, "stale");
   const other: OracleDatum = { coveredAsset: textHex("DJED"), priceBps: 10_000n, windowStart: 0n, windowEnd: 5_000_000n };
-  assert.ok(!healthy([feed("feed-a", peg(10_000n, 5_000_000n)), feed("feed-b", other)], config, trigger, 4_000_000n).ok);
+  assert.ok(!healthy([a, b, feed("feed-c", other)], config, trigger, 4_000_000n).ok, "another asset");
+  assert.ok(!healthy([a, b, b], config, trigger, 4_000_000n).ok, "distinct feeds");
+  assert.ok(!healthy([], { ...config, feeds: [] }, trigger, 0n).ok, "empty allowlist");
+});
+
+test("latestPerFeed keeps each feed's newest reading", () => {
+  const old = feed("feed-c", peg(10_000n, 4_000_000n));
+  const fresh = feed("feed-c", peg(9_300n, 5_000_000n));
+  const a = feed("feed-a", peg(10_000n, 5_000_000n));
+  const b = feed("feed-b", peg(10_000n, 5_000_000n));
+  // on-chain the old healthy feed-c reading would still pass; the client must not use it
+  assert.ok(healthy([a, b, old, fresh], config, trigger, 3_000_000n).ok);
+  const latest = latestPerFeed([a, b, old, fresh], config);
+  assert.equal(latest.length, 3);
+  assert.ok(latest.includes(fresh) && !latest.includes(old));
+  assert.ok(!healthy(latest, config, trigger, 3_000_000n).ok);
 });
 
 test("settlementCheck explains why a claim would or would not settle", () => {

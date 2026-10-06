@@ -141,8 +141,8 @@ export function findDepegWindow(
 /**
  * A reading over the `windowMs` that ends at `now`, for the sale
  * circuit-breaker. Healthy or not, it is what the feed would publish; the
- * pool only accepts a Buy when a quorum of such readings is at or above the
- * threshold and fresh (see `attestsPeg`).
+ * pool only accepts a Buy when EVERY allowlisted feed has such a reading at
+ * or above the threshold and fresh (see `attestsPeg` and `healthy`).
  */
 export function pegReading(
   samples: PriceSample[],
@@ -216,9 +216,38 @@ export function quorumAgrees<T extends FeedUtxo>(
 export const triggered = <T extends FeedUtxo>(utxos: T[], config: OracleConfig, trigger: Trigger, start: bigint, expiry: bigint) =>
   quorumAgrees(utxos, config, (d) => attests(d, trigger, start, expiry));
 
-/** Mirror of `oracle.healthy`. */
-export const healthy = <T extends FeedUtxo>(utxos: T[], config: OracleConfig, trigger: Trigger, freshAfter: bigint) =>
-  quorumAgrees(utxos, config, (d) => attestsPeg(d, trigger, freshAfter));
+/**
+ * Mirror of `oracle.healthy`: EVERY allowlisted feed (not a quorum) has a
+ * fresh healthy-peg reading among `utxos`. Unanimity because the buyer picks
+ * the reference inputs and could otherwise omit a feed that shows a depeg.
+ * `missing` lists the allowlisted feeds without a passing reading.
+ *
+ * On-chain any passing reading counts, even if a newer one from the same feed
+ * reports a depeg; an honest client should pass only each feed's newest
+ * reading (see `latestPerFeed`).
+ */
+export function healthy<T extends FeedUtxo>(
+  utxos: T[],
+  config: OracleConfig,
+  trigger: Trigger,
+  freshAfter: bigint,
+): { ok: boolean; feeds: string[]; use: T[]; missing: string[] } {
+  const q = quorumAgrees(utxos, config, (d) => attestsPeg(d, trigger, freshAfter));
+  const missing = config.feeds.filter((f) => !q.feeds.some((n) => sameBytes(n, f)));
+  return { ok: config.feeds.length >= 1 && q.feeds.length === config.feeds.length, feeds: q.feeds, use: q.use, missing };
+}
+
+/** The newest reading (largest `windowEnd`) per allowlisted feed. */
+export function latestPerFeed<T extends FeedUtxo>(utxos: T[], config: OracleConfig): T[] {
+  const best = new Map<string, T>();
+  for (const u of utxos) {
+    const name = feedOf(u, config);
+    if (name === undefined || !u.datum) continue;
+    const prev = best.get(name);
+    if (!prev || u.datum.windowEnd > prev.datum!.windowEnd) best.set(name, u);
+  }
+  return [...best.values()];
+}
 
 export type SettlementBlocker =
   | { code: "after-grace"; detail: string }
