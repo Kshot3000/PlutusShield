@@ -2,14 +2,284 @@
   "network": "midnight-preprod",
   "contract": "contracts/midnight/src/policy-cover-v2.compact",
   "compiler": "compactc 0.31.1",
-  "status": "deploying",
-  "contractAddress": null,
+  "contractAddress": "5430b803b6b3df6e6ee1d498bb02e2f2d06cb46661e72af1e6208d864feb8110",
+  "deployTxId": "00532855fad587de7be7129e965285b1a8585e3edd76275e26916556b756aba6d4",
+  "blockHeight": 2870317,
+  "issuerCommitment": "8af35ef251ba98f591d5545aca8d70bdae90450a13dd52a768f9f424b58892e8",
   "committee": [
     "9371bf48c0345615555cef18a39edd4f52855738574db57013684436ccb6461f",
     "c0aa4178666044f0c4c4ea5d21c8611c1d454a008064ca3304cbdb94cd07d44f",
     "592b8621f90773e9c267dd5c384b1383683d2727b10192e0a10755eacf165caf"
   ],
   "threshold": 2,
-  "claims": [],
+  "deployer": "mn_addr_preprod1ex8d8jusga4wpex65nc7uerarjhhfh0yl0z725h30vfcwnr3tztsujaew3",
+  "deployedAt": "2026-10-07T02:22:29.080Z",
+  "registrations": [
+    {
+      "policyId": "7c24be86268f54972c49f6f6e4ec10be6c59506e4c28d3869d33635979468ccb",
+      "cardano": {
+        "network": "preview",
+        "buyTx": "94c4dc052711c6eec5b2942da768b151b9f1dd9519cf11bcd55982a6bd1325ff",
+        "policyDatum": "94c4dc052711c6eec5b2942da768b151b9f1dd9519cf11bcd55982a6bd1325ff#1",
+        "midnightCommitment": "9d4d051d43eeed64615e573116f256e8e6676a06ace73e7c1f57d1240c9d7b27",
+        "coverage": "25000000",
+        "expiry": "1792528003000"
+      },
+      "source": "key",
+      "registerPolicy": {
+        "txId": "004513d43233f69f890f3fe66793bf863220657cb3c83c37752d66903681240e04",
+        "txHash": "ec1e22e70242196846b3e2fa9757367bc9e6a911909d7c03271d2e0d057acdcb",
+        "blockHeight": 2870321,
+        "blockHash": "4741cb7eddb37b7ae5fa9901ce17cf166bdb2b98da840c859f9c541bb0251c96",
+        "status": "SucceedEntirely"
+      },
+      "proveCover": {
+        "txId": "0019ca1425266da1529ba854975348eb8c3ea335db15075c7db3bafc103f214b65",
+        "txHash": "4b0e0fc2f6a23b097e91151488f4f1b4c74bd9f5bdfb6a4219ddad79c6fefb20",
+        "blockHeight": 2870325,
+        "blockHash": "4d0c3a3878c6445858ae57efdd8f8471c51f78e7297a865e83eeb08f7b71672a",
+        "status": "SucceedEntirely",
+        "minCoverage": "25000000"
+      },
+      "ledger": {
+        "status": 1,
+        "holder": "fe435e1c70aed663e72ba011d9bb99b91f6c86081854ff67a0bf785d8ece5340",
+        "coverage": "9ff196e70b23ec063eca9b73075d835b263fbead076f2b0c6dd6f518cc2f46ab",
+        "activePolicies": "1",
+        "coverProofs": "1"
+      },
+      "bindingHolds": true,
+      "at": "2026-10-07T02:23:14.763Z"
+    }
+  ],
+  "claims": [
+    {
+      "policyId": "7c24be86268f54972c49f6f6e4ec10be6c59506e4c28d3869d33635979468ccb",
+      "cardano": {
+        "network": "preview",
+        "buyTx": "94c4dc052711c6eec5b2942da768b151b9f1dd9519cf11bcd55982a6bd1325ff",
+        "policyDatum": "94c4dc052711c6eec5b2942da768b151b9f1dd9519cf11bcd55982a6bd1325ff#1"
+      },
+      "evidenceCommitment": "013e08ebfbf6fed7ca23edd20c02296d1043ac1fe10466745642dd9add996ac1",
+      "evidenceInput": "contracts/midnight/preprod/demo-evidence/committee-split-7c24be86.json",
+      "fileClaim": {
+        "txId": "0033a34195722ce1f5c070dfa6fba6aa11869e9ea283919dbcbad7ba10a3a25c4e",
+        "txHash": "96e17dfad21b4f59a5d2019945a54ed79e0d35feb39a91cd21d356444841c6c0",
+        "blockHeight": 2870329,
+        "blockHash": "291b5daea03c24085f92bf61154a658ef22691cbc3a816beaeba001d2eadd905",
+        "status": "SucceedEntirely"
+      },
+      "ledgerAfterFile": {
+        "status": "CLAIM_PENDING",
+        "evidence": "013e08ebfbf6fed7ca23edd20c02296d1043ac1fe10466745642dd9add996ac1",
+        "activePolicies": "1",
+        "claimsFiled": "1",
+        "claimsPaid": "0",
+        "round": 1,
+        "approvals": 0,
+        "rejections": 0,
+        "votedSeats": [],
+        "votesCast": "0",
+        "claimsRejected": "0",
+        "threshold": 2
+      },
+      "filedAt": "2026-10-07T02:23:37.874Z",
+      "votes": [
+        {
+          "txId": "0024a29ed995ae54eafb499ae84c8a1f6b2b2c8f7e31644c068cf56d48d080b041",
+          "txHash": "db60e9d7e73cfe5e5af12733b1635e679270bcd075fcc0536345fa64fd2dfc4e",
+          "blockHeight": 2870333,
+          "blockHash": "994988b8ff3193098eae7cba07b8c4d8f9c731be5b54a8bebe7ce9f2afbf3843",
+          "status": "SucceedEntirely",
+          "seat": 0,
+          "member": "9371bf48c0345615555cef18a39edd4f52855738574db57013684436ccb6461f",
+          "approved": true,
+          "assessment": {
+            "ok": true,
+            "reason": "bundle opens to the on-ledger evidence commitment",
+            "checks": [
+              {
+                "id": "files",
+                "ok": true
+              },
+              {
+                "id": "decrypt",
+                "ok": true
+              },
+              {
+                "id": "canonical",
+                "ok": true
+              },
+              {
+                "id": "commitment",
+                "ok": true
+              },
+              {
+                "id": "ledger",
+                "ok": true
+              }
+            ],
+            "bundle": {
+              "protocol": "DEMO ONLY - PlutusShield Midnight v2 committee vote drill (no real incident)",
+              "chain": "cardano",
+              "kind": "logic-bug",
+              "loss": "25 tADA",
+              "txHashes": 1,
+              "createdAt": "2026-10-07T01:42:36.766Z"
+            }
+          },
+          "ledgerAfterVote": {
+            "status": "CLAIM_PENDING",
+            "evidence": "013e08ebfbf6fed7ca23edd20c02296d1043ac1fe10466745642dd9add996ac1",
+            "activePolicies": "1",
+            "claimsFiled": "1",
+            "claimsPaid": "0",
+            "round": 1,
+            "approvals": 1,
+            "rejections": 0,
+            "votedSeats": [
+              0
+            ],
+            "votesCast": "1",
+            "claimsRejected": "0",
+            "threshold": 2
+          },
+          "at": "2026-10-07T02:24:02.238Z"
+        },
+        {
+          "txId": "00f9cc24faa79a0f0c5c40e0e53a77f5962c5e4b7bcd2bc9e0bb98fa4d47e8853b",
+          "txHash": "b027116544d495267dc124511d003297c87c36f024aa570ec3474d24cf0cedfc",
+          "blockHeight": 2870337,
+          "blockHash": "cf21661a63f50bcf3829fe9d4fbbadd780d4afd66a00f8d88ae0dd8872bc2fef",
+          "status": "SucceedEntirely",
+          "seat": 1,
+          "member": "c0aa4178666044f0c4c4ea5d21c8611c1d454a008064ca3304cbdb94cd07d44f",
+          "approved": false,
+          "assessment": {
+            "ok": true,
+            "reason": "bundle opens to the on-ledger evidence commitment",
+            "checks": [
+              {
+                "id": "files",
+                "ok": true
+              },
+              {
+                "id": "decrypt",
+                "ok": true
+              },
+              {
+                "id": "canonical",
+                "ok": true
+              },
+              {
+                "id": "commitment",
+                "ok": true
+              },
+              {
+                "id": "ledger",
+                "ok": true
+              }
+            ],
+            "bundle": {
+              "protocol": "DEMO ONLY - PlutusShield Midnight v2 committee vote drill (no real incident)",
+              "chain": "cardano",
+              "kind": "logic-bug",
+              "loss": "25 tADA",
+              "txHashes": 1,
+              "createdAt": "2026-10-07T01:42:36.766Z"
+            }
+          },
+          "ledgerAfterVote": {
+            "status": "CLAIM_PENDING",
+            "evidence": "013e08ebfbf6fed7ca23edd20c02296d1043ac1fe10466745642dd9add996ac1",
+            "activePolicies": "1",
+            "claimsFiled": "1",
+            "claimsPaid": "0",
+            "round": 1,
+            "approvals": 1,
+            "rejections": 1,
+            "votedSeats": [
+              0,
+              1
+            ],
+            "votesCast": "2",
+            "claimsRejected": "0",
+            "threshold": 2
+          },
+          "at": "2026-10-07T02:24:28.535Z"
+        },
+        {
+          "txId": "00ebb8b36a5dc82e878f9e5f9076f5971667dcb07a2f9bc75f1f5fa27dc06bdd9a",
+          "txHash": "bd62e689f13326a71d8db92f88d6aa4d7ede55952be32bbaf8440ec0482f7d74",
+          "blockHeight": 2870341,
+          "blockHash": "c1c96ed1a33d7118276aaf6ed69d797d42f8e52b36d5b5f4be5ae07f179786a0",
+          "status": "SucceedEntirely",
+          "seat": 2,
+          "member": "592b8621f90773e9c267dd5c384b1383683d2727b10192e0a10755eacf165caf",
+          "approved": true,
+          "assessment": {
+            "ok": true,
+            "reason": "bundle opens to the on-ledger evidence commitment",
+            "checks": [
+              {
+                "id": "files",
+                "ok": true
+              },
+              {
+                "id": "decrypt",
+                "ok": true
+              },
+              {
+                "id": "canonical",
+                "ok": true
+              },
+              {
+                "id": "commitment",
+                "ok": true
+              },
+              {
+                "id": "ledger",
+                "ok": true
+              }
+            ],
+            "bundle": {
+              "protocol": "DEMO ONLY - PlutusShield Midnight v2 committee vote drill (no real incident)",
+              "chain": "cardano",
+              "kind": "logic-bug",
+              "loss": "25 tADA",
+              "txHashes": 1,
+              "createdAt": "2026-10-07T01:42:36.766Z"
+            }
+          },
+          "ledgerAfterVote": {
+            "status": "PAID",
+            "evidence": "013e08ebfbf6fed7ca23edd20c02296d1043ac1fe10466745642dd9add996ac1",
+            "activePolicies": "0",
+            "claimsFiled": "1",
+            "claimsPaid": "1",
+            "round": 1,
+            "approvals": 2,
+            "rejections": 1,
+            "votedSeats": [
+              0,
+              1,
+              2
+            ],
+            "votesCast": "3",
+            "claimsRejected": "0",
+            "threshold": 2
+          },
+          "at": "2026-10-07T02:24:50.967Z"
+        }
+      ],
+      "decided": {
+        "status": "PAID",
+        "approvals": 2,
+        "rejections": 1,
+        "threshold": 2,
+        "at": "2026-10-07T02:24:50.967Z"
+      }
+    }
+  ],
   "_note": "Public Midnight Preprod data only (policy-cover v2, 2-of-3 assessor committee). No keys, seeds or committee secrets."
 }

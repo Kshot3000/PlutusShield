@@ -50,6 +50,8 @@ The Preprod relay runs v2 when `PLUTUSSHIELD_COVER_VERSION=2` and `POLICY_COVER_
 
 Before every vote the seat opens the sealed evidence off-ledger (`assessClaim`), the relay predicts the outcome with `applyVote` (relay/claims.ts, the circuit's tally rules in TypeScript, unit-tested), and after the tx it reads the ledger back and refuses to report success if the status differs. With `--register-first` and no v2 deploy record, one wallet sync covers deploy, registerPolicy, proveCover, fileClaim and the votes. Public results go to `deployments/preprod-v2.json` (the relay refuses to write v2 data into the v1 record). The drill on Preprod is a split vote: seat 0 approves, seat 1 rejects (still `CLAIM_PENDING` under 2-of-3), seat 2 approves (`PAID`).
 
+**Live on Preprod (2026-10-07):** v2 contract `5430b803b6b3df6e6ee1d498bb02e2f2d06cb46661e72af1e6208d864feb8110` (deploy `00532855…aba6d4`, block 2,870,317, 2-of-3). Policy `7c24be86…` (Cardano Preview Buy `94c4dc05…`): registerPolicy `ec1e22e7…` → proveCover `4b0e0fc2…` → fileClaim `96e17dfa…` → seat 0 approve `db60e9d7…` (1·0, pending) → seat 1 reject `b0271165…` (1·1, pending) → seat 2 approve `bd62e689…` (2·1, **PAID**), blocks 2,870,321 to 2,870,341. Full record: `deployments/preprod-v2.json`. Demo evidence, test policy.
+
 Pure helpers (no proof, no keys): `roleCommitment`, `coverageCommitment`, `registrationCommitment`, `evidenceCommitment`, and the tags `issuerTag` / `holderTag` / `assessorTag` / `registrationTag` / `evidenceTag`.
 
 ### Cardano binding and policy keys
