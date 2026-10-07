@@ -30,12 +30,14 @@ export type PolicyStatusName = (typeof POLICY_STATUS)[number];
 
 export type ClaimOp =
   | { kind: "claim"; policyId: string; evidence: string }
-  | { kind: "resolve"; policyId: string; approved: boolean; envelope?: string; keyFile?: string };
+  | { kind: "resolve"; policyId: string; approved: boolean; envelope?: string; keyFile?: string }
+  | { kind: "vote"; policyId: string; member: number; approved: boolean; envelope?: string; keyFile?: string };
 
 /**
  * Parse claim operations from argv, in order:
  *   --claim <policyId> --evidence <evidence-input.json>
- *   --resolve <policyId> (--approve | --reject) [--envelope <file> --evidence-key <file>]
+ *   --resolve <policyId> (--approve | --reject) [--envelope <file> --evidence-key <file>]   (v1, one assessor)
+ *   --vote <policyId> --member <0|1|2> (--approve | --reject) [--envelope … --evidence-key …]   (v2 committee)
  * Several may be chained (file then resolve in one wallet sync). Throws on
  * anything ambiguous: a missing --evidence, both or neither of --approve /
  * --reject, a malformed policy id.
@@ -57,6 +59,15 @@ export function parseClaimOps(argv: string[]): ClaimOp[] {
     };
     if (a === "--claim") ops.push({ kind: "claim", policyId: id(argv[++i], "--claim"), evidence: "" });
     else if (a === "--resolve") ops.push({ kind: "resolve", policyId: id(argv[++i], "--resolve"), approved: undefined as unknown as boolean });
+    else if (a === "--vote") ops.push({ kind: "vote", policyId: id(argv[++i], "--vote"), member: -1, approved: undefined as unknown as boolean });
+    else if (a === "--member") {
+      const op = last();
+      if (op?.kind !== "vote") throw new Error("--member must follow --vote <policyId>");
+      if (op.member !== -1) throw new Error("one --member per --vote");
+      const v = val();
+      if (!/^[0-2]$/.test(v)) throw new Error(`--member is a committee seat 0, 1 or 2, got ${v}`);
+      op.member = Number(v);
+    }
     else if (a === "--evidence") {
       const op = last();
       if (op?.kind !== "claim") throw new Error("--evidence must follow --claim <policyId>");
@@ -64,12 +75,12 @@ export function parseClaimOps(argv: string[]): ClaimOp[] {
       op.evidence = val();
     } else if (a === "--approve" || a === "--reject") {
       const op = last();
-      if (op?.kind !== "resolve") throw new Error(`${a} must follow --resolve <policyId>`);
+      if (op?.kind !== "resolve" && op?.kind !== "vote") throw new Error(`${a} must follow --resolve or --vote <policyId>`);
       if (op.approved !== undefined) throw new Error("give exactly one of --approve / --reject");
       op.approved = a === "--approve";
     } else if (a === "--envelope" || a === "--evidence-key") {
       const op = last();
-      if (op?.kind !== "resolve") throw new Error(`${a} must follow --resolve <policyId>`);
+      if (op?.kind !== "resolve" && op?.kind !== "vote") throw new Error(`${a} must follow --resolve or --vote <policyId>`);
       if (a === "--envelope") op.envelope = val();
       else op.keyFile = val();
     }
@@ -77,7 +88,9 @@ export function parseClaimOps(argv: string[]): ClaimOp[] {
   for (const op of ops) {
     if (op.kind === "claim" && !op.evidence) throw new Error(`--claim ${op.policyId.slice(0, 16)}… needs --evidence <file>`);
     if (op.kind === "resolve" && op.approved === undefined) throw new Error(`--resolve ${op.policyId.slice(0, 16)}… needs --approve or --reject`);
-    if (op.kind === "resolve" && !!op.envelope !== !!op.keyFile) throw new Error("--envelope and --evidence-key go together");
+    if (op.kind === "vote" && op.member === -1) throw new Error(`--vote ${op.policyId.slice(0, 16)}… needs --member <0|1|2>`);
+    if (op.kind === "vote" && op.approved === undefined) throw new Error(`--vote ${op.policyId.slice(0, 16)}… needs --approve or --reject`);
+    if (op.kind !== "claim" && !!op.envelope !== !!op.keyFile) throw new Error("--envelope and --evidence-key go together");
   }
   return ops;
 }
@@ -167,10 +180,41 @@ export async function assessClaim(args: {
 }
 
 /** Load the envelope + key file for a resolve op: explicit paths, else the relay's store by ledger commitment. */
-export function loadFiling(secretsDir: string, op: Extract<ClaimOp, { kind: "resolve" }>, ledgerCommitment: string) {
+export function loadFiling(secretsDir: string, op: Extract<ClaimOp, { kind: "resolve" | "vote" }>, ledgerCommitment: string) {
   const p = op.envelope && op.keyFile ? { envelope: op.envelope, keyFile: op.keyFile } : evidencePaths(secretsDir, ledgerCommitment);
   if (!existsSync(p.envelope) || !existsSync(p.keyFile)) {
     throw new Error(`no evidence bundle + key file for commitment ${ledgerCommitment.slice(0, 16)}… (looked for ${p.envelope}); pass --envelope and --evidence-key`);
   }
   return { envelopeText: readFileSync(p.envelope, "utf8"), keyFileText: readFileSync(p.keyFile, "utf8") };
+}
+
+/**
+ * Off-chain mirror of policy-cover-v2's voteClaim tally for one claim round, so
+ * the relay can plan a chain of votes before the wallet sync and check the
+ * ledger after each one. Same rules as the circuit: one vote per seat per
+ * round; `threshold` approvals -> PAID, `threshold` rejections -> ACTIVE
+ * (evidence cleared); otherwise the claim stays CLAIM_PENDING.
+ */
+export interface RoundTally {
+  approvals: number;
+  rejections: number;
+  voted: number[];
+}
+
+export function applyVote(
+  tally: RoundTally,
+  member: number,
+  approve: boolean,
+  threshold: number,
+): { tally: RoundTally; status: "PAID" | "ACTIVE" | "CLAIM_PENDING" } {
+  if (!Number.isInteger(member) || member < 0 || member > 2) throw new Error(`committee seat ${member} is not 0, 1 or 2`);
+  if (!Number.isInteger(threshold) || threshold < 1 || threshold > 3) throw new Error(`threshold ${threshold} is not 1..3`);
+  if (tally.voted.includes(member)) throw new Error(`seat ${member} already voted on this claim round`);
+  const next: RoundTally = {
+    approvals: tally.approvals + (approve ? 1 : 0),
+    rejections: tally.rejections + (approve ? 0 : 1),
+    voted: [...tally.voted, member],
+  };
+  const status = next.approvals >= threshold ? "PAID" : next.rejections >= threshold ? "ACTIVE" : "CLAIM_PENDING";
+  return { tally: next, status };
 }

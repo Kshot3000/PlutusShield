@@ -40,6 +40,16 @@ A member proves membership by opening one of the three public role commitments (
 
 v1 stays deployed and keeps serving the relay and the site; v2 is the registry the committee runs on next, with the three Midnight committee secrets held by independent operators rather than the team.
 
+#### Running v2 on Preprod
+
+The Preprod relay runs v2 when `PLUTUSSHIELD_COVER_VERSION=2` and `POLICY_COVER_OUT` points at the compiled `managed/policy-cover-v2` (with `keys/`). Each committee seat gets its own secret file under `$PLUTUSSHIELD_SECRETS/midnight-committee/member-<seat>.json`, so a seat can be handed to a different operator; the constructor receives only the three role commitments and the threshold (`PLUTUSSHIELD_COMMITTEE_M`, default 2). `--resolve` is refused under v2; a seat votes with:
+
+```
+--vote <policyId> --member <0|1|2> --approve|--reject [--envelope <file> --evidence-key <file>]
+```
+
+Before every vote the seat opens the sealed evidence off-ledger (`assessClaim`), the relay predicts the outcome with `applyVote` (relay/claims.ts, the circuit's tally rules in TypeScript, unit-tested), and after the tx it reads the ledger back and refuses to report success if the status differs. With `--register-first` and no v2 deploy record, one wallet sync covers deploy, registerPolicy, proveCover, fileClaim and the votes. Public results go to `deployments/preprod-v2.json` (the relay refuses to write v2 data into the v1 record). The drill on Preprod is a split vote: seat 0 approves, seat 1 rejects (still `CLAIM_PENDING` under 2-of-3), seat 2 approves (`PAID`).
+
 Pure helpers (no proof, no keys): `roleCommitment`, `coverageCommitment`, `registrationCommitment`, `evidenceCommitment`, and the tags `issuerTag` / `holderTag` / `assessorTag` / `registrationTag` / `evidenceTag`.
 
 ### Cardano binding and policy keys

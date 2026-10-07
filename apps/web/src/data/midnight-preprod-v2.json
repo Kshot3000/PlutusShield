@@ -1,0 +1,15 @@
+{
+  "network": "midnight-preprod",
+  "contract": "contracts/midnight/src/policy-cover-v2.compact",
+  "compiler": "compactc 0.31.1",
+  "status": "deploying",
+  "contractAddress": null,
+  "committee": [
+    "9371bf48c0345615555cef18a39edd4f52855738574db57013684436ccb6461f",
+    "c0aa4178666044f0c4c4ea5d21c8611c1d454a008064ca3304cbdb94cd07d44f",
+    "592b8621f90773e9c267dd5c384b1383683d2727b10192e0a10755eacf165caf"
+  ],
+  "threshold": 2,
+  "claims": [],
+  "_note": "Public Midnight Preprod data only (policy-cover v2, 2-of-3 assessor committee). No keys, seeds or committee secrets."
+}

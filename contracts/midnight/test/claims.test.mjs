@@ -9,7 +9,7 @@ import { mkdtempSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pureCircuits } from '../src/managed/policy-cover/contract/index.js';
-import { parseClaimOps, sealEvidenceFile, saveSealed, assessClaim, loadFiling } from '../relay/claims.ts';
+import { parseClaimOps, sealEvidenceFile, saveSealed, assessClaim, loadFiling, applyVote } from '../relay/claims.ts';
 import { evidenceFileText } from '../../../packages/sdk/src/evidence.ts';
 
 const A = '72512facd0a8eb5257888b8f3b0ee71b774862cc7f4c7d7cc4f124c6f6d745d0';
@@ -80,4 +80,36 @@ test('assessClaim gates resolveClaim on the on-ledger commitment', async () => {
   // missing files
   assert.throws(() => loadFiling(dir, { kind: 'resolve', policyId: A, approved: true }, 'ab'.repeat(32)), /no evidence bundle/);
   writeFileSync(join(dir, 'x.json'), evidenceFileText(sealed.envelope));
+});
+
+test('parseClaimOps: v2 committee votes, seat by seat, in argv order', () => {
+  const ops = parseClaimOps(['--claim', A, '--evidence', 'a.json', '--vote', A, '--member', '0', '--approve', '--vote', A, '--member', '1', '--reject', '--vote', A, '--member', '2', '--approve']);
+  assert.deepEqual(ops.slice(1), [
+    { kind: 'vote', policyId: A, member: 0, approved: true },
+    { kind: 'vote', policyId: A, member: 1, approved: false },
+    { kind: 'vote', policyId: A, member: 2, approved: true },
+  ]);
+  assert.throws(() => parseClaimOps(['--vote', A, '--approve']), /needs --member/);
+  assert.throws(() => parseClaimOps(['--vote', A, '--member', '3', '--approve']), /seat 0, 1 or 2/);
+  assert.throws(() => parseClaimOps(['--vote', A, '--member', '0']), /--approve or --reject/);
+  assert.throws(() => parseClaimOps(['--vote', A, '--member', '0', '--member', '1', '--approve']), /one --member/);
+  assert.throws(() => parseClaimOps(['--member', '0']), /must follow --vote/);
+  assert.throws(() => parseClaimOps(['--vote', A, '--member', '1', '--reject', '--evidence-key', 'k.json']), /go together/);
+});
+
+test('applyVote mirrors voteClaim: 2-of-3 split vote, double votes, rejection', () => {
+  const t0 = { approvals: 0, rejections: 0, voted: [] };
+  const v1 = applyVote(t0, 0, true, 2);
+  assert.equal(v1.status, 'CLAIM_PENDING');
+  const v2 = applyVote(v1.tally, 1, false, 2);
+  assert.equal(v2.status, 'CLAIM_PENDING', '1 yes + 1 no stays pending under 2-of-3');
+  const v3 = applyVote(v2.tally, 2, true, 2);
+  assert.equal(v3.status, 'PAID');
+  assert.deepEqual(v3.tally, { approvals: 2, rejections: 1, voted: [0, 1, 2] });
+  assert.throws(() => applyVote(v1.tally, 0, false, 2), /already voted/);
+  assert.equal(applyVote(applyVote(t0, 1, false, 2).tally, 2, false, 2).status, 'ACTIVE');
+  assert.equal(applyVote(t0, 2, true, 1).status, 'PAID', '1-of-3 decides on the first vote');
+  assert.equal(applyVote(applyVote(t0, 0, true, 3).tally, 1, true, 3).status, 'CLAIM_PENDING', '3-of-3 needs all seats');
+  assert.throws(() => applyVote(t0, 3, true, 2), /seat 3/);
+  assert.throws(() => applyVote(t0, 0, true, 0), /threshold/);
 });

@@ -4,6 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { EvidenceVault } from "@/components/claim/EvidenceVault";
 import { ClaimLifecycle } from "@/components/claim/ClaimLifecycle";
 import { ExploitPayout } from "@/components/claim/ExploitPayout";
+import { MidnightCommittee } from "@/components/claim/MidnightCommittee";
 
 export const metadata: Metadata = {
   title: "Exploit evidence vault",
@@ -49,6 +50,7 @@ export default function EvidencePage() {
       </div>
       <ClaimLifecycle />
       <ExploitPayout />
+      <MidnightCommittee />
       <p className="mt-6 text-xs leading-relaxed text-text-dim">
         The registry (<code className="font-mono">policy-cover.compact</code>) is live on Midnight Preprod, and the claims
         drill above ran <code className="font-mono">fileClaim</code> and <code className="font-mono">resolveClaim</code> there

@@ -1,0 +1,25 @@
+{
+  "_note": "TEST / DEMO evidence for the Midnight policy-cover v2 committee drill (2-of-3 voteClaim on Midnight Preprod, split vote). There was no real exploit. Not a real incident report.",
+  "policyId": "7c24be86268f54972c49f6f6e4ec10be6c59506e4c28d3869d33635979468ccb",
+  "protocol": {
+    "name": "DEMO ONLY - PlutusShield Midnight v2 committee vote drill (no real incident)",
+    "chain": "cardano",
+    "contracts": [
+      "4e5423fefc28871aef53bd2ee85722c19af742e6b7a99d507e0ce2ac (PlutusShield Preview cover pool script, named only as the drill target)"
+    ]
+  },
+  "incident": {
+    "kind": "logic-bug",
+    "description": "TEST / DEMO exploit report for the PlutusShield policy-cover v2 committee drill on Midnight Preprod. No funds were lost and no contract was exploited. This bundle exercises registerPolicy -> proveCover -> fileClaim -> three independent off-ledger assessor checks -> voteClaim from seat 0 (approve), seat 1 (reject: claim stays pending under 2-of-3) and seat 2 (approve: second approval marks the claim PAID). The tx hash listed is the policy's own Buy tx, used as a placeholder reference. Incident timestamps are drill placeholders, not a real event time.",
+    "startedAt": "2026-10-07T01:40:00.000Z",
+    "detectedAt": "2026-10-07T01:42:00.000Z"
+  },
+  "txHashes": [
+    "94c4dc052711c6eec5b2942da768b151b9f1dd9519cf11bcd55982a6bd1325ff"
+  ],
+  "loss": {
+    "amount": "25",
+    "asset": "tADA"
+  },
+  "attachments": []
+}

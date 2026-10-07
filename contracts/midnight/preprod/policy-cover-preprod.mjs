@@ -45,6 +45,19 @@
  * syncs, so a bad request fails in seconds, not after the dust sync; add
  * `--dry-run` to stop after it (no wallet, no proof, no tx).
  *
+ * v2 (PLUTUSSHIELD_COVER_VERSION=2, POLICY_COVER_OUT = compiled
+ * managed/policy-cover-v2): the same registry with claims decided by an M-of-3
+ * assessor committee. The constructor takes the three committee commitments
+ * (one secret per seat under $PLUTUSSHIELD_SECRETS/midnight-committee/, so each
+ * seat can be handed to a different operator) and the threshold
+ * (PLUTUSSHIELD_COMMITTEE_M, default 2). `--resolve` is refused; instead
+ *   --vote <policyId> --member <0|1|2> --approve|--reject
+ * casts one seat's voteClaim after that seat opens the evidence off-ledger.
+ * Votes are planned against the ledger's tally for the claim round
+ * (relay/claims.ts applyVote mirrors the circuit), and the ledger is checked
+ * after each one. With `--register-first`, a v2 run with no deploy record
+ * deploys first, so deploy -> register -> prove -> file -> votes share one sync.
+ *
  * Only reports success from finalized tx data (txId + blockHeight + status).
  * Never prints seeds or secrets. Writes public results to
  * $PLUTUSSHIELD_SECRETS/midnight-preprod-deploy.json after every policy, and to
@@ -88,11 +101,18 @@ const FACADE = need('MIDNIGHT_WALLET_FACADE');
 const KEY_FILE = env('PLUTUSSHIELD_POLICY_KEY', '');
 const KEY_WAIT_MS = Number(env('PLUTUSSHIELD_POLICY_KEY_WAIT_MS', '0'));
 const BLOCKFROST = env('BLOCKFROST_PREVIEW_ID', '');
-const DEPLOY_RECORD = path.join(SECRETS, 'midnight-preprod-deploy.json');
+const V2 = env('PLUTUSSHIELD_COVER_VERSION', '1') === '2';
+const DEPLOY_RECORD = path.join(SECRETS, V2 ? 'midnight-preprod-v2-deploy.json' : 'midnight-preprod-deploy.json');
+const COMMITTEE_DIR = path.join(SECRETS, 'midnight-committee');
+const THRESHOLD = Number(env('PLUTUSSHIELD_COMMITTEE_M', '2'));
+if (V2 && PUBLIC_RECORD_GUARD()) throw new Error('v2 must not write the v1 public record (set PLUTUSSHIELD_PUBLIC_RECORD to deployments/preprod-v2.json)');
+function PUBLIC_RECORD_GUARD() {
+  return path.basename(process.env.PLUTUSSHIELD_PUBLIC_RECORD ?? '') === 'preprod.json';
+}
 const PUBLIC_RECORD = env('PLUTUSSHIELD_PUBLIC_RECORD', '');
 const ALL = process.argv.includes('--all');
 const ARGV = process.argv.slice(2);
-const CLAIM_MODE = ARGV.includes('--claim') || ARGV.includes('--resolve');
+const CLAIM_MODE = ARGV.includes('--claim') || ARGV.includes('--resolve') || ARGV.includes('--vote');
 const REGISTER_FIRST = ARGV.includes('--register-first');
 const KEY_DIRS = env('PLUTUSSHIELD_POLICY_KEY_DIRS', [path.join(SECRETS, 'policy-keys'), path.join(REPO, 'contracts/cardano/deploy/.keys/policy-keys')].join(','))
   .split(',')
@@ -120,6 +140,18 @@ function loadRoles() {
   const roles = { issuerSk: r(), assessorSk: r(), createdAt: new Date().toISOString() };
   jsonOut(ROLES_FILE, roles);
   return roles;
+}
+
+/** v2 committee: one secret per seat, one file per seat (hand each to its own operator). Never printed. */
+function loadCommittee() {
+  fs.mkdirSync(COMMITTEE_DIR, { recursive: true, mode: 0o700 });
+  return [0, 1, 2].map((seat) => {
+    const f = path.join(COMMITTEE_DIR, `member-${seat}.json`);
+    if (!fs.existsSync(f)) jsonOut(f, { schema: 'plutusshield/midnight-committee-seat@1', seat, sk: hex(globalThis.crypto.getRandomValues(new Uint8Array(32))), createdAt: new Date().toISOString() });
+    const m = JSON.parse(fs.readFileSync(f, 'utf8'));
+    if (m.seat !== seat || !/^[0-9a-f]{64}$/.test(m.sk)) throw new Error(`bad committee seat file ${f}`);
+    return m;
+  });
 }
 
 // Private state is JSON-safe: hex strings and decimal strings only.
@@ -186,7 +218,10 @@ async function main() {
 
   const roles = loadRoles();
   const issuerState = { sk: roles.issuerSk, openings: {} };
-  const assessorCommitment = pure.roleCommitment(u8(roles.assessorSk), pure.assessorTag());
+  const committee = V2 ? loadCommittee() : null;
+  const committeeCommitments = committee ? committee.map((m) => pure.roleCommitment(u8(m.sk), pure.assessorTag())) : null;
+  const assessorCommitment = V2 ? null : pure.roleCommitment(u8(roles.assessorSk), pure.assessorTag());
+  if (V2 && !(THRESHOLD >= 1 && THRESHOLD <= 3)) throw new Error(`PLUTUSSHIELD_COMMITTEE_M=${THRESHOLD} is not 1..3`);
 
   const checkKey = async (text) => {
     const key = Holder.parsePolicyKey(text);
@@ -212,24 +247,41 @@ async function main() {
   };
   const statusName = (n) => ['NONE', 'ACTIVE', 'CLAIM_PENDING', 'PAID', 'EXPIRED'][Number(n)] ?? `#${n}`;
   const claimView = (l, id) => {
-    if (!l.policies.member(u8(id))) return null;
+    if (!l || !l.policies.member(u8(id))) return null;
     const r = l.policies.lookup(u8(id));
-    return { status: statusName(r.status), evidence: hex(r.evidence), holder: hex(r.holder) };
+    return { status: statusName(r.status), evidence: hex(r.evidence), holder: hex(r.holder), ...(V2 ? { round: Number(r.round) } : {}) };
+  };
+  /** v2: the ledger's tally for a policy's current claim round (which seats voted, how). */
+  const roundTally = (l, id) => {
+    const v = claimView(l, id);
+    if (!V2 || !v) return { approvals: 0, rejections: 0, voted: [] };
+    const rk = pure.roundKey(u8(id), BigInt(v.round));
+    const voted = [0, 1, 2].filter((seat) => l.claimVotes.member(pure.voteKey(u8(id), BigInt(v.round), committeeCommitments[seat])));
+    return { approvals: l.approvals.member(rk) ? Number(l.approvals.lookup(rk)) : 0, rejections: l.rejections.member(rk) ? Number(l.rejections.lookup(rk)) : 0, voted };
   };
   const ledgerSummary = (l, id) => {
     const v = claimView(l, id);
-    return { status: v?.status ?? 'NONE', evidence: v?.evidence ?? null, activePolicies: String(l.activePolicies), claimsFiled: String(l.claimsFiled), claimsPaid: String(l.claimsPaid) };
+    const base = { status: v?.status ?? 'NONE', evidence: v?.evidence ?? null, activePolicies: String(l.activePolicies), claimsFiled: String(l.claimsFiled), claimsPaid: String(l.claimsPaid) };
+    if (!V2) return base;
+    const t = roundTally(l, id);
+    return { ...base, round: v?.round ?? 0, approvals: t.approvals, rejections: t.rejections, votedSeats: t.voted, votesCast: String(l.votesCast), claimsRejected: String(l.claimsRejected), threshold: Number(l.threshold) };
   };
   const prepared = [];
   if (CLAIM_MODE) {
     const rec0 = fs.existsSync(DEPLOY_RECORD) ? JSON.parse(fs.readFileSync(DEPLOY_RECORD, 'utf8')) : null;
     const address = env('MIDNIGHT_POLICY_COVER_ADDRESS', rec0?.contractAddress);
-    if (!address) throw new Error('claims mode needs a deployed contract (deploy record or MIDNIGHT_POLICY_COVER_ADDRESS)');
+    const deployFirst = !address && V2 && REGISTER_FIRST;
+    if (!address && !deployFirst) throw new Error('claims mode needs a deployed contract (deploy record or MIDNIGHT_POLICY_COVER_ADDRESS)');
+    if (deployFirst) log('v2: no deploy record; this run deploys policy-cover-v2 first (--register-first)');
     const Plan = await import(pathToFileURL(path.join(REPO, 'contracts/midnight/relay/plan.ts')).href);
     const keys = Plan.localPolicyKeys(KEY_DIRS);
-    const l0 = await ledgerAt(address);
+    const l0 = address ? await ledgerAt(address) : null;
+    const threshold = l0 && V2 ? Number(l0.threshold) : THRESHOLD;
     const planned = new Map(); // policyId -> status after the ops so far
+    const tallies = new Map(); // v2: policyId -> planned tally of the current claim round
     for (const op of claimOps) {
+      if (V2 && op.kind === 'resolve') throw new Error('policy-cover-v2 has no single-assessor resolveClaim; use --vote <policyId> --member <seat> --approve|--reject');
+      if (!V2 && op.kind === 'vote') throw new Error('--vote is a policy-cover-v2 circuit; set PLUTUSSHIELD_COVER_VERSION=2');
       const now = planned.get(op.policyId) ?? claimView(l0, op.policyId)?.status ?? 'NONE';
       if (op.kind === 'claim') {
         // --register-first: a policy not yet mirrored is registered (issuer) + proven (holder) in the same sync.
@@ -245,6 +297,20 @@ async function main() {
         log(`sealed evidence for ${op.policyId.slice(0, 16)}…: commitment ${sealed.commitment.slice(0, 16)}… (fresh salt; envelope + key file in ${path.dirname(files.envelope)})`);
         prepared.push({ op, key: c.key, cardano: { network: 'preview', buyTx: c.key.txHash, policyDatum: c.outRef }, sealed, register, midnightCommitment: c.policy.midnightCommitment });
         planned.set(op.policyId, 'CLAIM_PENDING');
+        tallies.set(op.policyId, { approvals: 0, rejections: 0, voted: [] });
+      } else if (op.kind === 'vote') {
+        if (now !== 'CLAIM_PENDING') throw new Error(`--vote ${op.policyId.slice(0, 16)}…: policy is ${now}, no pending claim`);
+        const v = claimView(l0, op.policyId);
+        if (v?.status === 'CLAIM_PENDING' && !planned.has(op.policyId)) {
+          const a = await Claims.assessClaim({ policyId: op.policyId, ledger: v, ...Claims.loadFiling(SECRETS, op, v.evidence) });
+          if (!a.ok) throw new Error(`--vote ${op.policyId.slice(0, 16)}… seat ${op.member}: assessor check failed: ${a.reason}`);
+          log(`preflight seat ${op.member} check ${op.policyId.slice(0, 16)}…: ${a.reason}`);
+        }
+        const t0 = tallies.get(op.policyId) ?? roundTally(l0, op.policyId);
+        const { tally, status } = Claims.applyVote(t0, op.member, op.approved, threshold);
+        prepared.push({ op, expect: status });
+        tallies.set(op.policyId, tally);
+        planned.set(op.policyId, status);
       } else {
         if (now !== 'CLAIM_PENDING') throw new Error(`--resolve ${op.policyId.slice(0, 16)}…: policy is ${now}, no pending claim`);
         // A claim already on the ledger is assessed now, so a bundle that doesn't open fails before the sync.
@@ -258,11 +324,13 @@ async function main() {
         planned.set(op.policyId, op.approved ? 'PAID' : 'ACTIVE');
       }
     }
+    const opText = (o, i) => `${o.kind} ${o.policyId.slice(0, 16)}…${o.kind === 'vote' ? ` seat ${o.member}` : ''}${o.kind !== 'claim' ? (o.approved ? ' approve' : ' reject') : ''}${prepared[i]?.expect ? ` -> ${prepared[i].expect}` : ''}`;
+    const planText = `${V2 ? `v2 ${threshold}-of-3 ` : ''}${claimOps.map(opText).join(', ')}`;
     if (ARGV.includes('--dry-run')) {
-      log(`claims plan (dry run, no wallet, no txs): ${claimOps.map((o) => `${o.kind} ${o.policyId.slice(0, 16)}…${o.kind === 'resolve' ? (o.approved ? ' approve' : ' reject') : ''}`).join(', ')}`);
+      log(`claims plan (dry run, no wallet, no txs): ${planText}`);
       return;
     }
-    log(`claims plan: ${claimOps.map((o) => `${o.kind} ${o.policyId.slice(0, 16)}…${o.kind === 'resolve' ? (o.approved ? ' approve' : ' reject') : ''}`).join(', ')}`);
+    log(`claims plan: ${planText}`);
   }
 
   // Validate the key file against Cardano before spending any time on the wallet.
@@ -286,8 +354,8 @@ async function main() {
     const zkConfigProvider = new NodeZkConfigProvider(OUT);
     const providers = {
       privateStateProvider: levelPrivateStateProvider({
-        privateStateStoreName: 'plutusshield-policy-cover-private-state',
-        signingKeyStoreName: 'plutusshield-policy-cover-signing-keys',
+        privateStateStoreName: `plutusshield-policy-cover${V2 ? '-v2' : ''}-private-state`,
+        signingKeyStoreName: `plutusshield-policy-cover${V2 ? '-v2' : ''}-signing-keys`,
         privateStoragePasswordProvider: () => need('PRIVATE_STATE_PASSWORD'),
         accountId,
       }),
@@ -298,7 +366,7 @@ async function main() {
       midnightProvider: walletProvider,
     };
     const compiled = CompiledContract.withCompiledFileAssets(
-      CompiledContract.withWitnesses(CompiledContract.make('plutusshield-policy-cover', Contract), witnesses),
+      CompiledContract.withWitnesses(CompiledContract.make(V2 ? 'plutusshield-policy-cover-v2' : 'plutusshield-policy-cover', Contract), witnesses),
       OUT,
     );
 
@@ -306,27 +374,27 @@ async function main() {
     let record = fs.existsSync(DEPLOY_RECORD) ? JSON.parse(fs.readFileSync(DEPLOY_RECORD, 'utf8')) : null;
     let address = env('MIDNIGHT_POLICY_COVER_ADDRESS', record?.contractAddress);
     let issuer;
-    if (!address && CLAIM_MODE) throw new Error('claims mode never deploys');
+    if (!address && CLAIM_MODE && !(V2 && REGISTER_FIRST)) throw new Error('claims mode never deploys (v2: add --register-first to deploy in the same sync)');
     if (!address) {
-      log('deployContract policy-cover (prove + balance + submit)…');
+      log(`deployContract policy-cover${V2 ? `-v2 (${THRESHOLD}-of-3 committee)` : ''} (prove + balance + submit)…`);
       const deployed = await deployContract(providers, {
         compiledContract: compiled,
         privateStateId: 'plutusshieldIssuer',
         initialPrivateState: issuerState,
-        args: [assessorCommitment],
+        args: V2 ? [committeeCommitments, BigInt(THRESHOLD)] : [assessorCommitment],
       });
       const p = deployed.deployTxData.public;
       if (!p.contractAddress) throw new Error('deploy returned no contractAddress');
       address = String(p.contractAddress);
       record = {
         network: 'midnight-preprod',
-        contract: 'contracts/midnight/src/policy-cover.compact',
+        contract: V2 ? 'contracts/midnight/src/policy-cover-v2.compact' : 'contracts/midnight/src/policy-cover.compact',
         compiler: 'compactc 0.31.1',
         contractAddress: address,
         deployTxId: p.txId ? String(p.txId) : null,
         blockHeight: p.blockHeight ?? null,
         issuerCommitment: hex(pure.roleCommitment(u8(roles.issuerSk), pure.issuerTag())),
-        assessorCommitment: hex(assessorCommitment),
+        ...(V2 ? { committee: committeeCommitments.map(hex), threshold: THRESHOLD } : { assessorCommitment: hex(assessorCommitment) }),
         deployer: ctx.unshieldedAddress,
         deployedAt: new Date().toISOString(),
         registrations: [],
@@ -429,6 +497,29 @@ async function main() {
           saveClaim(entry);
           done.push(entry);
           if (after.status !== 'CLAIM_PENDING' || after.evidence !== p.sealed.commitment) throw new Error(`ledger after fileClaim: ${after.status} ${after.evidence}; expected CLAIM_PENDING ${p.sealed.commitment}`);
+        } else if (op.kind === 'vote') {
+          const l = await readLedger();
+          const v = claimView(l, id);
+          if (v?.status !== 'CLAIM_PENDING') throw new Error(`voteClaim ${id.slice(0, 16)}…: policy is ${v?.status ?? 'NONE'} now; not voting`);
+          const a = await Claims.assessClaim({ policyId: id, ledger: v, ...Claims.loadFiling(SECRETS, op, v.evidence) });
+          if (!a.ok) throw new Error(`seat ${op.member} check failed for ${id.slice(0, 16)}…: ${a.reason}; not voting`);
+          log(`seat ${op.member} verified ${id.slice(0, 16)}… off-ledger: ${a.reason} (${a.summary.protocol}, ${a.summary.loss})`);
+          const want = Claims.applyVote(roundTally(l, id), op.member, op.approved, Number(l.threshold)).status;
+          const seat = await findDeployedContract(providers, { compiledContract: compiled, contractAddress: address, privateStateId: `plutusshieldCommittee-${op.member}`, initialPrivateState: { sk: committee[op.member].sk, openings: {} } });
+          log(`voteClaim ${id.slice(0, 16)}… seat ${op.member} ${op.approved ? 'APPROVE' : 'REJECT'} (expect ${want})…`);
+          const res = { ...tx('voteClaim', await seat.callTx.voteClaim(u8(id), op.approved)), seat: op.member, member: hex(committeeCommitments[op.member]), approved: op.approved };
+          log('VOTED tx', res.txId, 'hash', res.txHash, 'block', res.blockHeight);
+          const after = ledgerSummary(await readLedger(), id);
+          const prev = (record.claims ?? []).find((c) => c.policyId === id && c.evidenceCommitment === v.evidence) ?? { policyId: id, evidenceCommitment: v.evidence };
+          const entry = {
+            ...prev,
+            votes: [...(prev.votes ?? []), { ...res, assessment: { ok: a.ok, reason: a.reason, checks: a.checks.map((c) => ({ id: c.id, ok: c.ok })), bundle: a.summary }, ledgerAfterVote: after, at: new Date().toISOString() }],
+            ...(after.status !== 'CLAIM_PENDING' ? { decided: { status: after.status, approvals: after.approvals, rejections: after.rejections, threshold: after.threshold, at: new Date().toISOString() } } : {}),
+          };
+          saveClaim(entry);
+          done.push(entry);
+          if (after.status !== want) throw new Error(`ledger after voteClaim: ${after.status}; expected ${want}`);
+          if (after.status === 'ACTIVE' && !/^0+$/.test(after.evidence ?? '')) throw new Error('rejected claim kept its evidence commitment');
         } else {
           const l = await readLedger();
           const v = claimView(l, id);
