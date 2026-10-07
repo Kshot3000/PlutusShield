@@ -30,15 +30,15 @@ The example file is **synthetic example data** (three venues, a 36-hour USDM dip
 
 ## Live venues
 
-`src/venues.ts` turns three public, keyless APIs into relay input for Cardano USDM (`c48cbb…0014df105553444d`):
+`src/venues.ts` turns three market sources into relay input for Cardano USDM (`c48cbb…0014df105553444d`):
 
 | Venue | Source | Notes |
 | --- | --- | --- |
-| `coingecko` | CoinGecko `usdm-2` USD market chart | Cross-venue aggregate, hourly |
-| `minswap-ada-usdm` | Minswap ADA/USDM pool (GeckoTerminal OHLCV, USDM in ADA) × Kraken ADA/USD hourly candles | The ADA leg comes from a different provider than the pool leg |
-| `minswap-usdcx-usdm` | Minswap USDCx/USDM pool (GeckoTerminal OHLCV) | USDM against Circle's USDCx |
+| `coingecko` | CoinGecko `usdm-2` USD market chart | Cross-venue aggregate, hourly. Set `COINGECKO_DEMO_API_KEY` (or `COINGECKO_API_KEY`) to send `x-cg-demo-api-key`; without it, the public keyless path is used |
+| `minswap-ada-usdm` | Minswap V2 ADA/USDM pool reserves on Cardano mainnet × Kraken ADA/USD hourly candles | On-chain via Blockfrost mainnet when keyed, else Koios mainnet. No GeckoTerminal |
+| `minswap-usdcx-usdm` | Minswap V2 USDCx/USDM pool reserves on Cardano mainnet | Same on-chain path; USDM against Circle's USDCx |
 
-AMM prices only move on trades, so no-trade hours are forward-filled from the last close, and every sample is stamped at the end of its candle so a reading can never look ahead. A venue that fails (rate limit, wrong pair side, no data) is reported and skipped; the publisher needs at least two. Free API tiers rate-limit, so requests back off and retry on HTTP 429.
+On-chain Minswap reads are spot reserves held as an end-stamped hourly series so the 24h TWAP / max-gap checks still see complete data. A venue that fails (rate limit, missing pool UTxO, bad datum) is reported and skipped; the publisher needs at least two (`--min-venues`, default 2) and otherwise publishes nothing (fail closed). CoinGecko/Kraken still back off and retry on HTTP 429.
 
 ```bash
 pnpm relay:live            # read-only: what a relay would publish right now

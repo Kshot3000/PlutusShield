@@ -7,8 +7,8 @@
  *   pnpm oracle --force        publish even if the current readings are still fresh
  *   pnpm oracle --loop [--every=20] [--margin=50]   run forever, a cycle every N minutes
  *
- * Each cycle pulls CoinGecko, Minswap ADA/USDM x Kraken ADA/USD, and Minswap
- * USDCx/USDM (services/oracle-relay/src/venues.ts), takes the cross-venue
+ * Each cycle pulls CoinGecko (optional COINGECKO_DEMO_API_KEY), Minswap ADA/USDM
+ * on-chain x Kraken ADA/USD, and Minswap USDCx/USDM on-chain (services/oracle-relay/src/venues.ts), takes the cross-venue
  * median, and computes the 24h TWAP with the same SDK math the validator
  * mirrors. Then:
  *
