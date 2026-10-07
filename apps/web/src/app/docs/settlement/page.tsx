@@ -205,27 +205,31 @@ policy.start         ≥ tx_upper_bound + waiting_period_ms`}</Formula>
           head={["Circuit", "Caller", "Rule"]}
           rows={[
             [<C key="a">fileClaim(id, evidenceCommitment)</C>, "Holder", "Policy must be ACTIVE. Evidence commitment non-zero. → CLAIM_PENDING"],
-            [<C key="b">resolveClaim(id, true)</C>, "Assessor", "CLAIM_PENDING → PAID. claimsPaid +1, activePolicies −1"],
-            [<C key="c">resolveClaim(id, false)</C>, "Assessor", "CLAIM_PENDING → ACTIVE. Evidence commitment cleared"],
+            [<C key="b">voteClaim(id, true)</C>, "Committee member", "One vote per member per claim round. 2-of-3 approvals → PAID. claimsPaid +1, activePolicies −1"],
+            [<C key="c">voteClaim(id, false)</C>, "Committee member", "2-of-3 rejections → CLAIM_PENDING returns to ACTIVE. Evidence commitment cleared"],
           ]}
         />
         <P>
           While a claim is pending, the policy can&apos;t prove cover, be rotated to a new holder, or be expired.
-          On Midnight the assessor is a single role commitment fixed at deployment; the Cardano payout below needs
-          a 2-of-3 assessor committee on top of it. Holder authorization works as described
+          On Midnight the decision sits with a committee too: the v2 registry&apos;s three assessor role
+          commitments, fixed at deployment, each voting once per claim round (the v1 registry&apos;s single
+          assessor key is kept as history). The Cardano payout below needs its own 2-of-3 assessor committee
+          on top of that. Holder authorization works as described
           in <DocLink href="/docs/privacy">Privacy</DocLink>.
         </P>
         <P>
           Claimants build the commitment with the <DocLink href="/claim/evidence">evidence vault</DocLink>, which
           encrypts the bundle in the browser and computes the contract&apos;s <C>evidenceCommitment</C>. The
-          assessor opens the bundle with the claimant&apos;s key file and checks it against the record before
-          calling <C>resolveClaim</C>. Details in{" "}
+          committee member opens the bundle with the claimant&apos;s key file and checks it against the record
+          before voting with <C>voteClaim</C>. Details in{" "}
           <DocLink href="/docs/privacy#evidence-vault">the vault&apos;s trust model</DocLink>.
         </P>
         <P>
-          This runs on Midnight Preprod today: a claims drill filed demo evidence on two mirrored test policies,
+          This runs on Midnight Preprod today. The v1 drill filed demo evidence on two mirrored test policies;
           the assessor verified each bundle against its on-ledger commitment, then approved one (PAID) and
-          rejected the other (back to ACTIVE, commitment cleared). Tx hashes are on the{" "}
+          rejected the other (back to ACTIVE, commitment cleared). On the v2 committee registry, the first live
+          decision was a split vote — seat 0 approve, seat 1 reject (still CLAIM_PENDING under 2-of-3), seat 2
+          approve → PAID. Tx hashes are on the{" "}
           <DocLink href="/claim/evidence">evidence vault page</DocLink> and in the public deployment record.
         </P>
         <P>
@@ -257,15 +261,16 @@ policy.start         ≥ tx_upper_bound + waiting_period_ms`}</Formula>
           <p>
             Trust model: Cardano can&apos;t read Midnight state, so the committee&apos;s signatures are the bridge.
             Each assessor signs only after checking that the Midnight registry shows the claim resolved APPROVED
-            (PAID), and the Settle carries the Midnight claim id, evidence commitment, and <C>resolveClaim</C> tx as
-            metadata (label 7732), covered by the signed tx body. No single key can release capital: a payout needs 2
+            (PAID), and the Settle carries the Midnight claim id, evidence commitment, and the Midnight decision
+            tx as metadata (label 7732), covered by the signed tx body. No single key can release capital: a payout needs 2
             of the 3 committee keys, and one lost or compromised key can be outvoted without stopping payouts. It
             runs on Cardano Preview: the v2 pool paid a claim on 2-of-3 signatures, and a 1-of-3 Settle was rejected
             by both the local evaluator and the Preview provider&apos;s (links on the{" "}
             <DocLink href="/claim/evidence">evidence vault page</DocLink>). The first exploit pool (v1, one assessor
             key) is kept as history. Still open: the three Preview keys are run by the PlutusShield team, not yet
-            independent operators; Midnight&apos;s <C>resolveClaim</C> is still one assessor role key (it can&apos;t
-            move Cardano capital alone); and committee rotation means a new pool. Depeg policies still settle only on
+            independent operators; the v1 registry&apos;s single assessor key is history — the live v2 registry
+            decides by the same 2-of-3 <C>voteClaim</C> committee (and no Midnight decision can move Cardano
+            capital alone); and committee rotation means a new pool. Depeg policies still settle only on
             an oracle quorum, so an approved Midnight claim on a depeg policy isn&apos;t paid on Cardano.
           </p>
         </Callout>

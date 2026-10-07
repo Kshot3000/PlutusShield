@@ -1,5 +1,5 @@
 {
- "takenAt": "2026-10-07T03:06:37.916Z",
+ "takenAt": "2026-10-07T19:54:25.006Z",
  "address": "5430b803b6b3df6e6ee1d498bb02e2f2d06cb46661e72af1e6208d864feb8110",
  "fromHeight": 2870317,
  "actions": [
@@ -79,12 +79,69 @@
      "evidence": "013e08ebfbf6fed7ca23edd20c02296d1043ac1fe10466745642dd9add996ac1"
     }
    ]
+  },
+  {
+   "entryPoint": "registerPolicy",
+   "txHash": "2e0f69b76065d4f5e3e796d57ba57ce65b74cdacfbcdac55363ec26fb181eed0",
+   "height": 2871137,
+   "timestamp": 1791344652000,
+   "status": "SUCCESS",
+   "changes": [
+    {
+     "policyId": "72512facd0a8eb5257888b8f3b0ee71b774862cc7f4c7d7cc4f124c6f6d745d0",
+     "from": "NONE",
+     "to": "ACTIVE",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "entryPoint": "proveCover",
+   "txHash": "853bab79c11f0a5ea42ff46121efc60e32b74fe5ca07b18761b71a6f442c39ce",
+   "height": 2871140,
+   "timestamp": 1791344670000,
+   "status": "SUCCESS",
+   "changes": []
+  },
+  {
+   "entryPoint": "registerPolicy",
+   "txHash": "62fc0beab8d3a366e5d2293772c9ed7314141cf1baad9def5b44868383e8609a",
+   "height": 2871144,
+   "timestamp": 1791344694000,
+   "status": "SUCCESS",
+   "changes": [
+    {
+     "policyId": "a33af8052854e2b4b32bff59afcb652dc0240bcb19b231314685bfaed13b2b3d",
+     "from": "NONE",
+     "to": "ACTIVE",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "entryPoint": "proveCover",
+   "txHash": "eb452f00321773da6f670148a56734dc6a8e4750db1066d18d4b952a071ee3dc",
+   "height": 2871149,
+   "timestamp": 1791344724000,
+   "status": "SUCCESS",
+   "changes": []
   }
  ],
  "mirroredPolicyIds": [
-  "7c24be86268f54972c49f6f6e4ec10be6c59506e4c28d3869d33635979468ccb"
+  "7c24be86268f54972c49f6f6e4ec10be6c59506e4c28d3869d33635979468ccb",
+  "72512facd0a8eb5257888b8f3b0ee71b774862cc7f4c7d7cc4f124c6f6d745d0",
+  "a33af8052854e2b4b32bff59afcb652dc0240bcb19b231314685bfaed13b2b3d"
  ],
  "policyRecords": [
+  {
+   "policyId": "72512facd0a8eb5257888b8f3b0ee71b774862cc7f4c7d7cc4f124c6f6d745d0",
+   "holder": "9e951978ba75a8e6987c8047521ac4a9b560b8c71253fa5e3c00fb3faf4b2f67",
+   "coverage": "5f1c8915b8e1edef14ff1a6796d2f34a107698612e4c530b0f675818eb583c2b",
+   "expiry": 1792521141000,
+   "status": "ACTIVE",
+   "evidence": null,
+   "round": 0
+  },
   {
    "policyId": "7c24be86268f54972c49f6f6e4ec10be6c59506e4c28d3869d33635979468ccb",
    "holder": "fe435e1c70aed663e72ba011d9bb99b91f6c86081854ff67a0bf785d8ece5340",
@@ -93,14 +150,23 @@
    "status": "PAID",
    "evidence": "013e08ebfbf6fed7ca23edd20c02296d1043ac1fe10466745642dd9add996ac1",
    "round": 1
+  },
+  {
+   "policyId": "a33af8052854e2b4b32bff59afcb652dc0240bcb19b231314685bfaed13b2b3d",
+   "holder": "49fbea54ed81af2b3f9711154818db0278c75405a264ad5db2d64dd08b3d51f6",
+   "coverage": "fe69fb50cabd857ae5284256473b9654de9ab947456abb8c97be3b2794233a5a",
+   "expiry": 1792527971000,
+   "status": "ACTIVE",
+   "evidence": null,
+   "round": 0
   }
  ],
  "relay": {
   "summary": {
    "total": 11,
-   "mirrored": 1,
-   "ready": 1,
-   "awaiting-key": 1,
+   "mirrored": 3,
+   "ready": 0,
+   "awaiting-key": 0,
    "pre-binding": 8,
    "mirrorable": 3
   },
@@ -187,7 +253,7 @@
    },
    {
     "policyId": "72512facd0a8eb5257888b8f3b0ee71b774862cc7f4c7d7cc4f124c6f6d745d0",
-    "state": "awaiting-key",
+    "state": "mirrored",
     "source": null,
     "canProve": false,
     "badTicket": false,
@@ -197,7 +263,7 @@
    },
    {
     "policyId": "a33af8052854e2b4b32bff59afcb652dc0240bcb19b231314685bfaed13b2b3d",
-    "state": "ready",
+    "state": "mirrored",
     "source": "ticket",
     "canProve": false,
     "badTicket": false,

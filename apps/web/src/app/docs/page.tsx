@@ -13,12 +13,12 @@ export const metadata: Metadata = {
 
 const status = [
   { k: "Cardano validators", v: "Aiken, Plutus V3 · ADA + USDC tranches · sale circuit-breaker · 131 tests passing" },
-  { k: "Midnight registry", v: "Compact 0.31.1 · 6 circuits · 50 tests passing" },
-  { k: "Evidence vault", v: "In-browser AES-256-GCM + the registry's evidenceCommitment, checked against the compiled contract · filing not live" },
-  { k: "Oracle relay", v: "Core built: venue median, TWAP, depeg-window search · 6 tests on synthetic data · publisher planned" },
-  { k: "Deployment", v: "None yet. Preview tooling ready and emulator-tested, awaiting a funded deployer" },
+  { k: "Midnight registry", v: "Compact 0.31.1 · 6 circuits · 53 tests passing · v2 committee registry live on Preprod" },
+  { k: "Evidence vault", v: "In-browser AES-256-GCM + the registry's evidenceCommitment, checked against the compiled contract · sealed evidence filed on Preprod for live claims" },
+  { k: "Oracle relay", v: "Live: CoinGecko, Minswap on-chain and Kraken venues, median + TWAP, depeg-window search · fail-closed publisher refreshes the Preview peg every 20 minutes · 14 tests passing" },
+  { k: "Deployment", v: "Live on Cardano Preview + Midnight Preprod (testnets only, test value only)" },
   { k: "Audit", v: "Not audited" },
-  { k: "Purchases", v: "Closed. The quote calculator is a preview" },
+  { k: "Purchases", v: "Open on testnet: CIP-30 wallet buys on /cover, deposits and withdrawals on /pool" },
 ];
 
 export default function DocsPage() {

@@ -178,8 +178,8 @@ evidenceCommitment(digest, salt) =
 digest = SHA-256(canonical JSON of the bundle)
 salt   = 32 random bytes, kept in the claimant's key file`}</Formula>
         <P>
-          <C>fileClaim</C> can&apos;t check the opening: the bundle never enters a circuit. The assessor checks it
-          off-ledger, before calling <C>resolveClaim</C>.
+          <C>fileClaim</C> can&apos;t check the opening: the bundle never enters a circuit. Committee members check
+          it off-ledger, before voting with <C>voteClaim</C>.
         </P>
       </Section>
 
@@ -217,7 +217,7 @@ salt   = 32 random bytes, kept in the claimant's key file`}</Formula>
             },
             {
               title: "Assess",
-              body: <>The assessor decrypts, checks the plaintext is the canonical encoding of a valid bundle, recomputes the commitment, compares it with <C>PolicyRecord.evidence</C>, and matches supporting files by hash. Then they judge the claim and call <C>resolveClaim</C>.</>,
+              body: <>A committee member decrypts, checks the plaintext is the canonical encoding of a valid bundle, recomputes the commitment, compares it with <C>PolicyRecord.evidence</C>, and matches supporting files by hash. Then each member judges the claim and votes with <C>voteClaim</C>; 2-of-3 decides.</>,
               chain: "Midnight",
             },
           ]}
@@ -240,8 +240,9 @@ salt   = 32 random bytes, kept in the claimant's key file`}</Formula>
         </P>
         <Callout tone="warn" title="Limits of the vault today">
           <p>
-            <Strong>Filing is operator-run.</Strong> The registry is live on Midnight Preprod and a claims drill ran
-            <C>fileClaim</C> and <C>resolveClaim</C> there from the relay, but the vault page can&apos;t submit
+            <Strong>Filing is operator-run.</Strong> The registry is live on Midnight Preprod and claims drills ran
+            <C>fileClaim</C> there from the relay — decided by <C>resolveClaim</C> on v1 and by committee{" "}
+            <C>voteClaim</C> on the live v2 registry — but the vault page can&apos;t submit
             <C>fileClaim</C> from the browser yet: it seals the bundle and shows the exact call.
           </p>
           <p>

@@ -38,11 +38,11 @@ export default function RisksPage() {
           rows={[
             ["Audit", <Strong key="a">Not audited.</Strong>],
             ["Cardano deployment", "Live on the Preview testnet only (test ADA and mock tUSDCx, no real value). Not deployed to mainnet, and no mainnet deploy happens before an external audit"],
-            ["Midnight deployment", "policy-cover live on Midnight Preprod (testnet): Cardano Preview policies mirrored, cover proofs, and a claims drill (fileClaim, assessor resolveClaim) with demo evidence. Not on mainnet"],
-            ["Buying cover", "Closed. /cover is a quote preview"],
-            ["Underwriting", "Closed. /pool is a simulator"],
-            ["Real funds", "None. The protocol holds no money"],
-            ["Tests", "Cardano: 131 Aiken checks passing. Midnight: 50 simulation tests passing, full ZK compile OK"],
+            ["Midnight deployment", "policy-cover live on Midnight Preprod (testnet), with the v2 committee registry as the current registry: Cardano Preview policies mirrored, cover proofs, and claims decided by 2-of-3 committee voteClaim with demo evidence. Not on mainnet"],
+            ["Buying cover", "Open on the Preview testnet: any CIP-30 wallet can buy on /cover (test value only)"],
+            ["Underwriting", "Open on the Preview testnet: deposits and withdrawals on /pool (test value only)"],
+            ["Real funds", "None. The pools hold testnet value only (test ADA and mock tUSDCx)"],
+            ["Tests", "Cardano: 131 Aiken checks passing. Midnight: 53 simulation tests passing, full ZK compile OK"],
           ]}
         />
         <P>

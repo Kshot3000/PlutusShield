@@ -20,7 +20,7 @@ const notes = [
   },
   {
     title: "Private on Midnight",
-    body: "Exploit cover goes through the Midnight registry instead. fileClaim posts only a commitment to the evidence, keyed by the same policy id, and resolveClaim records the outcome.",
+    body: "Exploit cover goes through the Midnight registry instead. fileClaim posts only a commitment to the evidence, keyed by the same policy id, and the assessor committee records the outcome by voteClaim (2-of-3).",
     link: { href: "/claim/evidence", label: "Seal exploit evidence" },
   },
 ];
