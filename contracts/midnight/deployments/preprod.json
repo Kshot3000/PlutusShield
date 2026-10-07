@@ -152,6 +152,42 @@
       },
       "bindingHolds": true,
       "at": "2026-10-06T23:01:06.476Z"
+    },
+    {
+      "policyId": "c6adbe88745305140aba0f52d15fab635ea5ed1971de516dd800bd6806e8648a",
+      "cardano": {
+        "network": "preview",
+        "buyTx": "4ed985795772f8c8df2f1867d5f1754c2d66af6e44ca3ea541aa0c942a9a77e4",
+        "policyDatum": "4ed985795772f8c8df2f1867d5f1754c2d66af6e44ca3ea541aa0c942a9a77e4#1",
+        "midnightCommitment": "ecb53ba75338e28794263aa1440e58dbdc7af6ba7d9470390d7882d20b2c9450",
+        "coverage": "50000000",
+        "expiry": "1793924003000"
+      },
+      "source": "key",
+      "registerPolicy": {
+        "txId": "00d817782eadbeeecc203d412904e04324a8a636b5404953ce468df72bd7bee52c",
+        "txHash": "cdfecfdf6ce5af6aa96681b8a7871fbc2658f665023def6bec6f3db4425d0929",
+        "blockHeight": 2869244,
+        "blockHash": "b30fa7c4cc53806c09e1c16767899f775d5a799b32f5deb4dcf7e048f208761b",
+        "status": "SucceedEntirely"
+      },
+      "proveCover": {
+        "txId": "0024219d7834ce2c2a395e98864cd5dd91a341eec5b07ef2192f1b25a560b42769",
+        "txHash": "18cf8732957ffdc8907fc5408bc5ca35aaa24ce575a48056fcacd346755dae6f",
+        "blockHeight": 2869248,
+        "blockHash": "7607169534d55ab6ee4d4967ea72a39703f2863e0191db40d6cc3f33f72ba515",
+        "status": "SucceedEntirely",
+        "minCoverage": "50000000"
+      },
+      "ledger": {
+        "status": 1,
+        "holder": "b3f3a9d23954cc3740f9bdbd584a8496acd4fac4e272ecd35ce4bbcdbc91c589",
+        "coverage": "90817cff48282e079dd3c4420833c9850e234de0f353830cfc3d118d1bc7aa4d",
+        "activePolicies": "3",
+        "coverProofs": "5"
+      },
+      "bindingHolds": true,
+      "at": "2026-10-07T00:35:33.054Z"
     }
   ],
   "claims": [
@@ -379,6 +415,81 @@
         "claimsPaid": "2"
       },
       "resolvedAt": "2026-10-06T23:01:44.981Z"
+    },
+    {
+      "policyId": "c6adbe88745305140aba0f52d15fab635ea5ed1971de516dd800bd6806e8648a",
+      "cardano": {
+        "network": "preview",
+        "buyTx": "4ed985795772f8c8df2f1867d5f1754c2d66af6e44ca3ea541aa0c942a9a77e4",
+        "policyDatum": "4ed985795772f8c8df2f1867d5f1754c2d66af6e44ca3ea541aa0c942a9a77e4#1"
+      },
+      "evidenceCommitment": "b05e660e39b8bf1fb88078030f9d0d98ffc869f8ca6afa13519dd82f4d0f2d7a",
+      "evidenceInput": "contracts/midnight/preprod/demo-evidence/approve-c6adbe88.json",
+      "fileClaim": {
+        "txId": "00ebe037593cca1581f372ca3e7ae51181047846eba6f761430833d5442788d3b0",
+        "txHash": "e991bd470331238b16775f072fdb29a627806492219e72fe931962ab362ea919",
+        "blockHeight": 2869252,
+        "blockHash": "e48467ae40cb5f429bf9bc9c2cffa785b61f00052df88e9a00703fe79796d78a",
+        "status": "SucceedEntirely"
+      },
+      "ledgerAfterFile": {
+        "status": "CLAIM_PENDING",
+        "evidence": "b05e660e39b8bf1fb88078030f9d0d98ffc869f8ca6afa13519dd82f4d0f2d7a",
+        "activePolicies": "3",
+        "claimsFiled": "4",
+        "claimsPaid": "2"
+      },
+      "filedAt": "2026-10-07T00:35:56.117Z",
+      "assessment": {
+        "ok": true,
+        "reason": "bundle opens to the on-ledger evidence commitment",
+        "checks": [
+          {
+            "id": "files",
+            "ok": true
+          },
+          {
+            "id": "decrypt",
+            "ok": true
+          },
+          {
+            "id": "canonical",
+            "ok": true
+          },
+          {
+            "id": "commitment",
+            "ok": true
+          },
+          {
+            "id": "ledger",
+            "ok": true
+          }
+        ],
+        "bundle": {
+          "protocol": "DEMO ONLY - PlutusShield 2-of-3 committee payout drill (no real incident)",
+          "chain": "cardano",
+          "kind": "logic-bug",
+          "loss": "50 tADA",
+          "txHashes": 1,
+          "createdAt": "2026-10-06T23:54:02.752Z"
+        }
+      },
+      "resolveClaim": {
+        "txId": "000ce6393bd82190118ef121eb862c3fe59d796a756c654efd0537eededc96ea47",
+        "txHash": "71d86cd5316b5eaa60c25ef677349a588af7f5fb2c41f288e71b1dad8b3c76e0",
+        "blockHeight": 2869256,
+        "blockHash": "f0b1e0c36e79a3b2cf7f43015da3543629654e31c42ea64596539cadfaca4c91",
+        "status": "SucceedEntirely",
+        "approved": true
+      },
+      "ledgerAfterResolve": {
+        "status": "PAID",
+        "evidence": "b05e660e39b8bf1fb88078030f9d0d98ffc869f8ca6afa13519dd82f4d0f2d7a",
+        "activePolicies": "2",
+        "claimsFiled": "4",
+        "claimsPaid": "3"
+      },
+      "resolvedAt": "2026-10-07T00:36:20.627Z"
     }
   ],
   "_note": "Public Midnight Preprod data only (copied from the policy-cover-preprod.mjs run record). No keys, seeds or holder secrets."

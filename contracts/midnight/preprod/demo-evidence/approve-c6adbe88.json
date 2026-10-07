@@ -1,0 +1,25 @@
+{
+  "_note": "TEST / DEMO evidence for the 2-of-3 assessor-committee exploit-cover payout drill (Cardano Preview exploit pool v2 + Midnight Preprod claims). There was no real exploit. Not a real incident report.",
+  "policyId": "c6adbe88745305140aba0f52d15fab635ea5ed1971de516dd800bd6806e8648a",
+  "protocol": {
+    "name": "DEMO ONLY - PlutusShield 2-of-3 committee payout drill (no real incident)",
+    "chain": "cardano",
+    "contracts": [
+      "097ba40ad0a18377b4b2149f64b8cb600142784c7216d898da7994f0 (PlutusShield Preview exploit-cover v2 script, 2-of-3 assessor committee, named only as the drill target)"
+    ]
+  },
+  "incident": {
+    "kind": "logic-bug",
+    "description": "TEST / DEMO exploit report for the PlutusShield exploit-cover v2 payout drill on Cardano Preview + Midnight Preprod. No funds were lost and no contract was exploited. This bundle exercises fileClaim -> off-ledger assessor verification -> resolveClaim(approved) on Midnight, then a Settle on Cardano that the validator accepts only with 2 of the 3 assessor-committee signatures. The tx hash listed is the policy's own Buy tx, used as a placeholder reference. Incident timestamps are drill placeholders (the evidence is sealed before the Midnight wallet sync), not a real event time.",
+    "startedAt": "2026-10-06T23:50:00.000Z",
+    "detectedAt": "2026-10-06T23:52:00.000Z"
+  },
+  "txHashes": [
+    "4ed985795772f8c8df2f1867d5f1754c2d66af6e44ca3ea541aa0c942a9a77e4"
+  ],
+  "loss": {
+    "amount": "50",
+    "asset": "tADA"
+  },
+  "attachments": []
+}

@@ -64,7 +64,8 @@
     "2026-10-06T19:16:36.445Z web-buy Buy 20 ada cover 14d (website builder, premium 5000000)": "1e70f0895de64c50dbbc39df0e8d23af362a29e476d1bdfb1e2068ff780f321f",
     "2026-10-06T19:18:26.466Z web-buy Buy 25 usdc cover 14d (website builder, premium 5000000)": "94c4dc052711c6eec5b2942da768b151b9f1dd9519cf11bcd55982a6bd1325ff",
     "2026-10-06T20:38:06.175Z oracle live peg 9945bps": "04b48e25029933be6941a69b8496ba36a34d7cc41073acef9e78a23258496edd",
-    "2026-10-06T22:07:25.979Z oracle live peg 9973bps": "41e8ec6cd1645d41dc25ad17378fb16cf65e0409461ca95394c6ecfb9e578e62"
+    "2026-10-06T22:07:25.979Z oracle live peg 9973bps": "41e8ec6cd1645d41dc25ad17378fb16cf65e0409461ca95394c6ecfb9e578e62",
+    "2026-10-06T23:37:14.018Z oracle live peg 9973bps": "0b38b749d92907f28fdf88cc25f78d260e0816c5661aacc21bb473696b3ef013"
   },
   "script": {
     "hash": "4e5423fefc28871aef53bd2ee85722c19af742e6b7a99d507e0ce2ac",

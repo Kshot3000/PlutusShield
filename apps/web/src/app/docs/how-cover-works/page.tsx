@@ -235,8 +235,8 @@ PoolAction = Deposit { tranche } | Withdraw { tranche, shares } | Buy | Settle |
             ],
             [
               "Smart-contract exploit",
-              "Assessed. Evidence commitment on Midnight plus an assessor decision",
-              "Priced in SDK. Midnight claim flow implemented. Cardano payout path planned",
+              "Assessed. Evidence commitment on Midnight plus an assessor decision; the Cardano payout needs 2 of 3 assessor-committee signatures",
+              "Live on Preview: Midnight Preprod claim flow plus a Cardano exploit-cover pool that pays on a 2-of-3 committee Settle",
             ],
             ["Protocol SLA", "Parametric. Uptime oracle below an SLA threshold", "Priced in SDK. Oracle and deployment planned"],
           ]}

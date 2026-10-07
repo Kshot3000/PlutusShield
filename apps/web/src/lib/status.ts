@@ -41,7 +41,7 @@ export const MILESTONES: Milestone[] = [
   },
   {
     label: "Exploit claims, end to end",
-    detail: "A smart-contract exploit claim runs across both chains: sealed evidence filed and approved on Midnight Preprod, then paid from the Cardano Preview exploit-cover pool by an assessor-signed Settle that names the Midnight resolveClaim tx. First claim paid in full (50 tADA).",
+    detail: "A smart-contract exploit claim runs across both chains: sealed evidence filed and approved on Midnight Preprod, then paid from the Cardano Preview exploit-cover pool by a Settle that names the Midnight resolveClaim tx. Payouts now need 2 of 3 assessor-committee signatures (no single trusted key); 1-of-3 is rejected by the validator.",
     state: "done",
   },
   {

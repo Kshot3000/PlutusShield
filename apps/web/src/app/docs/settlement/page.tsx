@@ -211,7 +211,8 @@ policy.start         ≥ tx_upper_bound + waiting_period_ms`}</Formula>
         />
         <P>
           While a claim is pending, the policy can&apos;t prove cover, be rotated to a new holder, or be expired.
-          The assessor is a single role commitment fixed at deployment. Holder authorization works as described
+          On Midnight the assessor is a single role commitment fixed at deployment; the Cardano payout below needs
+          a 2-of-3 assessor committee on top of it. Holder authorization works as described
           in <DocLink href="/docs/privacy">Privacy</DocLink>.
         </P>
         <P>
@@ -229,19 +230,24 @@ policy.start         ≥ tx_upper_bound + waiting_period_ms`}</Formula>
         </P>
         <P>
           <Strong>Payout on Cardano.</Strong> Exploit cover has its own pool and validator,{" "}
-          <C>validators/exploit_cover.ak</C>, parameterised with the same <C>CoverParams</C> plus an assessor key hash.
-          Its <C>Settle</C> has no oracle path: it requires the assessor&apos;s signature, a validity range inside
-          [policy start, expiry + grace], both policy tokens burned, exactly the coverage paid from the policy&apos;s
-          tranche, and active cover released. <C>Buy</C> keeps the pricing, capacity, and waiting period, without the
-          peg circuit-breaker (there is no peg). The depeg validator is untouched, so the live depeg pool keeps its
-          script hash.
+          <C>validators/exploit_cover.ak</C>, parameterised with the same <C>CoverParams</C> plus an assessor{" "}
+          <C>Committee</C>: a list of assessor key hashes and a threshold (2-of-3 on Preview). InitPool refuses a
+          malformed committee: empty, a hash that isn&apos;t 28 bytes, a duplicate key, or a threshold outside
+          1..=size. Its <C>Settle</C> has no oracle path: it requires signatures from at least <C>threshold</C>{" "}
+          distinct committee members, a validity range inside [policy start, expiry + grace], both policy tokens
+          burned, exactly the coverage paid from the policy&apos;s tranche, and active cover released. <C>Buy</C>{" "}
+          keeps the pricing, capacity, and waiting period, without the peg circuit-breaker (there is no peg). The
+          depeg validator is untouched, so the live depeg pool keeps its script hash.
         </P>
         <Table
-          caption="Exploit Settle (exploit_cover.ak)"
+          caption="Exploit Settle (exploit_cover.ak, 2-of-3 committee)"
           head={["Attempt", "Result"]}
           rows={[
-            ["Assessor-signed, inside the claim window, pays exactly the coverage", "Paid"],
-            ["Missing assessor signature, or signed by another key", "Rejected"],
+            ["Any 2 of the 3 assessors sign, inside the claim window, pays exactly the coverage", "Paid"],
+            ["2 assessors plus extra non-committee signers (holder, others)", "Paid: outsiders are ignored"],
+            ["Only 1 of the 3 assessors signs, alone or padded with outsiders", "Rejected"],
+            ["The same assessor listed twice", "Rejected: counted once"],
+            ["Signed only by keys outside the committee", "Rejected"],
             ["Pays one lovelace more or less than the coverage", "Rejected"],
             ["After expiry + grace, or before cover starts", "Rejected"],
             ["Keeps active cover, or keeps the user token", "Rejected"],
@@ -249,13 +255,18 @@ policy.start         ≥ tx_upper_bound + waiting_period_ms`}</Formula>
         />
         <Callout tone="planned">
           <p>
-            Trust model: Cardano can&apos;t read Midnight state, so the assessor&apos;s signature is the bridge. The
-            assessor signs only after the Midnight registry shows the claim resolved APPROVED (PAID), and the Settle
-            carries the Midnight claim id, evidence commitment, and <C>resolveClaim</C> tx as metadata (label 7732),
-            covered by the signed tx body. It runs on Cardano Preview with one demo policy paid end to end (links on
-            the <DocLink href="/claim/evidence">evidence vault page</DocLink>). The assessor is a single Preview key
-            today; a rotatable committee (or a bridge proof) is planned. Depeg policies still settle only on an oracle
-            quorum, so an approved Midnight claim on a depeg policy isn&apos;t paid on Cardano.
+            Trust model: Cardano can&apos;t read Midnight state, so the committee&apos;s signatures are the bridge.
+            Each assessor signs only after checking that the Midnight registry shows the claim resolved APPROVED
+            (PAID), and the Settle carries the Midnight claim id, evidence commitment, and <C>resolveClaim</C> tx as
+            metadata (label 7732), covered by the signed tx body. No single key can release capital: a payout needs 2
+            of the 3 committee keys, and one lost or compromised key can be outvoted without stopping payouts. It
+            runs on Cardano Preview: the v2 pool paid a claim on 2-of-3 signatures, and a 1-of-3 Settle was rejected
+            by both the local evaluator and the Preview provider&apos;s (links on the{" "}
+            <DocLink href="/claim/evidence">evidence vault page</DocLink>). The first exploit pool (v1, one assessor
+            key) is kept as history. Still open: the three Preview keys are run by the PlutusShield team, not yet
+            independent operators; Midnight&apos;s <C>resolveClaim</C> is still one assessor role key (it can&apos;t
+            move Cardano capital alone); and committee rotation means a new pool. Depeg policies still settle only on
+            an oracle quorum, so an approved Midnight claim on a depeg policy isn&apos;t paid on Cardano.
           </p>
         </Callout>
       </Section>

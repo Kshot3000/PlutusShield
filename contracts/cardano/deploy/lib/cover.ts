@@ -22,6 +22,8 @@ import {
   DAY_MS,
   POOL_NFT,
   assetTerms,
+  committeeData,
+  committeeProblem,
   coverParamsData,
   depegTrigger,
   productTerms,
@@ -31,6 +33,7 @@ import {
   type AssetClass,
   type Address,
   type AssetTerms,
+  type Committee,
   type CoverParams,
   type OutputReference,
   type PoolDatum,
@@ -204,20 +207,25 @@ export function unappliedExploitCode(blueprintPath = join(DEPLOY_DIR, "..", "plu
 }
 
 export interface ExploitDeployment extends Deployment {
-  /** Key hash whose signature every exploit Settle needs (the claims assessor). */
-  assessorKeyHash: string;
+  /** Assessor committee fixed in the parameters: `threshold` of `assessors` must sign every exploit Settle. */
+  committee: Committee;
+  /** CBOR of the committee parameter as applied. */
+  committeeCbor: string;
 }
 
 /**
  * An exploit-cover deployment: the same CoverParams encoding plus the
- * assessor key hash as the validator's second parameter. Datums, redeemers
- * and token names are identical to a depeg deployment's, so every builder in
- * actions.ts (InitPool, Deposit, Withdraw, Buy, Expire) works on it unchanged.
+ * assessor committee (M-of-N key hashes) as the validator's second
+ * parameter. Datums, redeemers and token names are identical to a depeg
+ * deployment's, so every builder in actions.ts (InitPool, Deposit, Withdraw,
+ * Buy, Expire) works on it unchanged.
  */
-export function exploitDeployment(network: Network, params: CoverParams, assessorKeyHash: string): ExploitDeployment {
-  if (!/^[0-9a-f]{56}$/.test(assessorKeyHash)) throw new Error("assessor key hash must be 28 bytes hex");
+export function exploitDeployment(network: Network, params: CoverParams, committee: Committee): ExploitDeployment {
+  const problem = committeeProblem(committee);
+  if (problem) throw new Error(`invalid assessor committee: ${problem}`);
   const paramsCbor = toCborHex(coverParamsData(params));
-  const code = applyParamsToScript(applyDoubleCborEncoding(unappliedExploitCode()), [Data.from(paramsCbor), assessorKeyHash]);
+  const committeeCbor = toCborHex(committeeData(committee));
+  const code = applyParamsToScript(applyDoubleCborEncoding(unappliedExploitCode()), [Data.from(paramsCbor), Data.from(committeeCbor)]);
   const script: Script = { type: "PlutusV3", script: code };
   const policyId = mintingPolicyToId(script);
   return {
@@ -228,6 +236,25 @@ export function exploitDeployment(network: Network, params: CoverParams, assesso
     policyId,
     address: validatorToAddress(network, script),
     poolNftUnit: policyId + POOL_NFT,
-    assessorKeyHash,
+    committee,
+    committeeCbor,
+  };
+}
+
+/**
+ * A frozen, already-applied exploit script (e.g. v1, single assessor, before
+ * the committee): rebuild the deployment view from the stored script so its
+ * pool stays readable and withdrawable after the validator source moved on.
+ */
+export function frozenExploitDeployment(network: Network, params: CoverParams, script: Script): Deployment {
+  const policyId = mintingPolicyToId(script);
+  return {
+    network,
+    params,
+    paramsCbor: toCborHex(coverParamsData(params)),
+    script,
+    policyId,
+    address: validatorToAddress(network, script),
+    poolNftUnit: policyId + POOL_NFT,
   };
 }

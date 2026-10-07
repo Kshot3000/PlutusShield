@@ -1,9 +1,8 @@
-import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { MirroredOnMidnight } from "@/components/midnight/LiveContractActivity";
 import { explorerTx } from "@/lib/preview";
 import { MIDNIGHT_PREPROD as M, shortHash } from "@/lib/midnightPreprod";
-import { EXPLOIT_PREVIEW, adaOf, exploitPayoutFor } from "@/lib/exploitPreview";
+import { adaOf, allExploitPolicies, exploitPayoutFor } from "@/lib/exploitPreview";
 
 const steps = [
   {
@@ -41,7 +40,7 @@ export function ClaimLifecycle() {
   // Midnight claims drill rows, plus each exploit-pool policy whose claim was resolved on Midnight.
   const drill = [
     ...M.claimsDrill,
-    ...EXPLOIT_PREVIEW.policies
+    ...allExploitPolicies()
       .filter((p) => p.midnight?.resolveClaim && p.midnight.fileClaim?.txHash)
       .filter((p) => !M.claimsDrill.some((d) => d.policyId === p.policyId))
       .map((p) => ({
@@ -143,7 +142,10 @@ export function ClaimLifecycle() {
                             >
                               Settle {shortHash(paid.settleTx!)} ↗
                             </a>
-                            <span className="mt-0.5 block text-[10.5px] text-text-dim">{adaOf(paid.payout)}, assessor-signed</span>
+                            <span className="mt-0.5 block text-[10.5px] text-text-dim">
+                              {adaOf(paid.payout)},{" "}
+                              {paid.pool.version === "v2" ? `${paid.pool.quorumLabel} assessor committee` : "single assessor (v1 pool)"}
+                            </span>
                           </>
                         );
                       return (
@@ -159,7 +161,7 @@ export function ClaimLifecycle() {
           </table>
         </div>
         <p className="mt-3 text-[11px] leading-relaxed text-text-dim">
-          Both bundles were sealed with this page&apos;s code (<span className="font-mono">packages/sdk/src/evidence.ts</span>) and
+          Every bundle was sealed with this page&apos;s code (<span className="font-mono">packages/sdk/src/evidence.ts</span>) and
           checked by the assessor against the on-ledger commitment before each <span className="font-mono">resolveClaim</span>.
           &ldquo;Status now&rdquo; is decoded live from the registry&apos;s public state on the Preprod indexer.
         </p>
@@ -169,8 +171,8 @@ export function ClaimLifecycle() {
         <p>
           <span className="text-success">Payout wired for exploit cover.</span> The depeg pool still settles only on an oracle
           quorum (its parameters are fixed, no admin key), so approved claims on depeg policies stay unpaid on Cardano. Exploit
-          policies live in a separate exploit-cover pool whose Settle needs the assessor&apos;s signature, so an approved
-          Midnight claim there is paid in ADA or USDC on Cardano Preview.{" "}
+          policies live in a separate exploit-cover pool whose Settle needs signatures from 2 of the 3 assessors on its committee,
+          so an approved Midnight claim there is paid in ADA or USDC on Cardano Preview.{" "}
           <a href="#exploit-payout-title" className="underline underline-offset-4 hover:text-text">
             See the payout
           </a>

@@ -12,10 +12,12 @@
  *   6  Settle the USDC policy       payout in tUSDCx from the USDC tranche
  *   7  Expire the ada policy        submitted by a third party, deposit refunded to the buyer
  *   8  Withdraw part of each tranche
- *   9  exploit-cover pool (exploit_cover.ak): InitPool, Deposit, Buy with no
- *      oracle feeds, Settle refused without the assessor (wrong key, missing
- *      witness), then the assessor-signed Settle pays the holder exactly the
- *      coverage and carries the Midnight resolution as tx metadata (label 7732)
+ *   9  exploit-cover pool (exploit_cover.ak) with a 2-of-3 assessor committee:
+ *      InitPool, Deposit, Buy with no oracle feeds; Settle refused before cover
+ *      starts, with 1 of 3 assessors (alone or padded with non-committee
+ *      signers), and with a missing witness; then a 2-of-3 committee-signed
+ *      Settle pays the holder exactly the coverage and carries the Midnight
+ *      resolution as tx metadata (label 7732)
  *
  * Every step asserts the on-chain pool state against @plutusshield/sdk.
  */
@@ -229,9 +231,10 @@ console.log("\nfinal pool:", {
   unit: unitOf(USDC),
 });
 
-// 9. exploit-cover pool: assessed payout, no oracle
-const assessorAcct = generateEmulatorAccountFromPrivateKey({ lovelace: 0n });
-const assessor = keyInfo("assessor", assessorAcct.privateKey, network);
+// 9. exploit-cover pool: assessed payout by a 2-of-3 committee, no oracle
+const committeeKeys = [1, 2, 3].map((i) => keyInfo(`assessor-${i}`, generateEmulatorAccountFromPrivateKey({ lovelace: 0n }).privateKey, network));
+const [a1, a2, a3] = committeeKeys;
+const committee = { assessors: committeeKeys.map((k) => k.keyHash), threshold: 2n };
 as(deployerAcct);
 const [xSeed] = await lucid.wallet().getUtxos();
 const xParams: CoverParams = {
@@ -242,9 +245,12 @@ const xParams: CoverParams = {
   claimGraceMs: 3n * DAY_MS,
   saleGuard: { waitingPeriodMs: 10n * 60_000n, maxPriceAgeMs: 0n },
 };
-const x = exploitDeployment(network, xParams, assessor.keyHash);
+assert.throws(() => exploitDeployment(network, xParams, { assessors: [a1.keyHash, a1.keyHash, a2.keyHash], threshold: 2n }), /twice/);
+assert.throws(() => exploitDeployment(network, xParams, { ...committee, threshold: 4n }), /above/);
+log("✓ malformed committees (duplicate key, threshold > size) refused before anything is built");
+const x = exploitDeployment(network, xParams, committee);
 assert.notEqual(x.policyId, d.policyId);
-await submit("exploit InitPool", await act.initPool(lucid, x, BigInt(cfg.poolMinLovelace)));
+await submit("exploit InitPool (2-of-3 committee)", await act.initPool(lucid, x, BigInt(cfg.poolMinLovelace)));
 await submit("exploit Deposit 10,000 ADA", (await act.deposit(lucid, x, ADA, 10_000n * U)).tx);
 as(buyerAcct);
 const xb = await act.buy(lucid, x, { asset: ADA, coverage: 500n * U, days: 30n, holder, now: emulator.now(), feeds: [] });
@@ -252,24 +258,29 @@ await submit(`exploit Buy 500 ADA cover, premium ${xb.premium}`, xb.tx);
 assert.equal(xb.tx.toTransaction().body().reference_inputs()?.len() ?? 0, 0, "exploit Buy references no oracle feeds");
 const xId = xb.policy.policyId;
 const midnight = { network: "preprod", contract: "d8".repeat(34), claim: xId, evidence: "ee".repeat(32), resolveTx: "cd".repeat(32) };
-await assert.rejects(buildExploitSettle(lucid, act.coverScriptOf(x), { policyId: xId, assessorKeyHash: assessor.keyHash, midnight, now: emulator.now() }), /can't settle before/);
+const settleWith = (signers: string[]) => buildExploitSettle(lucid, act.coverScriptOf(x), { policyId: xId, signers, midnight, now: emulator.now() });
+await assert.rejects(settleWith([a1.keyHash, a2.keyHash]), /can't settle before/);
 log("✓ exploit Settle refused before cover starts (waiting period)");
 emulator.awaitSlot(Math.ceil((Number(xb.policy.start) - emulator.now()) / 1000) + 120);
-await assert.rejects(buildExploitSettle(lucid, act.coverScriptOf(x), { policyId: xId, assessorKeyHash: deployer.keyHash, midnight, now: emulator.now() }));
-log("✓ exploit Settle refused when signed for a key that isn't the assessor (script fails)");
-const unsigned = await buildExploitSettle(lucid, act.coverScriptOf(x), { policyId: xId, assessorKeyHash: assessor.keyHash, midnight, now: emulator.now() });
-await assert.rejects(async () => (await unsigned.tx.sign.withWallet().complete()).submit());
-log("✓ exploit Settle refused without the assessor's witness");
+for (const k of committeeKeys) await assert.rejects(settleWith([k.keyHash]));
+log("✓ exploit Settle refused with 1 of 3 assessors (each of the three, script fails)");
+await assert.rejects(settleWith([a2.keyHash, deployer.keyHash, keyInfo("buyer", buyerAcct.privateKey, network).keyHash]));
+log("✓ exploit Settle refused with 1 assessor + 2 non-committee signers (outsiders don't count)");
+await assert.rejects(settleWith([deployer.keyHash]));
+log("✓ exploit Settle refused when signed only by a key outside the committee");
+const unsigned = await settleWith([a1.keyHash, a3.keyHash]);
+await assert.rejects(async () => (await unsigned.tx.sign.withWallet().sign.withPrivateKey(a1.privateKey).complete()).submit());
+log("✓ exploit Settle refused when a listed assessor's witness is missing (2 required, 1 signed)");
 const xBefore = await act.readPool(lucid, x);
 const buyerAdaX = await buyerAda();
-const xs = await buildExploitSettle(lucid, act.coverScriptOf(x), { policyId: xId, assessorKeyHash: assessor.keyHash, midnight, now: emulator.now() });
+const xs = await settleWith([a1.keyHash, a3.keyHash]);
 const md = xs.tx.toTransaction().auxiliary_data()?.metadata()?.get(BigInt(EXPLOIT_PAYOUT_LABEL));
 assert.ok(md && CML.decode_metadatum_to_json_str(md, CML.MetadataJsonSchema.BasicConversions).includes(midnight.resolveTx), "Settle names the Midnight resolveClaim tx");
-await submit("exploit Settle (assessor-signed)", xs.tx, assessor.privateKey);
+await submit("exploit Settle (2-of-3 committee: assessor-1 + assessor-3)", xs.tx, a1.privateKey, a3.privateKey);
 const xAfter = await act.readPool(lucid, x);
 assert.equal(xAfter.capitals[0], xBefore.capitals[0] - 500n * U, "tranche pays exactly the coverage");
 assert.equal(xAfter.datum.tranches[0].activeCover, 0n);
 assert.ok((await buyerAda()) > buyerAdaX + 500n * U - 2_000_000n, "holder received the 500 ADA payout (less fee)");
-log("✓ exploit payout: 500 ADA to the holder, active cover released");
+log("✓ exploit payout: 500 ADA to the holder on 2-of-3 committee signatures, active cover released");
 
 console.log("emulator run passed");

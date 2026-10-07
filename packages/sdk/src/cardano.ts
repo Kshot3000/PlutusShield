@@ -86,6 +86,13 @@ export interface CoverParams {
   saleGuard: SaleGuard;
 }
 
+/**
+ * Exploit-cover assessor committee (exploit_cover.ak `Committee`), the
+ * validator's second parameter: a Settle needs `threshold` distinct
+ * signatures from `assessors` (28-byte key hashes, hex). M-of-N, e.g. 2-of-3.
+ */
+export interface Committee { assessors: string[]; threshold: bigint }
+
 /** A payment or stake credential (Aiken `VerificationKey(hash)` / `Script(hash)`). */
 export interface Credential { type: "Key" | "Script"; hash: string }
 /** A Cardano address as Plutus sees it. Stake pointers are not supported. */
@@ -162,6 +169,46 @@ export const coverParamsData = (c: CoverParams) =>
     int(c.claimGraceMs),
     saleGuardData(c.saleGuard),
   ]);
+
+/**
+ * The same well-formedness rules `exploit_cover.committee_ok` enforces at
+ * InitPool: 1..=32 assessors, each a 28-byte key hash, no duplicates, and
+ * 1 <= threshold <= assessors. Returns the first problem, or null.
+ */
+export function committeeProblem(c: Committee): string | null {
+  const n = c.assessors.length;
+  if (n < 1) return "the committee needs at least one assessor";
+  if (n > 32) return "the committee can list at most 32 assessors";
+  const bad = c.assessors.find((k) => !/^[0-9a-fA-F]{56}$/.test(k));
+  if (bad !== undefined) return `assessor ${bad || "(empty)"} is not a 28-byte key hash`;
+  if (new Set(c.assessors.map((k) => k.toLowerCase())).size !== n) return "an assessor key hash appears twice";
+  if (c.threshold < 1n) return "threshold must be at least 1";
+  if (c.threshold > BigInt(n)) return `threshold ${c.threshold} is above the committee size ${n}`;
+  return null;
+}
+
+/** Plutus `Committee { assessors: List<VerificationKeyHash>, threshold: Int }`. Throws on a malformed committee. */
+export const committeeData = (c: Committee) => {
+  const problem = committeeProblem(c);
+  if (problem) throw new Error(`invalid assessor committee: ${problem}`);
+  return constr(0, [{ list: c.assessors.map((k) => bytes(k.toLowerCase())) }, int(c.threshold)]);
+};
+
+/** Distinct committee members among a tx's signer key hashes (what the validator counts). */
+export const committeeSigners = (c: Committee, signers: string[]) => {
+  const s = new Set(signers.map((k) => k.toLowerCase()));
+  return c.assessors.filter((k) => s.has(k.toLowerCase()));
+};
+
+/** True when `signers` include at least `threshold` distinct committee members. */
+export const committeeApproves = (c: Committee, signers: string[]) =>
+  committeeProblem(c) === null && BigInt(committeeSigners(c, signers).length) >= c.threshold;
+
+/** Revive a `Committee` after a JSON round-trip (threshold as string or number). */
+export const committeeFromJson = (c: { assessors: string[]; threshold: string | number | bigint }): Committee => ({
+  assessors: [...c.assessors],
+  threshold: BigInt(c.threshold),
+});
 
 export const trancheData = (t: Tranche) => constr(0, [int(t.totalShares), int(t.activeCover)]);
 export const poolDatumData = (d: PoolDatum) => constr(0, [{ list: d.tranches.map(trancheData) }]);

@@ -55,7 +55,7 @@ export default function EvidencePage() {
         from the operator relay. Filing straight from this page (a browser Midnight wallet and proof) is next; today the page
         seals the bundle and shows the exact <code className="font-mono">fileClaim</code> arguments. Exploit cover is bought
         from the operator tooling on the Preview exploit pool for now (a browser Buy for it is next), and an approved claim is
-        paid on Cardano by an assessor-signed Settle. Read the{" "}
+        paid on Cardano by a Settle signed by 2 of the 3 assessors on the pool&apos;s committee. Read the{" "}
         <Link href="/docs/privacy#evidence-vault" className="text-text-muted underline underline-offset-4 hover:text-text">
           vault&apos;s trust model
         </Link>{" "}

@@ -17,7 +17,7 @@
 | `proveCover(id, minCoverage)` | Holder | Prove ACTIVE cover of at least `minCoverage` without revealing the amount or the holder |
 | `rotateHolder(id, newHolderCommitment)` | Holder | Re-key an `ACTIVE` policy to a new holder commitment (wallet rotation or private transfer) |
 | `fileClaim(id, evidenceCommitment)` | Holder | Move to `CLAIM_PENDING` |
-| `resolveClaim(id, approved)` | Assessor | `PAID` (Cardano settles the payout) or back to `ACTIVE` |
+| `resolveClaim(id, approved)` | Assessor | `PAID` (Cardano settles the payout once 2 of 3 assessor-committee keys co-sign the exploit `Settle`) or back to `ACTIVE` |
 | `expirePolicy(id)` | Issuer | Mirror Cardano expiry |
 
 `proveCover` is the partner hook: a DEX or lending market can offer "insured-only" pools or better terms to users who prove cover, and learns nothing else.
@@ -176,3 +176,7 @@ The web app reads the registry straight from the public Preprod indexer (GraphQL
 ## Status
 
 Compiles, passes local simulation, and runs on Midnight Preprod (deploy, `registerPolicy`, `proveCover`). Every Buy carries a registration ticket and the batch relay mirrors every relayable Preview policy; it is operator-run (`--all`) from the box today. Next: run it on a schedule, and `proveCover` from the browser with the key the Buy saved. Not audited. Expiry here is issuer-driven and mirrors the Cardano side, where `Expire` in `contracts/cardano` is time-locked (expiry + claim grace) and callable by anyone.
+
+### Assessor trust: Midnight decision, Cardano committee
+
+`resolveClaim` here is gated by one assessor role commitment. The money side is stricter: the Cardano exploit-cover pool (v2) pays only on a `Settle` signed by 2 of the 3 assessor-committee keys fixed in its script parameters (`contracts/cardano/validators/exploit_cover.ak`), and each assessor signs only after checking this registry shows the claim PAID. So a single Midnight key can mark a claim PAID, but can't release Cardano capital alone. A committee-gated `resolveClaim` (M-of-N role commitments) is the natural next step on this side.

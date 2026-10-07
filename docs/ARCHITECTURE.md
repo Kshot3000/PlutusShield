@@ -15,7 +15,7 @@ flowchart LR
   subgraph Users
     Buyer[Cover buyers]
     LP[Underwriters / LPs]
-    Assessor[Claim assessors]
+    Assessor[Assessor committee, 2-of-3]
   end
 
   subgraph App["apps/web + services/api"]
@@ -44,7 +44,7 @@ flowchart LR
   ClaimsUX --> Evidence
   Evidence --> ZK
   ZK --> Assessor
-  Assessor --> Payout
+  Assessor -->|2-of-3 signatures| Payout
   Oracle --> Policy
   Pool --> Payout
 ```
@@ -100,4 +100,4 @@ One parameterised multi-validator, `cover`, serves as both the minting policy an
 
 - Oracle publishers are authenticated (NFT / VKH allowlists or equivalent).
 - Midnight proof server and Compact circuits are correctly generated for deployed verifier keys.
-- Assessors for non-parametric claims are governance-selected and can be rotated; their authority is scoped by contract, not by a hot wallet with blanket admin rights.
+- Assessors for non-parametric claims act as an **M-of-N committee** fixed in the exploit-cover script parameters (2-of-3 live on Cardano Preview, pool v2): an exploit `Settle` needs `threshold` distinct committee signatures, so no single key can release capital, and one lost or compromised key can be outvoted. Their authority is scoped by contract (exact coverage, policy tokens burned, claim window), not by a hot wallet with blanket admin rights. Today the three Preview keys are team-run; independent operators and governance-selected rotation (a new pool per committee change, since the committee is a script parameter) come before mainnet. On Midnight, `resolveClaim` is still one assessor role key; it can mark a claim PAID but can't move Cardano capital without the committee.
