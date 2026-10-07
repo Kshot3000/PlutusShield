@@ -83,10 +83,9 @@ PlutusShield/
 ├── packages/
 │   └── sdk/                # Products, quote engine, Cardano datum/redeemer codecs, evidence vault
 │
-│   # Planned (not yet present):
 └── services/
-    ├── api/                # TypeScript API: quotes, policy lifecycle, indexer
-    └── oracle-relay/       # Oracle aggregation + trigger evaluation
+    ├── oracle-relay/       # Oracle aggregation + trigger evaluation
+    └── api/                # Planned: quotes, policy lifecycle, indexer
 ```
 
 ## Quick start
@@ -180,7 +179,8 @@ See [contracts/cardano/README.md](contracts/cardano/README.md) for validators, d
 - [x] Private evidence vault for exploit claims: canonical bundle, in-browser AES-256-GCM, evidence commitment matching the Midnight contract, assessor verification (`/claim/evidence`, `packages/sdk/src/evidence.ts`)
 - [x] Exploit claims flow end to end: `fileClaim` on the Midnight Preprod registry, assessor resolution, approved payout from the Cardano Preview exploit-cover pool
 - [x] Multi-assessor payouts: exploit `Settle` needs M-of-N distinct assessor-committee signatures (2-of-3 live on Preview, v2 pool; first committee payout `c35535dd…` paid 50 tADA on assessor-1 + assessor-3, a 1-of-3 Settle rejected by both the local and the Preview evaluator); malformed committees refused at InitPool
-- [ ] Independent assessor operators (today all three Preview committee keys are team-run) and a committee-gated `resolveClaim` on Midnight
+- [x] Committee-gated claim decisions on Midnight: `policy-cover-v2.compact` replaces the single-assessor `resolveClaim` with an M-of-3 `voteClaim` (one vote per member per claim round, public attributable votes, re-filed claims start a fresh round); 10 simulation tests, v1 commitments unchanged
+- [ ] Independent assessor operators (today all three Preview committee keys are team-run) and the v2 Midnight registry deployed on Preprod
 - [x] Marketing site + app shell (`apps/web`)
 - [x] Web app: interactive quote on `/cover`
 - [x] Web app: claim checker on `/claim` (oracle quorum, TWAP trigger, claim window, sale circuit-breaker)

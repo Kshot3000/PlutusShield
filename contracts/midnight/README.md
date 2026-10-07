@@ -24,6 +24,22 @@
 
 Roles are witness-derived commitments, never `ownPublicKey()`.
 
+## v2: committee-gated claims (`src/policy-cover-v2.compact`)
+
+v1 resolves a claim with one assessor key. v2 is the same registry (same circuits, same holder, coverage, registration and evidence commitments, byte for byte) with `resolveClaim` replaced by an **M-of-3 assessor committee vote**, so no single key on either chain can approve a claim. It matches the Cardano exploit-cover v2 pool, whose `Settle` needs 2 of 3 committee signatures.
+
+| | v1 (`policy-cover.compact`, live on Preprod) | v2 (`policy-cover-v2.compact`) |
+|---|---|---|
+| Constructor | `(assessorCommitment)` | `(committee: Vector<3, Bytes<32>>, m: Uint<8>)`; refuses `m` outside 1..3, an empty member, or a repeated member |
+| Claim decision | `resolveClaim(id, approved)` by the one assessor | `voteClaim(id, approve)` by any committee member; `m` approvals → `PAID`, `m` rejections → `ACTIVE` with evidence cleared |
+| Double voting | n/a | one vote per member per claim round (`claimVotes` keyed by `voteKey(id, round, member)`) |
+| Re-filed claims | n/a | each `fileClaim` opens a new `round` on the record, so votes on a rejected filing never count toward the next one |
+| Audit trail | resolve tx only | every vote is public and attributable to a committee commitment; `approvals` / `rejections` tallies per round, `votesCast`, `claimsRejected` |
+
+A member proves membership by opening one of the three public role commitments (`roleCommitment(sk, assessorTag())`) inside the circuit, the same witness pattern as the issuer and holder roles. A split vote (1 approve, 1 reject under 2-of-3) stays `CLAIM_PENDING` until the third member decides. The full compile (prover and verifier keys for all 6 v2 circuits, including `voteClaim`) succeeds with compactc 0.31.1. `test/policy-cover-v2.test.mjs` covers the logic (10 tests), including that v2's commitment circuits equal v1's and the SDK's on random inputs, so Cardano datums, policy keys and sealed evidence made for v1 are valid against v2 unchanged.
+
+v1 stays deployed and keeps serving the relay and the site; v2 is the registry the committee runs on next, with the three Midnight committee secrets held by independent operators rather than the team.
+
 Pure helpers (no proof, no keys): `roleCommitment`, `coverageCommitment`, `registrationCommitment`, `evidenceCommitment`, and the tags `issuerTag` / `holderTag` / `assessorTag` / `registrationTag` / `evidenceTag`.
 
 ### Cardano binding and policy keys
@@ -71,11 +87,11 @@ Neither key is revealed. The rotation itself is visible (the policy id is public
 ## Build and test
 
 ```bash
-pnpm compile        # compactc 0.31.1, generates prover/verifier keys for all 6 circuits (~16 s locally)
+pnpm compile        # compactc 0.31.1, v1 and v2, prover/verifier keys for each contract's 6 circuits
 pnpm test           # --skip-zk compile, then node:test simulation via @midnight-ntwrk/compact-runtime 0.16.0
 ```
 
-26 tests cover:
+26 v1 tests cover:
 
 - issuer-only registration and duplicate ids
 - threshold proofs and forged openings
@@ -179,4 +195,4 @@ Compiles, passes local simulation, and runs on Midnight Preprod (deploy, `regist
 
 ### Assessor trust: Midnight decision, Cardano committee
 
-`resolveClaim` here is gated by one assessor role commitment. The money side is stricter: the Cardano exploit-cover pool (v2) pays only on a `Settle` signed by 2 of the 3 assessor-committee keys fixed in its script parameters (`contracts/cardano/validators/exploit_cover.ak`), and each assessor signs only after checking this registry shows the claim PAID. So a single Midnight key can mark a claim PAID, but can't release Cardano capital alone. A committee-gated `resolveClaim` (M-of-N role commitments) is the natural next step on this side.
+On the live v1 registry `resolveClaim` is gated by one assessor role commitment. The money side is stricter: the Cardano exploit-cover pool (v2) pays only on a `Settle` signed by 2 of the 3 assessor-committee keys fixed in its script parameters (`contracts/cardano/validators/exploit_cover.ak`), and each assessor signs only after checking this registry shows the claim PAID. So a single v1 Midnight key can mark a claim PAID, but can't release Cardano capital alone. `policy-cover-v2.compact` (above) closes that gap on the Midnight side with an M-of-3 `voteClaim`; next is deploying it on Preprod and moving the committee keys to independent operators.
