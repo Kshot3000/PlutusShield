@@ -16,7 +16,7 @@ export const RUNBOOK = `${REPO}/blob/main/contracts/cardano/deploy/README.md`;
 export const MILESTONES: Milestone[] = [
   {
     label: "Cardano validators",
-    detail: "92 Aiken checks covering ADA + USDC tranches, pricing, the oracle quorum, the sale circuit-breaker, and expiry refunds.",
+    detail: "131 Aiken checks covering ADA + USDC tranches, pricing, the oracle quorum, the sale circuit-breaker, expiry refunds, and the assessor-signed exploit-cover pool.",
     state: "done",
   },
   {
@@ -26,7 +26,7 @@ export const MILESTONES: Milestone[] = [
   },
   {
     label: "Midnight policy registry",
-    detail: "Deployed on Midnight Preprod. The first Cardano Preview policy is mirrored into the private registry and its holder proved cover on-chain without revealing the amount. 26 simulation tests pass.",
+    detail: "Deployed on Midnight Preprod. The first Cardano Preview policy is mirrored into the private registry and its holder proved cover on-chain without revealing the amount. 50 simulation tests pass.",
     state: "done",
   },
   {

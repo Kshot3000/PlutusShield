@@ -155,7 +155,7 @@ Requires [Aiken v1.1.24](https://github.com/aiken-lang/aiken/releases/tag/v1.1.2
 
 ```bash
 cd contracts/cardano
-aiken check          # 92 unit tests: ADA/USDC tranches, pool, buy, sale circuit-breaker, settle, expire refund, oracle auth, pricing
+aiken check          # 131 unit tests: ADA/USDC tranches, pool, buy, sale circuit-breaker, settle, expire refund, oracle auth, pricing, exploit cover
 aiken build          # regenerates plutus.json (CIP-57 blueprint)
 ```
 

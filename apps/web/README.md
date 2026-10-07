@@ -2,7 +2,7 @@
 
 Marketing site and dApp shell for **PlutusShield** — DeFi insurance for Cardano and Midnight.
 
-> Preview build. Nothing is deployed: no live TVL, policies, or claims. The quote calculator and pool simulator run the real SDK math (the same integer rules the Aiken validators enforce) against an example tranche, and every buy/deposit button opens a "Preview coming" flow with the exact steps instead of a dead end.
+> Live on testnets. The pool is deployed on Cardano Preview and the policy registry on Midnight Preprod: `/pool` and `/cover` read live chain state (Blockfrost, with a build-time snapshot fallback), and CIP-30 wallets can buy cover, deposit/withdraw LP, file claims, and release policies on Preview. The quote calculator and pool simulator still run the real SDK math (the same integer rules the Aiken validators enforce) against an example tranche. Unaudited — test value only, no mainnet anything.
 
 ## Stack
 
@@ -15,9 +15,9 @@ Marketing site and dApp shell for **PlutusShield** — DeFi insurance for Cardan
 | Path | Purpose |
 |------|---------|
 | `/` | Landing: hero, problem, dual-chain, cover types, how it works, competitive honesty, CTA |
-| `/app` | "Your shield" dashboard: empty state, and the Road to Preview milestone tracker (`src/lib/status.ts`) |
-| `/cover` | Quote calculator: product, ADA/USDC tranche, amount and term with validation, tier, premium breakdown, policy timeline (waiting period / cover / claim grace), what goes on-chain, Preview buy steps |
-| `/pool` | Underwriter simulator: tranche, capital, tier, utilization and claims scenarios, LP shares and capital lock, Preview deposit steps |
+| `/app` | "Your shield" dashboard: wallet state, live Preview policies and Midnight Preprod contract activity, and the launch milestone tracker (`src/lib/status.ts`) |
+| `/cover` | Quote calculator (product, ADA/USDC tranche, amount and term with validation, tier, premium breakdown, policy timeline) plus the live browser Buy flow, My policies with claim/release actions, and per-policy Midnight mirror state |
+| `/pool` | Live Preview pool panel (tranches, utilization, on-chain policies) with signed LP deposit/withdraw, plus the underwriter simulator: capital, tier, utilization and claims scenarios, LP shares and capital lock |
 | `/claim` | Claim checker: example USDM market across three venues, venue-failure and feed-outage toggles, a time scrubber; verdicts from the SDK mirrors of `oracle.ak` (`settlementCheck`, `healthy`) and the relay window search, plus the attested `OracleDatum` CBOR |
 | `/docs` | Protocol docs hub plus six pages: how cover works, pricing, underwriting pool, settlement (incl. the sale circuit-breaker), privacy, risks |
 | `404` | Branded not-found page (GitHub Pages serves `404.html` for unknown paths) |
@@ -96,7 +96,7 @@ python3 -m http.server 4200 -d /tmp/pages   # → http://localhost:4200/PlutusSh
 - Landing sections: `src/components/landing/*`.
 - Shared form primitives: `ChoiceGroup` (native radios in a fieldset, so arrow keys and screen
   readers work), `AmountField` (string state, inline `aria-invalid` errors), `PreviewFlow`
-  (the "Preview coming" CTA, collapsed content is `inert`).
+  (a steps-and-status explainer under the simulators, collapsed content is `inert`).
 - Accessibility bar: axe-core clean (WCAG 2.1 AA + best practice) on every route at 1280 and
   390 px; visible focus rings; scrollable tables and code blocks are keyboard-focusable;
   external links announce "opens in a new tab"; `--text-dim` meets AA contrast.

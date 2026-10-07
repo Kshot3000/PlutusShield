@@ -214,7 +214,7 @@ See also the gap list in the [Preview runbook](deploy/README.md#known-gaps-befor
 
 ```bash
 # Aiken v1.1.24: https://github.com/aiken-lang/aiken/releases/tag/v1.1.24
-aiken check     # 112 tests
+aiken check     # 131 tests
 aiken build     # regenerates plutus.json
 # or from the repo root
 pnpm test:cardano

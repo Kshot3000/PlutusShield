@@ -12,8 +12,8 @@ export const metadata: Metadata = {
 };
 
 const status = [
-  { k: "Cardano validators", v: "Aiken, Plutus V3 · ADA + USDC tranches · sale circuit-breaker · 92 tests passing" },
-  { k: "Midnight registry", v: "Compact 0.31.1 · 6 circuits · 21 tests passing" },
+  { k: "Cardano validators", v: "Aiken, Plutus V3 · ADA + USDC tranches · sale circuit-breaker · 131 tests passing" },
+  { k: "Midnight registry", v: "Compact 0.31.1 · 6 circuits · 50 tests passing" },
   { k: "Evidence vault", v: "In-browser AES-256-GCM + the registry's evidenceCommitment, checked against the compiled contract · filing not live" },
   { k: "Oracle relay", v: "Core built: venue median, TWAP, depeg-window search · 6 tests on synthetic data · publisher planned" },
   { k: "Deployment", v: "None yet. Preview tooling ready and emulator-tested, awaiting a funded deployer" },

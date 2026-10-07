@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     template: "%s · PlutusShield",
   },
   description:
-    "DeFi and smart-contract insurance for Cardano and Midnight. Settlement you can audit, privacy where it matters. Design preview — no live cover yet.",
+    "DeFi and smart-contract insurance for Cardano and Midnight. Settlement you can audit, privacy where it matters. Live on Cardano Preview and Midnight Preprod testnets — unaudited, test value only.",
   openGraph: {
     title: "PlutusShield — DeFi insurance for Cardano & Midnight",
     description:

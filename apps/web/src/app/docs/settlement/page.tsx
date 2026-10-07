@@ -166,7 +166,7 @@ policy.start         ≥ tx_upper_bound + waiting_period_ms`}</Formula>
       </Section>
 
       <Section id="tested" title="Attack cases tested">
-        <P>The Aiken test suite (92 checks) includes these settlement and sale cases:</P>
+        <P>The Aiken test suite (131 checks) includes these settlement and sale cases:</P>
         <Table
           caption="Settlement and sale test coverage"
           head={["Case", "Expected"]}
