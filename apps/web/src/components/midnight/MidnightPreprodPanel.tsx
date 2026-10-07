@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/Button";
 import { explorerTx } from "@/lib/preview";
 import { MIDNIGHT_PREPROD as M, shortHash } from "@/lib/midnightPreprod";
+import { MIDNIGHT_V2 as V2 } from "@/lib/midnightPreprodV2";
 import { ActivityFeed, LiveCounters, RelayStatus } from "./LiveContractActivity";
 
 const rows: { step: string; what: string; hash: string; href?: string; block?: number }[] = [
@@ -44,7 +45,8 @@ export function MidnightPreprodPanel() {
           <p className="mt-2 text-sm leading-relaxed text-text-muted">
             The private policy registry is deployed on Midnight. Every Cardano Buy publishes a registration ticket, the relay
             mirrors the policy into the registry, and its holder proves cover on-chain without revealing who they are or how
-            much they hold. Lenders and DEXs can ask for that proof and learn nothing else.
+            much they hold. Lenders and DEXs can ask for that proof and learn nothing else. Claims in the current registry
+            are decided by a {V2.quorumLabel} assessor committee, so no single key can pay or deny one.
           </p>
         </div>
         <LiveCounters />
@@ -76,11 +78,19 @@ export function MidnightPreprodPanel() {
       <ActivityFeed />
 
       <div className="relative mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--hairline)] pt-4">
-        <p className="min-w-0 font-mono text-[11px] text-text-dim">
-          Contract <span className="break-all text-text-muted">{M.contractAddress}</span>
-        </p>
+        <div className="min-w-0 space-y-1 font-mono text-[11px] text-text-dim">
+          <p>
+            Registry v2 <span className="break-all text-text-muted">{V2.contractAddress ?? "not deployed"}</span>
+          </p>
+          <p>
+            Registry v1{" "}
+            <a href={M.record} target="_blank" rel="noreferrer" className="break-all underline decoration-dotted underline-offset-4 hover:text-accent-strong">
+              {M.contractAddress}
+            </a>
+          </p>
+        </div>
         <div className="flex gap-2">
-          <Button href={M.record} external variant="secondary" size="sm">
+          <Button href={V2.record} external variant="secondary" size="sm">
             Deployment record <span aria-hidden="true">↗</span>
           </Button>
           <Button href="/docs/privacy" variant="ghost" size="sm">

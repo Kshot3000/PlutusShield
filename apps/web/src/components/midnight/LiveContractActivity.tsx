@@ -2,9 +2,13 @@
 
 import { MIRROR_STATE_LABEL, mirrorSummary, type MirrorState } from "@plutusshield/sdk/relay";
 import { RELAY_SNAPSHOT, relayEntry, useMidnightActivity } from "@/lib/useMidnightActivity";
+import { RELAY_SNAPSHOT_V2, useMidnightV2Activity } from "@/lib/useMidnightV2Activity";
+import { MIDNIGHT_V2 } from "@/lib/midnightPreprodV2";
 import { useNow } from "@/lib/useNow";
 import { shortHash } from "@/lib/midnightPreprod";
-import { describeChange, type MidnightPolicyStatus, type PolicyChange } from "@/lib/midnightIndexer";
+import { describeChange, type MidnightAction, type MidnightPolicyStatus, type PolicyChange } from "@/lib/midnightIndexer";
+
+type Registry = "v1" | "v2";
 
 const circuitCopy: Record<string, string> = {
   deploy: "Registry deployed",
@@ -13,6 +17,7 @@ const circuitCopy: Record<string, string> = {
   rotateHolder: "Holder key rotated",
   fileClaim: "Claim filed with sealed evidence",
   resolveClaim: "Claim resolved by assessor",
+  voteClaim: "Committee seat voted",
   expirePolicy: "Policy expiry mirrored",
 };
 
@@ -30,41 +35,55 @@ function ago(ms: number, now: number | null): string {
 const stamp = (ms: number) =>
   new Date(ms).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
-/** Live counters for the panel header: successful calls of each circuit. */
+/**
+ * Live counters for the panel header: successful calls on the current registry
+ * (policy-cover v2, claims decided by the assessor committee), with the v1
+ * registry's totals underneath so its history stays visible.
+ */
 export function LiveCounters() {
-  const a = useMidnightActivity();
+  const v2 = useMidnightV2Activity();
+  const v1 = useMidnightActivity();
   const cells = [
-    { label: "Policies mirrored", value: a.calls.registerPolicy ?? 0 },
-    { label: "Cover proofs", value: a.calls.proveCover ?? 0 },
-    { label: "Claims filed", value: a.calls.fileClaim ?? 0 },
-    { label: "Claims resolved", value: a.calls.resolveClaim ?? 0 },
+    { label: "Policies mirrored", value: v2.calls.registerPolicy ?? 0 },
+    { label: "Cover proofs", value: v2.calls.proveCover ?? 0 },
+    { label: "Claims filed", value: v2.calls.fileClaim ?? 0 },
+    { label: "Committee votes", value: v2.calls.voteClaim ?? 0 },
   ];
   return (
-    <dl className="grid grid-cols-2 gap-3 text-right sm:grid-cols-4" aria-live="polite">
-      {cells.map((c) => (
-        <div key={c.label} className="rounded-2xl border border-[var(--hairline)] bg-white/[0.02] px-4 py-3">
-          <dt className="font-mono-label text-[9px] text-text-dim">{c.label}</dt>
-          <dd className="font-display text-2xl tabular-nums text-text">{c.value}</dd>
-        </div>
-      ))}
-    </dl>
+    <div className="text-right">
+      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-live="polite">
+        {cells.map((c) => (
+          <div key={c.label} className="rounded-2xl border border-[var(--hairline)] bg-white/[0.02] px-4 py-3">
+            <dt className="font-mono-label text-[9px] text-text-dim">{c.label}</dt>
+            <dd className="font-display text-2xl tabular-nums text-text">{c.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-2 text-[11px] leading-snug text-text-dim">
+        Registry v2, {MIDNIGHT_V2.quorumLabel} assessor committee.{" "}
+        <span title="policy-cover v1: the first Preprod registry, with claims resolved by a single assessor key. Kept for its history; new claims go to v2.">
+          v1 (single assessor): {v1.calls.registerPolicy ?? 0} mirrored · {v1.calls.proveCover ?? 0} proofs · {v1.calls.resolveClaim ?? 0} claims resolved
+        </span>
+      </p>
+    </div>
   );
 }
 
 // registerPolicy rows already say what happened; claim lifecycle rows name the policy and the outcome.
-const showChanges = (entryPoint: string) => entryPoint === "fileClaim" || entryPoint === "resolveClaim" || entryPoint === "expirePolicy" || entryPoint === "rotateHolder";
+const showChanges = (entryPoint: string) =>
+  entryPoint === "fileClaim" || entryPoint === "resolveClaim" || entryPoint === "voteClaim" || entryPoint === "expirePolicy" || entryPoint === "rotateHolder";
 
 const changeTone = (c: PolicyChange) =>
   c.to === "PAID" ? "text-success" : c.to === "CLAIM_PENDING" ? "text-[var(--gold)]" : c.from === "CLAIM_PENDING" ? "text-text-muted" : "text-text-dim";
 
-function ChangeLine({ c }: { c: PolicyChange }) {
+function ChangeLine({ c, entryPoint }: { c: PolicyChange; entryPoint: string }) {
   return (
     <span className="flex flex-wrap items-baseline gap-x-2 text-[11px] leading-snug">
       <span className="font-mono text-[10.5px] text-text-dim" title={c.policyId}>
         policy {shortHash(c.policyId)}
       </span>
       <span className={changeTone(c)}>
-        {describeChange(c)}
+        {describeChange(c, entryPoint)}
         {c.from !== "NONE" && c.from !== c.to ? (
           <span className="font-mono text-[10px] text-text-dim">
             {" "}
@@ -81,27 +100,49 @@ function ChangeLine({ c }: { c: PolicyChange }) {
   );
 }
 
-/** Every call the policy-cover contract has received, newest first, streamed from the Preprod indexer. */
+const registryTag: Record<Registry, { label: string; title: string; tone: string }> = {
+  v2: { label: "v2", title: `policy-cover v2: claims decided by a ${MIDNIGHT_V2.quorumLabel} assessor committee (voteClaim)`, tone: "border-[color-mix(in_srgb,var(--midnight)_45%,transparent)] text-midnight" },
+  v1: { label: "v1", title: "policy-cover v1: claims resolved by a single assessor (resolveClaim)", tone: "border-[var(--hairline)] text-text-dim" },
+};
+
+/**
+ * Every call both policy-cover registries have received, newest first,
+ * streamed from the Preprod indexer (one socket per contract). Rows are tagged
+ * with the registry they hit.
+ */
 export function ActivityFeed({ limit = 8 }: { limit?: number }) {
-  const a = useMidnightActivity();
+  const v1 = useMidnightActivity();
+  const v2 = useMidnightV2Activity();
   const now = useNow(15_000);
-  const rows = [...a.actions].reverse().slice(0, limit);
-  const live = a.source === "live";
+  const all: (MidnightAction & { registry: Registry })[] = [
+    ...[...v1.actions].reverse().map((x) => ({ ...x, registry: "v1" as const })),
+    ...[...v2.actions].reverse().map((x) => ({ ...x, registry: "v2" as const })),
+  ].sort((x, y) => y.height - x.height || (x.registry === y.registry ? 0 : x.registry === "v2" ? -1 : 1));
+  const rows = all.slice(0, limit);
+  const live = v1.source === "live" && v2.source === "live";
+  const a = { actions: all, asOf: Math.min(v1.asOf, v2.asOf), error: v1.error ?? v2.error };
   return (
     <div className="relative mt-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-mono-label text-[10px] text-text-dim">Contract activity</h3>
         <p className="flex items-center gap-2 text-[11px] text-text-dim" role="status">
           <span className={`h-1.5 w-1.5 rounded-full ${live ? "bg-success animate-pulse-dot" : "bg-border-strong"}`} aria-hidden="true" />
-          {live ? "Streaming from the Midnight Preprod indexer" : `Snapshot from ${stamp(a.asOf)}`}
+          {live ? "Streaming both registries from the Midnight Preprod indexer" : `Snapshot from ${stamp(a.asOf)}`}
           {a.error && !live ? " · indexer unreachable, retrying" : null}
         </p>
       </div>
       <ol className="mt-3 divide-y divide-[var(--hairline)] rounded-2xl border border-[var(--hairline)] bg-white/[0.02]">
         {rows.map((r) => (
-          <li key={r.txHash + r.entryPoint} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-4 py-2.5">
+          <li key={r.registry + r.txHash + r.entryPoint} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-4 py-2.5">
             <span className="min-w-0 text-xs text-text">
-              {circuitCopy[r.entryPoint] ?? r.entryPoint}{" "}
+              <span
+                className={`mr-2 inline-block rounded-full border px-1.5 py-px align-[1px] font-mono text-[9.5px] ${registryTag[r.registry].tone}`}
+                title={registryTag[r.registry].title}
+              >
+                {registryTag[r.registry].label}
+              </span>
+              {r.registry === "v2" && r.entryPoint === "deploy" ? "v2 registry deployed with the committee" : 
+              circuitCopy[r.entryPoint] ?? r.entryPoint}{" "}
               <span className="font-mono text-[10.5px] text-text-dim">{r.entryPoint === "deploy" ? "constructor" : `${r.entryPoint}()`}</span>
               {r.status !== "SUCCESS" && <span className="ml-2 text-[10.5px] text-[var(--gold)]">{r.status.toLowerCase().replace("_", " ")}</span>}
             </span>
@@ -112,7 +153,7 @@ export function ActivityFeed({ limit = 8 }: { limit?: number }) {
             {showChanges(r.entryPoint) && r.changes?.length ? (
               <span className="w-full space-y-0.5">
                 {r.changes.map((c) => (
-                  <ChangeLine key={c.policyId} c={c} />
+                  <ChangeLine key={c.policyId} c={c} entryPoint={r.entryPoint} />
                 ))}
               </span>
             ) : null}
@@ -188,24 +229,39 @@ const statusCopy: Record<MidnightPolicyStatus, { label: string; title: string; t
   },
 };
 
+/** v2 decides claims by committee quorum, so its pending/paid copy names the committee, not one assessor. */
+const statusCopyV2: Partial<Record<MidnightPolicyStatus, { title: string }>> = {
+  CLAIM_PENDING: {
+    title: `The holder filed an exploit claim (fileClaim) with a sealed evidence commitment. Each seat of the ${MIDNIGHT_V2.quorumLabel} assessor committee opens the bundle off-ledger, checks it against that commitment, and casts voteClaim; the claim pays at ${MIDNIGHT_V2.threshold} approvals.`,
+  },
+  PAID: {
+    title: `The ${MIDNIGHT_V2.quorumLabel} assessor committee approved the claim (voteClaim quorum) on Midnight Preprod: the record is PAID and keeps its evidence commitment. Exploit-pool policies are then paid on Cardano Preview by a committee-signed Settle; depeg-pool policies settle only on an oracle quorum.`,
+  },
+};
+
 /**
  * Per-policy Midnight state: the live record's lifecycle status (ACTIVE /
  * CLAIM_PENDING / PAID / EXPIRED, decoded from the indexer's contract state),
- * otherwise the build-time relay plan.
+ * from the v2 registry when the policy is there, else v1; otherwise the
+ * build-time relay plan.
  */
 export function MirroredOnMidnight({ policyId }: { policyId: string }) {
-  const a = useMidnightActivity();
-  const rec = a.isMirrored(policyId) ? a.record(policyId) : null;
-  if (rec) {
+  const v1 = useMidnightActivity();
+  const v2 = useMidnightV2Activity();
+  const registry: Registry | null = v2.isMirrored(policyId) ? "v2" : v1.isMirrored(policyId) ? "v1" : null;
+  const rec = registry === "v2" ? v2.record(policyId) : registry === "v1" ? v1.record(policyId) : null;
+  if (rec && registry) {
     const c = statusCopy[rec.status];
+    const title = (registry === "v2" ? (statusCopyV2[rec.status]?.title ?? c.title) : c.title) + (rec.evidence ? ` Evidence commitment ${rec.evidence}.` : "") + ` ${registryTag[registry].title}.`;
     return (
-      <span className={`flex items-center gap-1.5 text-[11px] leading-snug ${c.tone}`} title={c.title + (rec.evidence ? ` Evidence commitment ${rec.evidence}.` : "")}>
+      <span className={`flex items-center gap-1.5 text-[11px] leading-snug ${c.tone}`} title={title}>
         <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} aria-hidden="true" />
         {c.label}
+        <span className="font-mono text-[9.5px] text-text-dim">{registry}</span>
       </span>
     );
   }
-  const state: MirrorState | "unknown" = a.isMirrored(policyId) ? "mirrored" : (() => {
+  const state: MirrorState | "unknown" = registry ? "mirrored" : (() => {
     const s = relayEntry(policyId)?.state;
     // The snapshot said mirrored but the live state doesn't: don't claim it.
     return !s || s === "mirrored" ? "unknown" : s;
@@ -219,16 +275,24 @@ export function MirroredOnMidnight({ policyId }: { policyId: string }) {
   );
 }
 
-/** "3 of 11 live Preview policies mirrored" line for the /app panel; mirrored is live, the rest from the relay plan. */
+/**
+ * "2 of 3 mirrorable Preview policies are in the v2 registry" line for the
+ * /app panel: mirrored is read live from each registry, the rest comes from
+ * the build-time relay plan. v1's count follows as a footnote.
+ */
 export function RelayStatus() {
-  const a = useMidnightActivity();
-  const entries = RELAY_SNAPSHOT.policies.map((p) => ({ state: a.isMirrored(p.policyId) ? ("mirrored" as const) : p.state === "mirrored" ? ("ready" as const) : p.state }));
+  const v1 = useMidnightActivity();
+  const v2 = useMidnightV2Activity();
+  const plan2 = RELAY_SNAPSHOT_V2.policies.length ? RELAY_SNAPSHOT_V2.policies : RELAY_SNAPSHOT.policies;
+  const entries = plan2.map((p) => ({ state: v2.isMirrored(p.policyId) ? ("mirrored" as const) : p.state === "mirrored" ? ("ready" as const) : p.state }));
   if (!entries.length) return null;
   const n = mirrorSummary(entries);
+  const v1n = RELAY_SNAPSHOT.policies.filter((p) => v1.isMirrored(p.policyId)).length;
   const parts = [
     n.ready ? `${n.ready} relay pending` : null,
     n["awaiting-key"] ? `${n["awaiting-key"]} awaiting holder key` : null,
     n["pre-binding"] ? `${n["pre-binding"]} pre-binding (can't mirror)` : null,
+    `${v1n} in the v1 registry`,
   ].filter(Boolean);
   return (
     <p className="relative mt-4 flex flex-wrap items-baseline gap-x-2 text-xs text-text-muted" aria-live="polite">
@@ -236,7 +300,7 @@ export function RelayStatus() {
         {n.mirrored} of {n.mirrorable}
       </span>
       <span>
-        mirrorable Cardano Preview policies are mirrored on Midnight
+        mirrorable Cardano Preview policies are in the v2 registry on Midnight
         {parts.length ? <span className="text-text-dim"> · {parts.join(" · ")}</span> : null}
       </span>
     </p>

@@ -52,7 +52,9 @@ try {
  * contracts/midnight/deployments/preprod-v2.json; copy it into the site so the
  * committee panel never drifts from the record, then bake the v2 contract's
  * action history and decoded policy records (6-field v2 records, with claim
- * round) for the live committee strip's offline fallback.
+ * round) for the live committee strip's offline fallback, plus the relay
+ * plan against the v2 registry (which live Preview policies v2 has mirrored),
+ * now that the batch relay mirrors every Buy into v2.
  */
 const V2_RECORD = new URL("../../../contracts/midnight/deployments/preprod-v2.json", import.meta.url);
 const V2_COPY = new URL("../src/data/midnight-preprod-v2.json", import.meta.url);
@@ -65,20 +67,31 @@ try {
   }
   const v2 = JSON.parse(raw);
   if (!v2.contractAddress) throw new Error("v2 not deployed yet");
-  const { watchContractActions, policyRecordsFromState } = await import("../src/lib/midnightIndexer.ts");
-  const ids = [...new Set([...(v2.registrations ?? []).map((r) => r.policyId), ...(v2.claims ?? []).map((c) => c.policyId)])];
+  const { watchContractActions, policyRecordsFromState, stateHasPolicy } = await import("../src/lib/midnightIndexer.ts");
+  const { buildRelayPlan, publicEntry } = await import("../../../contracts/midnight/relay/plan.ts");
+  const { mirrorSummary } = await import("../../../packages/sdk/src/relay.ts");
+  const deployment = JSON.parse(readFileSync(DEPLOYMENT, "utf8"));
+  const ids0 = [...new Set([...(v2.registrations ?? []).map((r) => r.policyId), ...(v2.claims ?? []).map((c) => c.policyId)])];
   const actions = [];
   const latest = await new Promise((resolve, reject) => {
     const stop = watchContractActions(v2.contractAddress, v2.blockHeight, {
       onAction: (a) => actions.push(a),
       onCaughtUp: (l) => (stop(), resolve(l)),
       onError: reject,
-    }, { timeoutMs: 60_000, knownPolicyIds: ids });
+    }, { timeoutMs: 60_000, knownPolicyIds: ids0 });
   });
+  const plan = await buildRelayPlan({ deployment, keyDirs: [], isMirrored: (id) => stateHasPolicy(latest.state, id) });
+  const relay = { summary: mirrorSummary(plan), policies: plan.map(publicEntry) };
+  const ids = [...new Set([...ids0, ...plan.map((e) => e.policyId)])];
   const policyRecords = policyRecordsFromState(latest.state, ids);
-  writeFileSync(V2_OUT, JSON.stringify({ takenAt: new Date().toISOString(), address: v2.contractAddress, fromHeight: v2.blockHeight, actions, policyRecords }, null, 1) + "\n");
+  const mirroredPolicyIds = ids.filter((id) => stateHasPolicy(latest.state, id));
+  writeFileSync(
+    V2_OUT,
+    JSON.stringify({ takenAt: new Date().toISOString(), address: v2.contractAddress, fromHeight: v2.blockHeight, actions, mirroredPolicyIds, policyRecords, relay }, null, 1) + "\n",
+  );
   const votes = actions.filter((a) => a.entryPoint === "voteClaim" && a.status === "SUCCESS").length;
-  console.log(`midnight v2 snapshot: ${actions.length} actions (${votes} committee votes), ${policyRecords.length} policies (${policyRecords.map((r) => r.status).join(", ")})`);
+  const n = relay.summary;
+  console.log(`midnight v2 snapshot: ${actions.length} actions (${votes} committee votes), ${mirroredPolicyIds.length} mirrored (${policyRecords.map((r) => r.status).join(", ")}); relay: ${n.mirrored}/${n.total} live Preview policies in v2, ${n.ready} ready, ${n["awaiting-key"]} awaiting key, ${n["pre-binding"]} pre-binding`);
 } catch (e) {
   console.warn(`midnight v2 snapshot skipped (${e instanceof Error ? e.message : e}); keeping the committed snapshot`);
 }

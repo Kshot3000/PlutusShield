@@ -38,7 +38,7 @@ v1 resolves a claim with one assessor key. v2 is the same registry (same circuit
 
 A member proves membership by opening one of the three public role commitments (`roleCommitment(sk, assessorTag())`) inside the circuit, the same witness pattern as the issuer and holder roles. A split vote (1 approve, 1 reject under 2-of-3) stays `CLAIM_PENDING` until the third member decides. The full compile (prover and verifier keys for all 6 v2 circuits, including `voteClaim`) succeeds with compactc 0.31.1. `test/policy-cover-v2.test.mjs` covers the logic (10 tests), including that v2's commitment circuits equal v1's and the SDK's on random inputs, so Cardano datums, policy keys and sealed evidence made for v1 are valid against v2 unchanged.
 
-v1 stays deployed and keeps serving the relay and the site; v2 is the registry the committee runs on next, with the three Midnight committee secrets held by independent operators rather than the team.
+v1 stays deployed for its history; v2 is now the current registry. The batch relay mirrors Preview Buys into v2 (`--all` with `PLUTUSSHIELD_COVER_VERSION=2`), and the site's `/app` panel leads with v2: its counters (mirrored, cover proofs, claims filed, committee votes), the relay status line and every policy's Midnight badge read the v2 registry live, with v1's totals shown underneath and the activity feed merging both contracts, each row tagged `v1` or `v2`. The committee seats are still team-held on Preprod; handing them to independent operators is the next step.
 
 #### Running v2 on Preprod
 

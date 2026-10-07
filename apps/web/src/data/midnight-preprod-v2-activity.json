@@ -1,5 +1,5 @@
 {
- "takenAt": "2026-10-07T02:44:32.349Z",
+ "takenAt": "2026-10-07T03:06:37.916Z",
  "address": "5430b803b6b3df6e6ee1d498bb02e2f2d06cb46661e72af1e6208d864feb8110",
  "fromHeight": 2870317,
  "actions": [
@@ -81,6 +81,9 @@
    ]
   }
  ],
+ "mirroredPolicyIds": [
+  "7c24be86268f54972c49f6f6e4ec10be6c59506e4c28d3869d33635979468ccb"
+ ],
  "policyRecords": [
   {
    "policyId": "7c24be86268f54972c49f6f6e4ec10be6c59506e4c28d3869d33635979468ccb",
@@ -91,5 +94,127 @@
    "evidence": "013e08ebfbf6fed7ca23edd20c02296d1043ac1fe10466745642dd9add996ac1",
    "round": 1
   }
- ]
+ ],
+ "relay": {
+  "summary": {
+   "total": 11,
+   "mirrored": 1,
+   "ready": 1,
+   "awaiting-key": 1,
+   "pre-binding": 8,
+   "mirrorable": 3
+  },
+  "policies": [
+   {
+    "policyId": "d1913c229ed59b6bfd11a47c04bedee86d1a467a9caa7d90fb9e464e0858a12e",
+    "state": "pre-binding",
+    "source": null,
+    "canProve": false,
+    "badTicket": false,
+    "buyTx": "3410e2db0efdd83fbc8cd5c6d5aff7314e34b5c9bb5c61697e1df8be4a208f84",
+    "blockTime": 1791294346,
+    "tranche": 1
+   },
+   {
+    "policyId": "57139907fb9bdb6d60a3f1a132f6d3fed06ed24e88997e948f27b4d45fd87adf",
+    "state": "pre-binding",
+    "source": null,
+    "canProve": false,
+    "badTicket": false,
+    "buyTx": "9c3a98093f3bd850d84da815233d5c6145bf9a7226267cae9b102a55828d97eb",
+    "blockTime": 1791294375,
+    "tranche": 0
+   },
+   {
+    "policyId": "3bb08fad668d47140e2b24f75a2fb6772def966f3384281ee10b239ca28d2eec",
+    "state": "pre-binding",
+    "source": null,
+    "canProve": false,
+    "badTicket": false,
+    "buyTx": "f9feac1387421b0223947bb0cc05250f932bb7ce3997dd2726e3a9708a110ad5",
+    "blockTime": 1791299794,
+    "tranche": 0
+   },
+   {
+    "policyId": "5c83640fcb1e8be471a1e84db6e0984bdf0a5420249a7183c0eabc6d0e7f4d61",
+    "state": "pre-binding",
+    "source": null,
+    "canProve": false,
+    "badTicket": false,
+    "buyTx": "ef05f231af9f6fc19a218bf210c3677f106773679fedaf66ef37c4eb1792fcec",
+    "blockTime": 1791299905,
+    "tranche": 1
+   },
+   {
+    "policyId": "1a5ef4284372253341372b2b9dd3259a65cb27ea7c5569325c20dcd59bc0434f",
+    "state": "pre-binding",
+    "source": null,
+    "canProve": false,
+    "badTicket": false,
+    "buyTx": "5a52a7a7a0cd2913e9b8afb9d55d9db4303c3e031e82e39b2f18abbf7fc4150c",
+    "blockTime": 1791300296,
+    "tranche": 0
+   },
+   {
+    "policyId": "302588b9f8dbd5fcb67df975055525ee2b161d0ff2f8cb7a5810820deb487c76",
+    "state": "pre-binding",
+    "source": null,
+    "canProve": false,
+    "badTicket": false,
+    "buyTx": "4eb5ee79f01704afb43d11252973a942c3acc9054c564205b0fcd8d108f96407",
+    "blockTime": 1791300400,
+    "tranche": 1
+   },
+   {
+    "policyId": "4b3a4c5d07fe6d61188b82df9bc019219c7ca47256f3e793b26c28ca4d68bde7",
+    "state": "pre-binding",
+    "source": null,
+    "canProve": false,
+    "badTicket": false,
+    "buyTx": "a520325ddd4ec72cdfa27b50cee5e4cddb8c72c001669ddfd592a7a84b1824ca",
+    "blockTime": 1791301306,
+    "tranche": 0
+   },
+   {
+    "policyId": "cf096d33d8ca1a654e0f1f9ed65ce08f1fd2669bb9f9949077c877cb08ea4822",
+    "state": "pre-binding",
+    "source": null,
+    "canProve": false,
+    "badTicket": false,
+    "buyTx": "abe6f27c3091d63090711c663141c5302dec11c4a8121be73fa55f3c85976ece",
+    "blockTime": 1791301360,
+    "tranche": 0
+   },
+   {
+    "policyId": "72512facd0a8eb5257888b8f3b0ee71b774862cc7f4c7d7cc4f124c6f6d745d0",
+    "state": "awaiting-key",
+    "source": null,
+    "canProve": false,
+    "badTicket": false,
+    "buyTx": "7c3365bb519dfdaca6e12a371b35e0c1b7ffd321bec42130021e22b47c31386d",
+    "blockTime": 1791307412,
+    "tranche": 0
+   },
+   {
+    "policyId": "a33af8052854e2b4b32bff59afcb652dc0240bcb19b231314685bfaed13b2b3d",
+    "state": "ready",
+    "source": "ticket",
+    "canProve": false,
+    "badTicket": false,
+    "buyTx": "1e70f0895de64c50dbbc39df0e8d23af362a29e476d1bdfb1e2068ff780f321f",
+    "blockTime": 1791314189,
+    "tranche": 0
+   },
+   {
+    "policyId": "7c24be86268f54972c49f6f6e4ec10be6c59506e4c28d3869d33635979468ccb",
+    "state": "mirrored",
+    "source": "ticket",
+    "canProve": false,
+    "badTicket": false,
+    "buyTx": "94c4dc052711c6eec5b2942da768b151b9f1dd9519cf11bcd55982a6bd1325ff",
+    "blockTime": 1791314267,
+    "tranche": 1
+   }
+  ]
+ }
 }

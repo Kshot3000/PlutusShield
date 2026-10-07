@@ -241,11 +241,13 @@ export function diffPolicies(before: string | null, after: string, extraIds: str
 }
 
 /** What a change means, in words, for the activity feed. */
-export function describeChange(c: PolicyChange): string {
+export function describeChange(c: PolicyChange, entryPoint?: string): string {
+  // v2 decides claims by committee quorum (voteClaim); v1 by a single assessor (resolveClaim).
+  const byCommittee = entryPoint === "voteClaim";
   if (c.from === "NONE") return "registered, ACTIVE";
   if (c.from === "ACTIVE" && c.to === "CLAIM_PENDING") return "claim filed (evidence committed)";
-  if (c.from === "CLAIM_PENDING" && c.to === "PAID") return "claim approved by assessor";
-  if (c.from === "CLAIM_PENDING" && c.to === "ACTIVE") return "claim rejected, back to ACTIVE";
+  if (c.from === "CLAIM_PENDING" && c.to === "PAID") return byCommittee ? "claim approved, committee quorum reached" : "claim approved by assessor";
+  if (c.from === "CLAIM_PENDING" && c.to === "ACTIVE") return byCommittee ? "claim rejected by committee quorum, back to ACTIVE" : "claim rejected, back to ACTIVE";
   if (c.to === "EXPIRED") return "expired";
   if (c.from === c.to) return "holder rotated";
   return `${c.from} -> ${c.to}`;

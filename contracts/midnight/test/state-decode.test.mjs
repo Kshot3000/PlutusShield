@@ -11,7 +11,7 @@ import { randomBytes } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import * as RT from '@midnight-ntwrk/compact-runtime';
 import { Contract, ledger, pureCircuits } from '../src/managed/policy-cover/contract/index.js';
-import { policyRecordFromState, policyRecordsFromState, diffPolicies, stateHasPolicy } from '../../../apps/web/src/lib/midnightIndexer.ts';
+import { policyRecordFromState, policyRecordsFromState, diffPolicies, stateHasPolicy, describeChange } from '../../../apps/web/src/lib/midnightIndexer.ts';
 
 const COIN = '0'.repeat(64);
 const ADDR = RT.sampleContractAddress();
@@ -205,4 +205,15 @@ test('live Preprod v2 split vote: only fileClaim and the deciding vote change th
   assert.deepEqual(diffPolicies(st(2870329), st(2870333)), []); // seat 0 approve: 1 of 2, still pending
   assert.deepEqual(diffPolicies(st(2870333), st(2870337)), []); // seat 1 reject: 1 approve / 1 reject
   assert.deepEqual(diffPolicies(st(2870337), st(2870341)), [{ policyId: P, from: 'CLAIM_PENDING', to: 'PAID', evidence: ev }]); // seat 2 approve: 2-of-3 -> PAID
+});
+
+test('activity feed wording: v2 voteClaim decisions name the committee, v1 resolveClaim the assessor', () => {
+  const st = (h) => readFileSync(new URL(`./fixtures/preprod-v2-state-${h}.hex`, import.meta.url), 'utf8').trim();
+  const [paid] = diffPolicies(st(2870337), st(2870341));
+  assert.equal(describeChange(paid, 'voteClaim'), 'claim approved, committee quorum reached');
+  assert.equal(describeChange(paid, 'resolveClaim'), 'claim approved by assessor');
+  assert.equal(describeChange(paid), 'claim approved by assessor');
+  const rejected = { ...paid, to: 'ACTIVE', evidence: null };
+  assert.equal(describeChange(rejected, 'voteClaim'), 'claim rejected by committee quorum, back to ACTIVE');
+  assert.equal(describeChange(rejected, 'resolveClaim'), 'claim rejected, back to ACTIVE');
 });

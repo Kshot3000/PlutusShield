@@ -10,7 +10,9 @@
 import { useSyncExternalStore } from "react";
 import snapshot from "@/data/midnight-preprod-v2-activity.json";
 import { MIDNIGHT_V2 } from "@/lib/midnightPreprodV2";
-import { countCalls, policyRecordFromState, watchContractActions, type MidnightAction, type MidnightPolicyRecord } from "@/lib/midnightIndexer";
+import { countCalls, policyRecordFromState, stateHasPolicy, watchContractActions, type MidnightAction, type MidnightPolicyRecord } from "@/lib/midnightIndexer";
+import { RELAY_SNAPSHOT } from "@/lib/useMidnightActivity";
+import type { MirrorState } from "@plutusshield/sdk/relay";
 
 export type MidnightV2Activity = {
   source: "snapshot" | "live";
@@ -18,6 +20,8 @@ export type MidnightV2Activity = {
   asOf: number;
   actions: MidnightAction[];
   calls: Record<string, number>;
+  /** Is this policy id in the v2 registry: live state, else the snapshot. */
+  isMirrored: (policyId: string) => boolean;
   /** The policy's v2 record (status, evidence, claim round): live state, else the snapshot. */
   record: (policyId: string) => MidnightPolicyRecord | null;
   error: string | null;
@@ -25,13 +29,24 @@ export type MidnightV2Activity = {
 
 const snapActions = (snapshot.actions ?? []) as MidnightAction[];
 const snapRecords = new Map(((snapshot.policyRecords ?? []) as MidnightPolicyRecord[]).map((r) => [r.policyId.toLowerCase(), r]));
-const knownPolicyIds = [...new Set([...MIDNIGHT_V2.registrations.map((r) => r.policyId), ...MIDNIGHT_V2.claims.map((c) => c.policyId)])];
+const snapMirrored = new Set([...(((snapshot as { mirroredPolicyIds?: string[] }).mirroredPolicyIds ?? []) as string[]), ...snapRecords.keys()].map((x) => x.toLowerCase()));
+/** Every policy id we know about (v2 record + the Preview relay plan), so the decoder also finds ids that end in zero bytes. */
+const knownPolicyIds = [
+  ...new Set([...MIDNIGHT_V2.registrations.map((r) => r.policyId), ...MIDNIGHT_V2.claims.map((c) => c.policyId), ...RELAY_SNAPSHOT.policies.map((p) => p.policyId)].map((x) => x.toLowerCase())),
+];
+
+export type RelayPolicyV2 = { policyId: string; state: MirrorState };
+/** The relay plan against the v2 registry, baked at build time ("mirrored" is re-read live). */
+export const RELAY_SNAPSHOT_V2: { policies: RelayPolicyV2[] } = {
+  policies: ((snapshot as { relay?: { policies: RelayPolicyV2[] } }).relay?.policies ?? []).map((p) => ({ ...p, policyId: p.policyId.toLowerCase() })),
+};
 
 let current: MidnightV2Activity = {
   source: "snapshot",
   asOf: Date.parse(snapshot.takenAt),
   actions: snapActions,
   calls: countCalls(snapActions),
+  isMirrored: (id) => snapMirrored.has(id.toLowerCase()),
   record: (id) => snapRecords.get(id.toLowerCase()) ?? null,
   error: null,
 };
@@ -49,6 +64,7 @@ const liveView = (actions: MidnightAction[], state: string): MidnightV2Activity 
   asOf: Date.now(),
   actions,
   calls: countCalls(actions),
+  isMirrored: (id) => stateHasPolicy(state, id),
   record: (id) => policyRecordFromState(state, id) ?? snapRecords.get(id.toLowerCase()) ?? null,
   error: null,
 });
