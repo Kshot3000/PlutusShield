@@ -101,6 +101,8 @@ export type MidnightPolicyRecord = {
   status: MidnightPolicyStatus;
   /** Evidence commitment of a pending / paid claim, null when none. */
   evidence: string | null;
+  /** Claim round (policy-cover v2 only: bumps on every rejected claim so votes never carry over). */
+  round?: number;
 };
 
 const ZERO32 = "0".repeat(64);
@@ -145,20 +147,28 @@ const leToNumber = (v: string) => {
   return Number(n);
 };
 
-/** The 5-field PolicyRecord that follows a map key, or null if the bytes there aren't one. */
+/**
+ * The PolicyRecord that follows a map key, or null if the bytes there aren't one.
+ * v1 (policy-cover.compact) records have 5 fields; v2 (policy-cover-v2.compact)
+ * adds a 6th, the claim round.
+ */
 function readRecordAt(s: string, i: number, policyId: string): MidnightPolicyRecord | null {
-  // Record header: 2001 xxxx 0185 (a 5-field struct value).
-  if (s.slice(i, i + 4) !== "2001" || s.slice(i + 8, i + 12) !== "0185") return null;
+  // Record header: 2001 xxxx 0185 (5-field struct) or 0186 (6-field struct).
+  if (s.slice(i, i + 4) !== "2001") return null;
+  const shape = s.slice(i + 8, i + 12);
+  const fields = shape === "0185" ? 5 : shape === "0186" ? 6 : 0;
+  if (!fields) return null;
   let p = i + 12;
   const cells: string[] = [];
-  for (let k = 0; k < 5; k++) {
+  for (let k = 0; k < fields; k++) {
     const c = readCell(s, p);
     if (!c) return null;
     cells.push(c.v);
     p = c.next;
   }
-  const [holder, coverage, expiry, status, evidence] = cells;
+  const [holder, coverage, expiry, status, evidence, round] = cells;
   if (holder.length > 64 || coverage.length > 64 || evidence.length > 64 || expiry.length > 16 || status.length !== 2) return null;
+  if (round !== undefined && round.length > 8) return null;
   const st = parseInt(status, 16);
   if (st < 1 || st > 4) return null;
   const ev = pad32(evidence);
@@ -169,6 +179,7 @@ function readRecordAt(s: string, i: number, policyId: string): MidnightPolicyRec
     expiry: leToNumber(expiry),
     status: MIDNIGHT_POLICY_STATUSES[st - 1],
     evidence: ev === ZERO32 ? null : ev,
+    ...(round !== undefined ? { round: leToNumber(round) } : {}),
   };
 }
 
@@ -198,7 +209,7 @@ export function policyRecordFromState(stateHex: string, policyId: string): Midni
 export function policyRecordsFromState(stateHex: string, extraIds: string[] = []): MidnightPolicyRecord[] {
   const s = stateHex.toLowerCase();
   const out = new Map<string, MidnightPolicyRecord>();
-  const re = /6001([0-9a-f]{64})2001[0-9a-f]{4}0185/g;
+  const re = /6001([0-9a-f]{64})2001[0-9a-f]{4}018[56]/g;
   for (let m = re.exec(s); m; m = re.exec(s)) {
     if (m.index % 2) {
       re.lastIndex = m.index + 1;

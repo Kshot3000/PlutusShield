@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/Button";
 import { explorerTx } from "@/lib/preview";
 import { shortHash } from "@/lib/midnightPreprod";
 import { MIDNIGHT_V2 as V, type CommitteeClaim } from "@/lib/midnightPreprodV2";
+import { CommitteeLiveLedger } from "./CommitteeLiveLedger";
 
 const statusTone: Record<string, string> = {
   PAID: "border-success/30 bg-success/[0.08] text-success",
@@ -167,6 +168,8 @@ export function MidnightCommittee() {
           );
         })}
       </ul>
+
+      <CommitteeLiveLedger />
 
       {V.live ? (
         V.claims.map((c) => <ClaimVotes key={`${c.policyId}-${c.evidenceCommitment}`} c={c} />)

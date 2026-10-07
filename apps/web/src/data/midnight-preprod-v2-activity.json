@@ -1,0 +1,95 @@
+{
+ "takenAt": "2026-10-07T02:44:32.349Z",
+ "address": "5430b803b6b3df6e6ee1d498bb02e2f2d06cb46661e72af1e6208d864feb8110",
+ "fromHeight": 2870317,
+ "actions": [
+  {
+   "entryPoint": "deploy",
+   "txHash": "9c73d8d64443bbaa1960a5a18a8a55ae8cde8e13f3e3d4cda75d3212b94d3cdf",
+   "height": 2870317,
+   "timestamp": 1791339732000,
+   "status": "SUCCESS",
+   "changes": []
+  },
+  {
+   "entryPoint": "registerPolicy",
+   "txHash": "ec1e22e70242196846b3e2fa9757367bc9e6a911909d7c03271d2e0d057acdcb",
+   "height": 2870321,
+   "timestamp": 1791339756001,
+   "status": "SUCCESS",
+   "changes": [
+    {
+     "policyId": "7c24be86268f54972c49f6f6e4ec10be6c59506e4c28d3869d33635979468ccb",
+     "from": "NONE",
+     "to": "ACTIVE",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "entryPoint": "proveCover",
+   "txHash": "4b0e0fc2f6a23b097e91151488f4f1b4c74bd9f5bdfb6a4219ddad79c6fefb20",
+   "height": 2870325,
+   "timestamp": 1791339780000,
+   "status": "SUCCESS",
+   "changes": []
+  },
+  {
+   "entryPoint": "fileClaim",
+   "txHash": "96e17dfad21b4f59a5d2019945a54ed79e0d35feb39a91cd21d356444841c6c0",
+   "height": 2870329,
+   "timestamp": 1791339804000,
+   "status": "SUCCESS",
+   "changes": [
+    {
+     "policyId": "7c24be86268f54972c49f6f6e4ec10be6c59506e4c28d3869d33635979468ccb",
+     "from": "ACTIVE",
+     "to": "CLAIM_PENDING",
+     "evidence": "013e08ebfbf6fed7ca23edd20c02296d1043ac1fe10466745642dd9add996ac1"
+    }
+   ]
+  },
+  {
+   "entryPoint": "voteClaim",
+   "txHash": "db60e9d7e73cfe5e5af12733b1635e679270bcd075fcc0536345fa64fd2dfc4e",
+   "height": 2870333,
+   "timestamp": 1791339828000,
+   "status": "SUCCESS",
+   "changes": []
+  },
+  {
+   "entryPoint": "voteClaim",
+   "txHash": "b027116544d495267dc124511d003297c87c36f024aa570ec3474d24cf0cedfc",
+   "height": 2870337,
+   "timestamp": 1791339852001,
+   "status": "SUCCESS",
+   "changes": []
+  },
+  {
+   "entryPoint": "voteClaim",
+   "txHash": "bd62e689f13326a71d8db92f88d6aa4d7ede55952be32bbaf8440ec0482f7d74",
+   "height": 2870341,
+   "timestamp": 1791339876001,
+   "status": "SUCCESS",
+   "changes": [
+    {
+     "policyId": "7c24be86268f54972c49f6f6e4ec10be6c59506e4c28d3869d33635979468ccb",
+     "from": "CLAIM_PENDING",
+     "to": "PAID",
+     "evidence": "013e08ebfbf6fed7ca23edd20c02296d1043ac1fe10466745642dd9add996ac1"
+    }
+   ]
+  }
+ ],
+ "policyRecords": [
+  {
+   "policyId": "7c24be86268f54972c49f6f6e4ec10be6c59506e4c28d3869d33635979468ccb",
+   "holder": "fe435e1c70aed663e72ba011d9bb99b91f6c86081854ff67a0bf785d8ece5340",
+   "coverage": "9ff196e70b23ec063eca9b73075d835b263fbead076f2b0c6dd6f518cc2f46ab",
+   "expiry": 1792528003000,
+   "status": "PAID",
+   "evidence": "013e08ebfbf6fed7ca23edd20c02296d1043ac1fe10466745642dd9add996ac1",
+   "round": 1
+  }
+ ]
+}

@@ -46,4 +46,40 @@ try {
 } catch (e) {
   console.warn(`midnight snapshot skipped (${e instanceof Error ? e.message : e}); keeping the committed snapshot`);
 }
+
+/*
+ * policy-cover v2 (M-of-3 committee voteClaim). The relay writes
+ * contracts/midnight/deployments/preprod-v2.json; copy it into the site so the
+ * committee panel never drifts from the record, then bake the v2 contract's
+ * action history and decoded policy records (6-field v2 records, with claim
+ * round) for the live committee strip's offline fallback.
+ */
+const V2_RECORD = new URL("../../../contracts/midnight/deployments/preprod-v2.json", import.meta.url);
+const V2_COPY = new URL("../src/data/midnight-preprod-v2.json", import.meta.url);
+const V2_OUT = new URL("../src/data/midnight-preprod-v2-activity.json", import.meta.url);
+try {
+  const raw = readFileSync(V2_RECORD, "utf8");
+  if (readFileSync(V2_COPY, "utf8") !== raw) {
+    writeFileSync(V2_COPY, raw);
+    console.log("midnight v2: synced src/data/midnight-preprod-v2.json from the Preprod record");
+  }
+  const v2 = JSON.parse(raw);
+  if (!v2.contractAddress) throw new Error("v2 not deployed yet");
+  const { watchContractActions, policyRecordsFromState } = await import("../src/lib/midnightIndexer.ts");
+  const ids = [...new Set([...(v2.registrations ?? []).map((r) => r.policyId), ...(v2.claims ?? []).map((c) => c.policyId)])];
+  const actions = [];
+  const latest = await new Promise((resolve, reject) => {
+    const stop = watchContractActions(v2.contractAddress, v2.blockHeight, {
+      onAction: (a) => actions.push(a),
+      onCaughtUp: (l) => (stop(), resolve(l)),
+      onError: reject,
+    }, { timeoutMs: 60_000, knownPolicyIds: ids });
+  });
+  const policyRecords = policyRecordsFromState(latest.state, ids);
+  writeFileSync(V2_OUT, JSON.stringify({ takenAt: new Date().toISOString(), address: v2.contractAddress, fromHeight: v2.blockHeight, actions, policyRecords }, null, 1) + "\n");
+  const votes = actions.filter((a) => a.entryPoint === "voteClaim" && a.status === "SUCCESS").length;
+  console.log(`midnight v2 snapshot: ${actions.length} actions (${votes} committee votes), ${policyRecords.length} policies (${policyRecords.map((r) => r.status).join(", ")})`);
+} catch (e) {
+  console.warn(`midnight v2 snapshot skipped (${e instanceof Error ? e.message : e}); keeping the committed snapshot`);
+}
 process.exit(0);
