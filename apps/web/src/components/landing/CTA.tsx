@@ -22,8 +22,9 @@ export function CTA() {
               Build the shield <em className="text-shield-grad">before</em> the capital arrives.
             </h2>
             <p className="mt-6 max-w-lg text-[16px] leading-relaxed text-text-muted text-pretty">
-              The validators are written and tested, and Cardano Preview is next. Price a policy, stress-test
-              the pool, read how every rule is enforced, or star the repo and follow the launch.
+              The validators are written and tested, and the pools are live on Cardano Preview and Midnight
+              Preprod — testnet only, not audited yet. Price a policy, stress-test the pool, read how every
+              rule is enforced, or star the repo and follow along.
             </p>
             <div className="mt-10 flex w-full flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row">
               <Button href="/cover" size="lg" className="w-full sm:w-auto">

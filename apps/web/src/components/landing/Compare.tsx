@@ -5,7 +5,7 @@ const rows = [
   { dim: "Chain", aegis: "Cardano", us: "Cardano + Midnight" },
   { dim: "Cover model", aegis: "Parametric", us: "Parametric and evidence-based exploit cover" },
   { dim: "Privacy", aegis: "Public policy / pool surface", us: "Private terms, evidence, and underwriter books via ZK" },
-  { dim: "Status", aegis: "Mainnet parametric protocol", us: "Validators built and tested · Preview testnet next" },
+  { dim: "Status", aegis: "Mainnet parametric protocol", us: "Live on Cardano Preview + Midnight Preprod testnets · Mainnet only after an audit" },
 ];
 
 const commitments = [
