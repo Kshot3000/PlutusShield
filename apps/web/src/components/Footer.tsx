@@ -49,7 +49,7 @@ export function Footer() {
               privacy where it matters.
             </p>
             <p className="mt-4 font-mono-label text-[10px] text-text-dim">
-              Preview build · No live cover yet
+              Live on Cardano Preview + Midnight Preprod · Test value only
             </p>
           </div>
           {columns.map((col) => (

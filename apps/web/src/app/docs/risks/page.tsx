@@ -98,10 +98,12 @@ export default function RisksPage() {
             with one live UTxO per feed.
           </li>
           <li>
-            The oracle relay <Strong>core</Strong> is built (median of venues, integer TWAP with a data-gap
-            guard, depeg-window search, every datum re-checked against the on-chain rules) and tested on
-            synthetic data only. Venue adapters and a long-running publisher are planned, and no production
-            feed set or quorum has been chosen.
+            The oracle relay is <Strong>live on Preview</Strong> (median of venues, integer TWAP with a
+            data-gap guard, depeg-window search, every datum re-checked against the on-chain rules). A
+            fail-closed publisher reads CoinGecko, the Minswap pools on-chain and Kraken, and refreshes the
+            Preview peg every 20 minutes, publishing nothing when fewer than two venues answer. On Preview
+            one operator signs all three feeds, so a quorum there proves little yet; no mainnet feed set or
+            quorum has been chosen, and independent feed operators are still to come.
           </li>
         </List>
       </Section>
@@ -116,11 +118,19 @@ export default function RisksPage() {
             can&apos;t prove or claim on Midnight; the Cardano claim token is unaffected.
           </li>
           <li>
-            The Midnight assessor is one role commitment fixed at deployment. Assessed claims depend on that
-            party&apos;s honesty and availability. Governance rotation is planned.
+            The live Midnight registry (v2) decides assessed claims by a <Strong>2-of-3 assessor
+            committee</Strong>: three role commitments fixed at deployment, one vote per member per claim
+            round, votes public and attributable. Assessed claims depend on that committee&apos;s honesty and
+            availability — two colluding or compromised members can decide a claim either way, and if two
+            are offline a claim can&apos;t be decided. Governance rotation is planned. (The v1
+            registry&apos;s single assessor key is kept as history.)
           </li>
           <li>
-            An approved Midnight claim doesn&apos;t yet trigger a Cardano payout. That path is planned. See{" "}
+            An approved Midnight claim doesn&apos;t move Cardano capital by itself. For exploit cover the
+            payout path is <Strong>live on Preview</Strong>: after the Midnight decision, 2 of the 3 Cardano
+            pool committee assessors co-sign a <C>Settle</C> that names the Midnight decision tx, and the
+            validator pays exactly the coverage. Depeg policies still settle only on an oracle quorum, so an
+            approved Midnight claim on a depeg policy isn&apos;t paid on Cardano. See{" "}
             <DocLink href="/docs/settlement#assessed">Assessed claims</DocLink>.
           </li>
         </List>

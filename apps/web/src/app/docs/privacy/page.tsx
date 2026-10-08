@@ -295,8 +295,9 @@ salt   = 32 random bytes, kept in the claimant's key file`}</Formula>
         <Callout tone="planned">
           <p>
             Hiding amounts on Cardano too (for example, keying the Midnight registry by a blinded id or settling
-            against a commitment), governance rotation of the issuer and assessor roles, and a Midnight testnet
-            deployment are open work. None of them is shipped.
+            against a commitment) and governance rotation of the issuer and assessor roles are open work —
+            neither is shipped. The Midnight deployment itself is shipped: the registry is live on Midnight
+            Preprod (testnet).
           </p>
         </Callout>
       </Section>

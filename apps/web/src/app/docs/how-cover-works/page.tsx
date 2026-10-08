@@ -241,11 +241,12 @@ PoolAction = Deposit { tranche } | Withdraw { tranche, shares } | Buy | Settle |
             ["Protocol SLA", "Parametric. Uptime oracle below an SLA threshold", "Priced in SDK. Oracle and deployment planned"],
           ]}
         />
-        <Callout tone="warn" title="Purchases are closed">
+        <Callout tone="info" title="Purchases are open on testnet">
           <p>
-            The contracts aren&apos;t deployed on any network yet, so <DocLink href="/cover">/cover</DocLink> only
-            quotes. The Cardano Preview deploy tooling is ready and the full flow passes in an emulator, but no
-            pool exists on Preview yet. Buying opens after that deployment.
+            The depeg pool is live on Cardano Preview and the registry on Midnight Preprod, so{" "}
+            <DocLink href="/cover">/cover</DocLink> buys real Preview policies from a CIP-30 wallet (premium in
+            tADA or tUSDCx) and <DocLink href="/pool">/pool</DocLink> takes deposits and withdrawals. Test value
+            only — nothing is deployed on mainnet, and no mainnet deployment happens before an external audit.
           </p>
         </Callout>
       </Section>

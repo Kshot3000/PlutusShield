@@ -170,7 +170,7 @@ export function Header() {
               View on GitHub
             </Button>
             <p className="mt-3 text-center font-mono-label text-[10px] text-text-dim">
-              Preview build · No live cover yet
+              Live on Cardano Preview + Midnight Preprod · Test value only
             </p>
           </div>
         </nav>
