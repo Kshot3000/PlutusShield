@@ -22,8 +22,8 @@ const notes = [
     body: "Once a commitment is filed, the claimant can't swap the evidence. Any change to the bundle, even one character, produces a different commitment and fails the assessor's check.",
   },
   {
-    title: "Disclosed only to the assessor",
-    body: "You choose who gets the key file. Today that's an off-ledger handoff to the assessor. The registry keeps the commitment on an approved claim and clears it on a rejected one.",
+    title: "Disclosed only to the assessors",
+    body: "You choose who gets the key file. Today that's an off-ledger handoff to the assessor committee. The registry keeps the commitment on an approved claim and clears it on a rejected one.",
   },
 ];
 
@@ -52,9 +52,9 @@ export default function EvidencePage() {
       <ExploitPayout />
       <MidnightCommittee />
       <p className="mt-6 text-xs leading-relaxed text-text-dim">
-        The registry (<code className="font-mono">policy-cover.compact</code>) is live on Midnight Preprod, and the claims
-        drill above ran <code className="font-mono">fileClaim</code> and <code className="font-mono">resolveClaim</code> there
-        from the operator relay. Filing straight from this page (a browser Midnight wallet and proof) is next; today the page
+        The live registry on Midnight Preprod is the v2 committee contract (<code className="font-mono">policy-cover-v2.compact</code>);
+        the claims drill above ran <code className="font-mono">fileClaim</code> and <code className="font-mono">resolveClaim</code> on
+        the v1 registry (<code className="font-mono">policy-cover.compact</code>) from the operator relay, and is kept as its history. Filing straight from this page (a browser Midnight wallet and proof) is next; today the page
         seals the bundle and shows the exact <code className="font-mono">fileClaim</code> arguments. Exploit cover is bought
         from the operator tooling on the Preview exploit pool for now (a browser Buy for it is next), and an approved claim is
         paid on Cardano by a Settle signed by 2 of the 3 assessors on the pool&apos;s committee. Read the{" "}

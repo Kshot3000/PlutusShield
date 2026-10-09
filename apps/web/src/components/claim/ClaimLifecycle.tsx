@@ -17,13 +17,13 @@ const steps = [
   },
   {
     step: "3 · Verify off-ledger",
-    who: "Assessor",
-    body: "With the bundle and key file, the assessor checks four things: it decrypts, it's a canonical exploit bundle, it opens to its commitment, and that commitment is byte-for-byte the one on the ledger. Anything else is refused before a decision.",
+    who: "Assessor committee",
+    body: "With the bundle and key file, each committee member checks four things: it decrypts, it's a canonical exploit bundle, it opens to its commitment, and that commitment is byte-for-byte the one on the ledger. Anything else is refused before a vote.",
   },
   {
-    step: "4 · resolveClaim",
-    who: "Assessor, on Midnight",
-    body: "Only the assessor's role key passes the circuit. Approve → PAID, and the commitment stays on the record. Reject → back to ACTIVE with the commitment cleared, so a re-filing with a new salt can't be linked to it.",
+    step: "4 · voteClaim",
+    who: "Committee, on Midnight (v2)",
+    body: "Each member votes once per claim round; only a seat's role commitment passes the circuit. 2-of-3 approvals → PAID, commitment kept. 2-of-3 rejections → back to ACTIVE, commitment cleared, so a re-filing with a new salt can't be linked to it. The drill below ran on v1, where a single assessor decided by resolveClaim.",
   },
 ];
 
@@ -64,8 +64,8 @@ export function ClaimLifecycle() {
           How a filed commitment is <em className="text-midnight-grad">resolved.</em>
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-text-muted">
-          The registry can&apos;t read your evidence, so it can&apos;t judge it. It can make sure the assessor judges exactly what
-          you filed, and that only the assessor can decide.
+          The registry can&apos;t read your evidence, so it can&apos;t judge it. It can make sure the committee judges exactly what
+          you filed, and that only the committee can decide it.
         </p>
       </div>
 
@@ -162,7 +162,7 @@ export function ClaimLifecycle() {
         </div>
         <p className="mt-3 text-[11px] leading-relaxed text-text-dim">
           Every bundle was sealed with this page&apos;s code (<span className="font-mono">packages/sdk/src/evidence.ts</span>) and
-          checked by the assessor against the on-ledger commitment before each <span className="font-mono">resolveClaim</span>.
+          checked by the assessor against the on-ledger commitment before each <span className="font-mono">resolveClaim</span> on the v1 registry.
           &ldquo;Status now&rdquo; is decoded live from the registry&apos;s public state on the Preprod indexer.
         </p>
       </div>

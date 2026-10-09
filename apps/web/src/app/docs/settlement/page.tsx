@@ -79,7 +79,8 @@ depeg:  threshold_bps = 9_500        -- price below 0.95 of peg
         <P>
           Each feed name is counted <Strong>at most once</Strong>, so the same feed referenced twice can&apos;t
           make a quorum. Settlement needs <C>quorum ≥ 1</C> and at least <C>quorum</C> distinct agreeing feeds.
-          The validator tests use a 2-of-3 allowlist. Production values will be set at deployment.
+          The validator tests use a 2-of-3 allowlist, and the live Preview deployment uses the same values:
+          three feeds (feed-a, feed-b, feed-c) with a quorum of 2. Mainnet values haven&apos;t been chosen.
         </P>
       </Section>
 
