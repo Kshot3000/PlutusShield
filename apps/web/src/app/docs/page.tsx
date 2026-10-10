@@ -70,7 +70,9 @@ export default function DocsPage() {
         </p>
         <Callout tone="warn" title="Preview software">
           <p>
-            Nothing on this site moves funds. Read <DocLink href="/docs/risks">Risks &amp; disclosures</DocLink>{" "}
+            The live flows on this site do move funds — testnet funds only. Buying cover on /cover, depositing or
+            withdrawing on /pool, and filing or releasing a claim each ask your wallet to sign a Cardano Preview
+            transaction. Nothing here touches mainnet. Read <DocLink href="/docs/risks">Risks &amp; disclosures</DocLink>{" "}
             before relying on anything described here.
           </p>
         </Callout>

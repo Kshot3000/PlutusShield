@@ -263,9 +263,10 @@ export function WalletDialog({ open, onClose }: { open: boolean; onClose: () => 
         )}
 
         <p className="mt-5 border-t border-[var(--hairline)] pt-4 text-[11px] leading-relaxed text-text-dim">
-          Read-only. PlutusShield reads your network, address, and balance, and won&apos;t ask you to sign anything
-          until buying and depositing open on Preview. Wallets report every testnet the same way, so Preview and
-          Preprod look identical here.
+          Connecting is read-only: PlutusShield reads your network, address, and balance, and never sees your keys.
+          Buying cover, depositing or withdrawing, and filing or releasing a claim are live on Preview — each one
+          builds a testnet transaction and asks your wallet to sign it, so check the prompt before you approve.
+          Wallets report every testnet the same way, so Preview and Preprod look identical here.
         </p>
       </div>
     </dialog>
