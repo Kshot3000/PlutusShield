@@ -10,7 +10,7 @@
     "build:pages": "pnpm --filter @plutusshield/web build:pages",
     "preview": "pnpm --filter @plutusshield/web preview",
     "lint": "pnpm --filter @plutusshield/web lint",
-    "test": "pnpm --filter @plutusshield/sdk test && pnpm --filter @plutusshield/cardano-contracts test && pnpm --filter @plutusshield/cardano-deploy test && pnpm --filter @plutusshield/midnight-contracts test && pnpm --filter @plutusshield/oracle-relay test",
+    "test": "pnpm --filter @plutusshield/sdk test && pnpm --filter @plutusshield/cardano-contracts test && pnpm --filter @plutusshield/cardano-deploy test && pnpm --filter @plutusshield/midnight-contracts test && pnpm --filter @plutusshield/oracle-relay test && pnpm --filter @plutusshield/committee test",
     "test:sdk": "pnpm --filter @plutusshield/sdk test",
     "test:cardano": "pnpm --filter @plutusshield/cardano-contracts test",
     "test:deploy": "pnpm --filter @plutusshield/cardano-deploy test",
@@ -24,7 +24,9 @@
     "test:midnight": "pnpm --filter @plutusshield/midnight-contracts test",
     "build:cardano": "pnpm --filter @plutusshield/cardano-contracts build",
     "compile:midnight": "pnpm --filter @plutusshield/midnight-contracts compile",
-    "midnight:relay:plan": "pnpm --filter @plutusshield/midnight-contracts relay:plan"
+    "midnight:relay:plan": "pnpm --filter @plutusshield/midnight-contracts relay:plan",
+    "committee": "node --experimental-strip-types --no-warnings contracts/committee/cli.ts",
+    "midnight:relay:plan:v2": "pnpm --filter @plutusshield/midnight-contracts relay:plan --v2"
   },
   "engines": {
     "node": ">=20"

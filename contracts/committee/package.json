@@ -1,0 +1,14 @@
+{
+  "name": "@plutusshield/committee",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "PlutusShield assessor-operator kit: offline Cardano Preview assessor key + Midnight Preprod committee seat generation, signed public enrollment records, verification, and a dry-run committee plan",
+  "bin": {
+    "plutusshield-committee": "./cli.ts"
+  },
+  "scripts": {
+    "cli": "node --experimental-strip-types --no-warnings cli.ts",
+    "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts"
+  }
+}
