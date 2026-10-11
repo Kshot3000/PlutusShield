@@ -6,6 +6,7 @@ on:
     paths:
       - "apps/web/**"
       - "packages/sdk/**"
+      - "contracts/midnight/deployments/**"
       - "pnpm-lock.yaml"
       - "package.json"
       - ".github/workflows/pages.yml"
@@ -49,6 +50,12 @@ jobs:
           NEXT_PUBLIC_SITE_URL: ${{ steps.pages.outputs.base_url }}
           # Preview Blockfrost project id (repo secret) so live /pool can read chain + submit LP txs
           NEXT_PUBLIC_BLOCKFROST_PREVIEW_ID: ${{ secrets.BLOCKFROST_PREVIEW_ID }}
+          # Midnight Preprod Blockfrost project id (repo secret). The Midnight-hosted Preprod
+          # indexer was retired 2026-10-09; Blockfrost serves it (CORS open). The NEXT_PUBLIC_
+          # copy lets the live Midnight panels stream in the browser; the plain one lets
+          # scripts/snapshot-midnight.mjs refresh the offline snapshot at build time.
+          NEXT_PUBLIC_BLOCKFROST_MIDNIGHT_PREPROD_ID: ${{ secrets.BLOCKFROST_MIDNIGHT_PREPROD_ID }}
+          BLOCKFROST_MIDNIGHT_PREPROD_ID: ${{ secrets.BLOCKFROST_MIDNIGHT_PREPROD_ID }}
           NEXT_TELEMETRY_DISABLED: 1
 
       - name: Upload Pages artifact
