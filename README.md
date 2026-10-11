@@ -161,6 +161,38 @@ aiken build          # regenerates plutus.json (CIP-57 blueprint)
 
 See [contracts/cardano/README.md](contracts/cardano/README.md) for validators, datum/redeemer shapes, and trust assumptions, and [contracts/cardano/deploy/README.md](contracts/cardano/deploy/README.md) for the Cardano Preview deploy runbook.
 
+## Midnight Buildathon
+
+PlutusShield is entered in the Midnight Foundation Buildathon (Wave 2). The Midnight half is two Compact contracts, both compiled with **compactc 0.31.1** (`compact` CLI 0.5.2, `pragma language_version >= 0.23`) and deployed on **Midnight Preprod**:
+
+| Contract | Source | Preprod address | What it does |
+|---|---|---|---|
+| policy-cover v1 | [`contracts/midnight/src/policy-cover.compact`](contracts/midnight/src/policy-cover.compact) | `d84c618775ffa4d9c2e9283b6fe95319cecd708e84742c27ec4b6762925e8787` | Private policy registry: `registerPolicy`, `proveCover`, `rotateHolder`, `fileClaim`, single-assessor `resolveClaim`, `expirePolicy` |
+| policy-cover v2 | [`contracts/midnight/src/policy-cover-v2.compact`](contracts/midnight/src/policy-cover-v2.compact) | `5430b803b6b3df6e6ee1d498bb02e2f2d06cb46661e72af1e6208d864feb8110` | Same registry, but claims are decided by a **2-of-3 assessor committee** (`voteClaim`, per-round tallies), matching the 2-of-3 `Settle` on Cardano |
+
+Public deploy and transaction records: [`contracts/midnight/deployments/preprod.json`](contracts/midnight/deployments/preprod.json) and [`preprod-v2.json`](contracts/midnight/deployments/preprod-v2.json). Live site: **[kshot3000.github.io/PlutusShield](https://kshot3000.github.io/PlutusShield/)**. Testnet only, not audited.
+
+### Run it
+
+```bash
+pnpm install
+pnpm test:midnight                  # compiles both contracts (--skip-zk) + circuit tests
+cd contracts/midnight && pnpm compile   # full compile with prover/verifier keys (compactc 0.31.1)
+cd ../.. && pnpm --filter @plutusshield/web dev   # site on http://localhost:3000
+pnpm midnight:relay:plan:v2         # dry run: which Cardano Preview policies are mirrored in v2
+```
+
+Requires Node 22+, pnpm 9, and the Compact toolchain (`compact update 0.31.1`). The dry-run relay reads the Midnight Preprod indexer; since 9 Oct 2026 that indexer is served by Blockfrost and needs a Midnight Preprod project id: set `BLOCKFROST_MIDNIGHT_PREPROD_ID` (see [contracts/midnight/README.md](contracts/midnight/README.md)). Until then the site shows its build-time snapshot of the Midnight ledger.
+
+### Demo walkthrough
+
+1. **Buy cover on Cardano.** On [`/cover`](https://kshot3000.github.io/PlutusShield/cover/) connect a CIP-30 wallet on Preview and buy depeg cover. The Buy tx locks a policy datum holding only a hash commitment of the holder secret and terms.
+2. **Mirror it privately on Midnight.** The relay calls `registerPolicy` on Preprod with that commitment, then the holder runs `proveCover(policyId, minCoverage)`: a ZK proof that they hold an active policy with at least that coverage, without revealing who they are or the exact limit.
+3. **File a sealed claim.** `fileClaim` records only an evidence commitment; the evidence itself stays encrypted off-chain (see [`/claim/evidence`](https://kshot3000.github.io/PlutusShield/claim/evidence/)).
+4. **Committee decides on Midnight.** Each of three assessor seats calls `voteClaim`; the claim flips to PAID at 2 approvals (first drill: approve, reject, approve -> PAID).
+5. **Cardano pays.** The exploit-cover pool pays only via a `Settle` co-signed by 2 of 3 committee keys and referencing the Midnight decision; a 1-of-3 `Settle` cannot be built. See the [`/app`](https://kshot3000.github.io/PlutusShield/app/) dashboard for the live v2 committee counters and activity.
+6. **Parametric side.** The depeg oracle publishes a 24h TWAP of USDM from three venues to three Preview feeds; cover sales close automatically if the feeds go stale or the peg breaks.
+
 ## Roadmap (high level)
 
 - [x] Vision, architecture, and product docs
