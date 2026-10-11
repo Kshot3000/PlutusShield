@@ -171,3 +171,23 @@ export function relayTarget(argv: readonly string[], env: Record<string, string 
   const version: 1 | 2 = flagV2 ? 2 : flagV1 ? 1 : ver === "2" ? 2 : 1;
   return { version, record: version === 2 ? "contracts/midnight/deployments/preprod-v2.json" : "contracts/midnight/deployments/preprod.json" };
 }
+
+/**
+ * Midnight Preprod indexer for the dry run. Midnight shut down
+ * indexer.preprod.midnight.network on 2026-10-09; Blockfrost now serves the
+ * same GraphQL API and needs a Midnight Preprod project id (`nightpreprod…`).
+ * BLOCKFROST_MIDNIGHT_PREPROD_ID builds the Blockfrost URLs; or set
+ * MIDNIGHT_PREPROD_INDEXER_URL (+ _WS) to any indexer you run. `redacted` is
+ * safe to print (project id removed).
+ */
+export function preprodIndexer(env: Record<string, string | undefined>): { http: string; ws: string; redacted: string } {
+  const id = env.BLOCKFROST_MIDNIGHT_PREPROD_ID?.trim();
+  if (id) {
+    if (!id.startsWith("nightpreprod")) throw new Error("BLOCKFROST_MIDNIGHT_PREPROD_ID must be a Midnight Preprod project id (starts with nightpreprod)");
+    const q = `?project_id=${encodeURIComponent(id)}`;
+    return { http: `https://midnight-preprod.blockfrost.io/api/v0${q}`, ws: `wss://midnight-preprod.blockfrost.io/api/v0/ws${q}`, redacted: "https://midnight-preprod.blockfrost.io/api/v0" };
+  }
+  const http = env.MIDNIGHT_PREPROD_INDEXER_URL?.trim();
+  if (http) return { http, ws: env.MIDNIGHT_PREPROD_INDEXER_WS?.trim() || http.replace(/^http/, "ws").replace(/(\?.*)?$/, (q) => `/ws${q}`), redacted: http.replace(/([?&]project_id=)[^&]*/, "$1…") };
+  return { http: "https://indexer.preprod.midnight.network/api/v4/graphql", ws: "wss://indexer.preprod.midnight.network/api/v4/graphql/ws", redacted: "https://indexer.preprod.midnight.network/api/v4/graphql (decommissioned 2026-10-09)" };
+}

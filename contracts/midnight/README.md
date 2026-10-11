@@ -184,12 +184,23 @@ First batch run (2026-10-06 20:00 UTC): plan = 11 live Preview policies, 1 mirro
 Ledger after: 3 active policies, 3 cover proofs, so all 3 mirrorable Preview policies are mirrored; a dry run afterwards plans 0 ready.
 
 ```bash
-pnpm midnight:relay:plan            # dry run: no wallet, no proof server, no txs (Koios + public Preprod indexer); --json for machine output
+pnpm midnight:relay:plan            # dry run: no wallet, no proof server, no txs (Koios + Preprod indexer); --json for machine output
+pnpm midnight:relay:plan:v2         # same against the v2 committee registry (or PLUTUSSHIELD_COVER_VERSION=2)
 # live, from the midnight-js workspace (same env as above, plus):
 PLUTUSSHIELD_PUBLIC_RECORD=$REPO/contracts/midnight/deployments/preprod.json \
 PLUTUSSHIELD_POLICY_KEY_DIRS=<dirs with plutusshield/policy-key@1 files> \
 node policy-cover-preprod.mjs --all
 ```
+
+**v2 hourly flow.** Dry run, then relay only when the plan shows something `ready`:
+
+```bash
+BLOCKFROST_MIDNIGHT_PREPROD_ID=nightpreprod… pnpm midnight:relay:plan:v2 --json   # look at .summary.ready
+# if ready > 0, from the midnight-js workspace (holds the Preprod wallet lock):
+./run-v2.sh --all       # PLUTUSSHIELD_COVER_VERSION=2, public record deployments/preprod-v2.json
+```
+
+**Preprod indexer moved (2026-10-09).** Midnight shut down `indexer.preprod.midnight.network` (HTTP 410) and `rpc.preprod.midnight.network`; Blockfrost now serves the same API at `https://midnight-preprod.blockfrost.io/api/v0` and needs a Midnight Preprod project id (`nightpreprod…`). The dry run reads `BLOCKFROST_MIDNIGHT_PREPROD_ID` (or `MIDNIGHT_PREPROD_INDEXER_URL`). The live relay's wallet sync and the site's live panels still point at the old endpoints; the site falls back to its build snapshot.
 
 `--all` syncs the issuer wallet once, plans against the decoded ledger, then relays `ready` policies oldest first, one at a time: it re-checks `policies.member(id)` right before each call (idempotent, safe to re-run), re-verifies the ticket or key against the datum, records only finalized `SucceedEntirely` txs, recomputes the binding from the stored record, writes both records after every policy, and stops at the first failure. `/cover` My policies shows the per-policy state (live "Mirrored on Midnight", otherwise the build-time plan: "Relay pending", "Awaiting holder key", "Pre-binding"), and `/app` shows how many mirrorable Preview policies are mirrored.
 

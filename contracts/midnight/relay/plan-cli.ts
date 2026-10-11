@@ -11,13 +11,15 @@
  *   --v2     read the policy-cover-v2 (2-of-3 committee) registry,
  *            deployments/preprod-v2.json; PLUTUSSHIELD_COVER_VERSION=2 does
  *            the same. Default (or --v1) is v1, deployments/preprod.json.
+ * Indexer: BLOCKFROST_MIDNIGHT_PREPROD_ID (Midnight Preprod project id) or
+ * MIDNIGHT_PREPROD_INDEXER_URL; the Midnight-hosted Preprod indexer is gone.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { latestContractAction, stateHasPolicy } from "../../../apps/web/src/lib/midnightIndexer.ts";
 import { MIRROR_STATE_LABEL, mirrorSummary } from "../../../packages/sdk/src/relay.ts";
-import { buildRelayPlan, publicEntry, relayTarget } from "./plan.ts";
+import { buildRelayPlan, preprodIndexer, publicEntry, relayTarget } from "./plan.ts";
 
 const ROOT = join(fileURLToPath(import.meta.url), "..", "..", "..", "..");
 const dep = JSON.parse(readFileSync(join(ROOT, "apps/web/src/data/preview-deployment.json"), "utf8"));
@@ -26,7 +28,10 @@ const record = JSON.parse(readFileSync(join(ROOT, target.record), "utf8"));
 const label = target.version === 2 ? "policy-cover-v2" : "policy-cover";
 const keyDirs = (process.env.PLUTUSSHIELD_POLICY_KEY_DIRS ?? join(ROOT, "contracts/cardano/deploy/.keys/policy-keys")).split(",").filter(Boolean);
 
-const latest = await latestContractAction(record.contractAddress);
+const indexer = preprodIndexer(process.env);
+const latest = await latestContractAction(record.contractAddress, indexer).catch((e: Error) => {
+  throw new Error(`${e.message} from ${indexer.redacted}${/\b(410|403)\b/.test(e.message) ? " (set BLOCKFROST_MIDNIGHT_PREPROD_ID to a Midnight Preprod Blockfrost project id)" : ""}`);
+});
 if (!latest) throw new Error(`${label} ${record.contractAddress} not found on the Preprod indexer`);
 const plan = await buildRelayPlan({ deployment: dep, keyDirs, isMirrored: (id) => stateHasPolicy(latest.state, id) });
 const sum = mirrorSummary(plan);

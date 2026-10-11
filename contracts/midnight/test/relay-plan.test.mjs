@@ -107,3 +107,16 @@ test('dry-run target: v1 by default, v2 via --v2 or PLUTUSSHIELD_COVER_VERSION=2
   assert.match(b, /^5430b803/);
   assert.notEqual(a, b);
 });
+
+test('dry-run indexer: Blockfrost project id, custom URL, or the retired default; never prints the id', async () => {
+  const { preprodIndexer } = await import('../relay/plan.ts');
+  const bf = preprodIndexer({ BLOCKFROST_MIDNIGHT_PREPROD_ID: 'nightpreprodABC123' });
+  assert.equal(bf.http, 'https://midnight-preprod.blockfrost.io/api/v0?project_id=nightpreprodABC123');
+  assert.equal(bf.ws, 'wss://midnight-preprod.blockfrost.io/api/v0/ws?project_id=nightpreprodABC123');
+  assert.doesNotMatch(bf.redacted, /ABC123/);
+  assert.throws(() => preprodIndexer({ BLOCKFROST_MIDNIGHT_PREPROD_ID: 'previewXYZ' }), /nightpreprod/);
+  const own = preprodIndexer({ MIDNIGHT_PREPROD_INDEXER_URL: 'http://localhost:8088/api/v4/graphql?project_id=s3cret' });
+  assert.equal(own.ws, 'ws://localhost:8088/api/v4/graphql/ws?project_id=s3cret');
+  assert.doesNotMatch(own.redacted, /s3cret/);
+  assert.match(preprodIndexer({}).redacted, /decommissioned/);
+});
