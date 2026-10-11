@@ -155,3 +155,19 @@ export const publicEntry = (e: RelayPlanEntry) => ({
   blockTime: e.blockTime,
   tranche: e.tranche,
 });
+
+/**
+ * Which policy-cover registry the dry run reads: v1 (deployments/preprod.json,
+ * single assessor) by default, v2 (deployments/preprod-v2.json, M-of-3
+ * committee) with `--v2` or PLUTUSSHIELD_COVER_VERSION=2, the same switch the
+ * live relay (preprod/policy-cover-preprod.mjs) uses. `--v1` forces v1.
+ */
+export function relayTarget(argv: readonly string[], env: Record<string, string | undefined>): { version: 1 | 2; record: string } {
+  const flagV2 = argv.includes("--v2");
+  const flagV1 = argv.includes("--v1");
+  if (flagV1 && flagV2) throw new Error("pass at most one of --v1 / --v2");
+  const ver = env.PLUTUSSHIELD_COVER_VERSION;
+  if (ver !== undefined && ver !== "" && ver !== "1" && ver !== "2") throw new Error(`PLUTUSSHIELD_COVER_VERSION=${ver} is not 1 or 2`);
+  const version: 1 | 2 = flagV2 ? 2 : flagV1 ? 1 : ver === "2" ? 2 : 1;
+  return { version, record: version === 2 ? "contracts/midnight/deployments/preprod-v2.json" : "contracts/midnight/deployments/preprod.json" };
+}

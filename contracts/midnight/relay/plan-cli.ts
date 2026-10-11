@@ -8,28 +8,33 @@
  * no proof server, no transactions. Key dirs (comma-separated) come from
  * PLUTUSSHIELD_POLICY_KEY_DIRS; only whether a key exists is printed.
  *   --json   machine-readable output
+ *   --v2     read the policy-cover-v2 (2-of-3 committee) registry,
+ *            deployments/preprod-v2.json; PLUTUSSHIELD_COVER_VERSION=2 does
+ *            the same. Default (or --v1) is v1, deployments/preprod.json.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { latestContractAction, stateHasPolicy } from "../../../apps/web/src/lib/midnightIndexer.ts";
 import { MIRROR_STATE_LABEL, mirrorSummary } from "../../../packages/sdk/src/relay.ts";
-import { buildRelayPlan, publicEntry } from "./plan.ts";
+import { buildRelayPlan, publicEntry, relayTarget } from "./plan.ts";
 
 const ROOT = join(fileURLToPath(import.meta.url), "..", "..", "..", "..");
 const dep = JSON.parse(readFileSync(join(ROOT, "apps/web/src/data/preview-deployment.json"), "utf8"));
-const record = JSON.parse(readFileSync(join(ROOT, "contracts/midnight/deployments/preprod.json"), "utf8"));
+const target = relayTarget(process.argv.slice(2), process.env);
+const record = JSON.parse(readFileSync(join(ROOT, target.record), "utf8"));
+const label = target.version === 2 ? "policy-cover-v2" : "policy-cover";
 const keyDirs = (process.env.PLUTUSSHIELD_POLICY_KEY_DIRS ?? join(ROOT, "contracts/cardano/deploy/.keys/policy-keys")).split(",").filter(Boolean);
 
 const latest = await latestContractAction(record.contractAddress);
-if (!latest) throw new Error(`policy-cover ${record.contractAddress} not found on the Preprod indexer`);
+if (!latest) throw new Error(`${label} ${record.contractAddress} not found on the Preprod indexer`);
 const plan = await buildRelayPlan({ deployment: dep, keyDirs, isMirrored: (id) => stateHasPolicy(latest.state, id) });
 const sum = mirrorSummary(plan);
 
 if (process.argv.includes("--json")) {
-  console.log(JSON.stringify({ contractAddress: record.contractAddress, midnightHeight: latest.action.height, summary: sum, policies: plan.map(publicEntry) }, null, 2));
+  console.log(JSON.stringify({ version: target.version, contractAddress: record.contractAddress, midnightHeight: latest.action.height, summary: sum, policies: plan.map(publicEntry) }, null, 2));
 } else {
-  console.log(`policy-cover ${record.contractAddress.slice(0, 16)}… at Preprod block ${latest.action.height}`);
+  console.log(`${label} ${record.contractAddress.slice(0, 16)}… at Preprod block ${latest.action.height}`);
   for (const e of plan) {
     const how = e.state === "ready" ? ` via ${e.source}${e.canProve ? " + proveCover" : ""}` : "";
     console.log(`${e.policyId.slice(0, 16)}…  ${MIRROR_STATE_LABEL[e.state].padEnd(28)}${how}${e.badTicket ? "  (ticket does not open the datum: ignored)" : ""}  buy ${e.buyTx.slice(0, 12)}…`);

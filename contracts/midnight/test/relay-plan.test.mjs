@@ -88,3 +88,22 @@ test('fails closed when Koios is down', async () => {
   const f = async () => new Response('down', { status: 503 });
   await assert.rejects(buildRelayPlan({ deployment, fetch: f, isMirrored: () => false, retryMs: 1 }), /Koios address_utxos: 503/);
 });
+
+test('dry-run target: v1 by default, v2 via --v2 or PLUTUSSHIELD_COVER_VERSION=2', async () => {
+  const { relayTarget } = await import('../relay/plan.ts');
+  const v1 = 'contracts/midnight/deployments/preprod.json';
+  const v2 = 'contracts/midnight/deployments/preprod-v2.json';
+  assert.deepEqual(relayTarget([], {}), { version: 1, record: v1 });
+  assert.deepEqual(relayTarget(['--json'], { PLUTUSSHIELD_COVER_VERSION: '1' }), { version: 1, record: v1 });
+  assert.deepEqual(relayTarget(['--v2'], {}), { version: 2, record: v2 });
+  assert.deepEqual(relayTarget([], { PLUTUSSHIELD_COVER_VERSION: '2' }), { version: 2, record: v2 });
+  assert.deepEqual(relayTarget(['--v1'], { PLUTUSSHIELD_COVER_VERSION: '2' }), { version: 1, record: v1 }, 'flag wins over env');
+  assert.throws(() => relayTarget(['--v1', '--v2'], {}), /at most one/);
+  assert.throws(() => relayTarget([], { PLUTUSSHIELD_COVER_VERSION: '3' }), /not 1 or 2/);
+  // Both records exist and point at different contracts.
+  const root = path.join(here, '../../..');
+  const a = JSON.parse(fs.readFileSync(path.join(root, v1), 'utf8')).contractAddress;
+  const b = JSON.parse(fs.readFileSync(path.join(root, v2), 'utf8')).contractAddress;
+  assert.match(b, /^5430b803/);
+  assert.notEqual(a, b);
+});
