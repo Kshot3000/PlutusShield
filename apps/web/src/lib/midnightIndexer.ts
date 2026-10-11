@@ -11,10 +11,64 @@
 
 export type MidnightNetwork = { http: string; ws: string };
 
-export const MIDNIGHT_PREPROD_INDEXER: MidnightNetwork = {
+/**
+ * Midnight shut down indexer.preprod.midnight.network on 2026-10-09 (HTTP 410).
+ * Blockfrost serves the same GraphQL API (HTTP + graphql-transport-ws, CORS
+ * open) and needs a Midnight Preprod project id, passed as ?project_id=.
+ *  - browser: NEXT_PUBLIC_BLOCKFROST_MIDNIGHT_PREPROD_ID, inlined at build time
+ *    (a public, read-only browser key, like NEXT_PUBLIC_BLOCKFROST_PREVIEW_ID);
+ *  - Node (build-time snapshot, relay dry run): BLOCKFROST_MIDNIGHT_PREPROD_ID,
+ *    or MIDNIGHT_PREPROD_INDEXER_URL (+ _WS) for any other indexer.
+ * Without either, the live panels fall back to the build-time snapshot.
+ */
+export const BLOCKFROST_MIDNIGHT_PREPROD = "https://midnight-preprod.blockfrost.io/api/v0";
+const RETIRED_PREPROD: MidnightNetwork = {
   http: "https://indexer.preprod.midnight.network/api/v4/graphql",
   ws: "wss://indexer.preprod.midnight.network/api/v4/graphql/ws",
 };
+
+function envProjectId(): string | undefined {
+  // Literal NEXT_PUBLIC_ access so Next inlines it into the client bundle.
+  let id: string | undefined;
+  try {
+    id = process.env.NEXT_PUBLIC_BLOCKFROST_MIDNIGHT_PREPROD_ID;
+  } catch {
+    /* no process in this runtime */
+  }
+  if (!id && typeof window === "undefined") {
+    try {
+      id = process.env.BLOCKFROST_MIDNIGHT_PREPROD_ID;
+    } catch {
+      /* no process */
+    }
+  }
+  return id?.trim() || undefined;
+}
+
+/** Indexer endpoints for Midnight Preprod, from a project id or the environment. */
+export function midnightPreprodIndexer(projectId: string | undefined = envProjectId()): MidnightNetwork {
+  if (projectId) {
+    const q = `?project_id=${encodeURIComponent(projectId)}`;
+    return { http: `${BLOCKFROST_MIDNIGHT_PREPROD}${q}`, ws: `${BLOCKFROST_MIDNIGHT_PREPROD.replace(/^https/, "wss")}/ws${q}` };
+  }
+  let url: string | undefined;
+  let ws: string | undefined;
+  if (typeof window === "undefined") {
+    try {
+      url = process.env.MIDNIGHT_PREPROD_INDEXER_URL?.trim();
+      ws = process.env.MIDNIGHT_PREPROD_INDEXER_WS?.trim();
+    } catch {
+      /* no process */
+    }
+  }
+  if (url) return { http: url, ws: ws || url.replace(/^http/, "ws").replace(/(\?.*)?$/, (m) => `/ws${m}`) };
+  return RETIRED_PREPROD;
+}
+
+export const MIDNIGHT_PREPROD_INDEXER: MidnightNetwork = midnightPreprodIndexer();
+
+/** True when a live Midnight indexer is configured (otherwise show the snapshot). */
+export const MIDNIGHT_LIVE_CONFIGURED = MIDNIGHT_PREPROD_INDEXER !== RETIRED_PREPROD;
 
 export type MidnightAction = {
   /** "deploy" for the ContractDeploy, otherwise the circuit name (registerPolicy, proveCover, …). */
@@ -75,7 +129,7 @@ export async function latestContractAction(
     }),
     signal,
   });
-  if (!res.ok) throw new Error(`Midnight indexer ${res.status}`);
+  if (!res.ok) throw new Error(`Midnight indexer ${res.status}${res.status === 410 ? " (retired indexer; set a Blockfrost Midnight Preprod project id)" : ""}`);
   const body = (await res.json()) as { data?: { contractAction: RawAction | null }; errors?: { message: string }[] };
   if (body.errors?.length) throw new Error(`Midnight indexer: ${body.errors[0].message}`);
   const c = body.data?.contractAction;

@@ -88,10 +88,18 @@ const need = (k) => {
   return v;
 };
 
+// Midnight Preprod indexer. Midnight shut down indexer.preprod.midnight.network on
+// 2026-10-09; Blockfrost serves the same GraphQL API (HTTP + graphql-transport-ws).
+// BLOCKFROST_MIDNIGHT_PREPROD_ID (nightpreprod… project id, sent as ?project_id=
+// since midnight-js can't set headers), or MIDNIGHT_INDEXER_URL / _WS_URL for your
+// own indexer. These URLs carry the project id: never log them (log() redacts).
+const BF_ID = env('BLOCKFROST_MIDNIGHT_PREPROD_ID', '').trim();
+if (BF_ID && !BF_ID.startsWith('nightpreprod')) throw new Error('BLOCKFROST_MIDNIGHT_PREPROD_ID must be a Midnight Preprod Blockfrost project id (starts with nightpreprod)');
+const BF_Q = BF_ID ? `?project_id=${encodeURIComponent(BF_ID)}` : '';
 const PREPROD = {
   networkId: 'preprod',
-  indexer: 'https://indexer.preprod.midnight.network/api/v4/graphql',
-  indexerWS: 'wss://indexer.preprod.midnight.network/api/v4/graphql/ws',
+  indexer: env('MIDNIGHT_INDEXER_URL', '') || (BF_ID ? `https://midnight-preprod.blockfrost.io/api/v0${BF_Q}` : 'https://indexer.preprod.midnight.network/api/v4/graphql'),
+  indexerWS: env('MIDNIGHT_INDEXER_WS_URL', '') || (BF_ID ? `wss://midnight-preprod.blockfrost.io/api/v0/ws${BF_Q}` : 'wss://indexer.preprod.midnight.network/api/v4/graphql/ws'),
   proofServer: env('MIDNIGHT_PROOF_SERVER', 'http://127.0.0.1:6300'),
 };
 const REPO = need('PLUTUSSHIELD_REPO');
@@ -119,7 +127,8 @@ const KEY_DIRS = env('PLUTUSSHIELD_POLICY_KEY_DIRS', [path.join(SECRETS, 'policy
   .filter(Boolean);
 const ROLES_FILE = path.join(SECRETS, 'midnight-preprod-roles.json');
 
-const log = (...a) => console.error(new Date().toISOString(), ...a);
+const redactPid = (x) => (typeof x === 'string' ? x.replace(/([?&]project_id=)[^&\s"']*/g, '$1…') : x?.stack ? String(x.stack).replace(/([?&]project_id=)[^&\s"']*/g, '$1…') : x);
+const log = (...a) => console.error(new Date().toISOString(), ...a.map(redactPid));
 const hex = (b) => Buffer.from(b).toString('hex');
 const u8 = (h) => new Uint8Array(Buffer.from(h, 'hex'));
 const jsonText = (v) => `${JSON.stringify(v, (_, x) => (typeof x === 'bigint' ? x.toString() : x), 2)}\n`;

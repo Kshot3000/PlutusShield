@@ -192,21 +192,32 @@ PLUTUSSHIELD_POLICY_KEY_DIRS=<dirs with plutusshield/policy-key@1 files> \
 node policy-cover-preprod.mjs --all
 ```
 
-**v2 hourly flow.** Dry run, then relay only when the plan shows something `ready`:
+**v2 hourly flow.** Dry run (no wallet, ~2 s), then relay only when the plan shows something `ready`:
 
 ```bash
-BLOCKFROST_MIDNIGHT_PREPROD_ID=nightpreprod… pnpm midnight:relay:plan:v2 --json   # look at .summary.ready
-# if ready > 0, from the midnight-js workspace (holds the Preprod wallet lock):
-./run-v2.sh --all       # PLUTUSSHIELD_COVER_VERSION=2, public record deployments/preprod-v2.json
+cd /workspace/PlutusShield-repo
+set -a; . /workspace/PlutusShield-secrets/blockfrost-midnight-preprod.env; set +a   # BLOCKFROST_MIDNIGHT_PREPROD_ID, never printed
+pnpm -s midnight:relay:plan:v2 --json | jq .summary                                # look at .ready
+# if ready > 0 (holds the shared Preprod wallet lock, reads the same env file itself):
+/workspace/Midnight-GrokBot-Agent/.plutusshield-run/run-v2.sh --all
 ```
 
-**Preprod indexer moved (2026-10-09).** Midnight shut down `indexer.preprod.midnight.network` (HTTP 410) and `rpc.preprod.midnight.network`; Blockfrost now serves the same API at `https://midnight-preprod.blockfrost.io/api/v0` and needs a Midnight Preprod project id (`nightpreprod…`). The dry run reads `BLOCKFROST_MIDNIGHT_PREPROD_ID` (or `MIDNIGHT_PREPROD_INDEXER_URL`). The live relay's wallet sync and the site's live panels still point at the old endpoints; the site falls back to its build snapshot.
+**Preprod endpoints (Blockfrost, since 2026-10-09).** Midnight shut down `indexer.preprod.midnight.network` (HTTP 410) and `rpc.preprod.midnight.network`. Blockfrost serves the same APIs and every request needs a Midnight Preprod project id (`nightpreprod…`), appended as `?project_id=` (midnight-js and the wallet SDK can't set headers):
+
+| Service | URL |
+| --- | --- |
+| Indexer GraphQL (HTTP POST) | `https://midnight-preprod.blockfrost.io/api/v0` |
+| Indexer WebSocket (`graphql-transport-ws`) | `wss://midnight-preprod.blockfrost.io/api/v0/ws` |
+| Node JSON-RPC | `https://rpc.midnight-preprod.blockfrost.io` (`wss://` for the wallet relay) |
+| Proof server | local, `http://127.0.0.1:6300` (`midnightntwrk/proof-server:8.1.0`) |
+
+The dry run, the live relay (`preprod/policy-cover-preprod.mjs`, plus the wallet facade's env-driven Preprod config) and the site's build-time snapshot all read `BLOCKFROST_MIDNIGHT_PREPROD_ID`; `MIDNIGHT_INDEXER_URL` / `MIDNIGHT_INDEXER_WS_URL` (relay) or `MIDNIGHT_PREPROD_INDEXER_URL` (dry run, site) point at any other indexer. The Pages build gets the id from the `BLOCKFROST_MIDNIGHT_PREPROD_ID` repo secret, as `NEXT_PUBLIC_BLOCKFROST_MIDNIGHT_PREPROD_ID` for the browser's live panels (Blockfrost allows CORS from any origin; this is a public read-only browser key, like the Preview one) and as the plain variable for the snapshot. Without an id, the panels show the build snapshot.
 
 `--all` syncs the issuer wallet once, plans against the decoded ledger, then relays `ready` policies oldest first, one at a time: it re-checks `policies.member(id)` right before each call (idempotent, safe to re-run), re-verifies the ticket or key against the datum, records only finalized `SucceedEntirely` txs, recomputes the binding from the stored record, writes both records after every policy, and stops at the first failure. `/cover` My policies shows the per-policy state (live "Mirrored on Midnight", otherwise the build-time plan: "Relay pending", "Awaiting holder key", "Pre-binding"), and `/app` shows how many mirrorable Preview policies are mirrored.
 
 ### Reading it live
 
-The web app reads the registry straight from the public Preprod indexer (GraphQL v4), with no wallet, keys or WASM: `apps/web/src/lib/midnightIndexer.ts` streams `contractActions` for the contract over the indexer's `graphql-transport-ws` socket from the deploy block (history, then new calls as they land) and fetches the latest serialized state over HTTP.
+The web app reads the registry straight from the Preprod indexer (GraphQL, Blockfrost-hosted since 2026-10-09), with no wallet, keys or WASM: `apps/web/src/lib/midnightIndexer.ts` streams `contractActions` for the contract over the indexer's `graphql-transport-ws` socket from the deploy block (history, then new calls as they land) and fetches the latest serialized state over HTTP.
 
 - `/app` shows live counters (successful `registerPolicy`, `proveCover`, `fileClaim` calls) and a contract activity feed with circuit, tx hash and block.
 - `/cover` My policies marks each policy **Mirrored on Midnight** when its 32-byte policy id is a key in the contract's public `policies` map (ids are serialized verbatim in the state).
