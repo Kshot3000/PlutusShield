@@ -50,6 +50,78 @@
       },
       "bindingHolds": true,
       "at": "2026-10-07T02:23:14.763Z"
+    },
+    {
+      "policyId": "72512facd0a8eb5257888b8f3b0ee71b774862cc7f4c7d7cc4f124c6f6d745d0",
+      "cardano": {
+        "network": "preview",
+        "buyTx": "7c3365bb519dfdaca6e12a371b35e0c1b7ffd321bec42130021e22b47c31386d",
+        "policyDatum": "7c3365bb519dfdaca6e12a371b35e0c1b7ffd321bec42130021e22b47c31386d#1",
+        "midnightCommitment": "d9f979b5d5d1733745f319f8941d9aa3d593491907dea81bd7067a622516e62b",
+        "coverage": "50000000",
+        "expiry": "1792521141000"
+      },
+      "source": "key",
+      "registerPolicy": {
+        "txId": "00f51ae21c1ddccf7fea0d302c686fa76ef33bbac51886abd962f99eae4ba8d39e",
+        "txHash": "2e0f69b76065d4f5e3e796d57ba57ce65b74cdacfbcdac55363ec26fb181eed0",
+        "blockHeight": 2871137,
+        "blockHash": "59baabf490651cab1f174699a0f724d0f98013bcd7fa3a73a8b07b695160dfee",
+        "status": "SucceedEntirely"
+      },
+      "proveCover": {
+        "txId": "005549b5aef168136599b37e525d59ccfcdddcffc957466e2780ca9dc48b36fd68",
+        "txHash": "853bab79c11f0a5ea42ff46121efc60e32b74fe5ca07b18761b71a6f442c39ce",
+        "blockHeight": 2871140,
+        "blockHash": "277be941fde7513a05a24daa0e664e49ec3dc7e2addce83d95522ef2d0afac81",
+        "status": "SucceedEntirely",
+        "minCoverage": "50000000"
+      },
+      "ledger": {
+        "status": 1,
+        "holder": "9e951978ba75a8e6987c8047521ac4a9b560b8c71253fa5e3c00fb3faf4b2f67",
+        "coverage": "5f1c8915b8e1edef14ff1a6796d2f34a107698612e4c530b0f675818eb583c2b",
+        "activePolicies": "1",
+        "coverProofs": "2"
+      },
+      "bindingHolds": true,
+      "at": "2026-10-07T03:44:45.116Z"
+    },
+    {
+      "policyId": "a33af8052854e2b4b32bff59afcb652dc0240bcb19b231314685bfaed13b2b3d",
+      "cardano": {
+        "network": "preview",
+        "buyTx": "1e70f0895de64c50dbbc39df0e8d23af362a29e476d1bdfb1e2068ff780f321f",
+        "policyDatum": "1e70f0895de64c50dbbc39df0e8d23af362a29e476d1bdfb1e2068ff780f321f#1",
+        "midnightCommitment": "75fc88b744e44863f6f7faa37d49c7e1f77b5d6a44b7f24774d9e4b1cb088045",
+        "coverage": "20000000",
+        "expiry": "1792527971000"
+      },
+      "source": "key",
+      "registerPolicy": {
+        "txId": "007428aa00fb6ee1c960d7638e11840c006e6ba2924433569e76cc780b843a9b67",
+        "txHash": "62fc0beab8d3a366e5d2293772c9ed7314141cf1baad9def5b44868383e8609a",
+        "blockHeight": 2871144,
+        "blockHash": "0974beeed21632f873745a86ad375d414f9e0ffad127e5e44bc97ef06d34b36e",
+        "status": "SucceedEntirely"
+      },
+      "proveCover": {
+        "txId": "0083394b0e1f792d4efdfe04c390119b719668000bc58ff9ad75d9a1f9ce6c530b",
+        "txHash": "eb452f00321773da6f670148a56734dc6a8e4750db1066d18d4b952a071ee3dc",
+        "blockHeight": 2871149,
+        "blockHash": "9cf65cabeee2c448b54db1469cf66ea546f238cb4ed201cbd0ec1b181a0dd35c",
+        "status": "SucceedEntirely",
+        "minCoverage": "20000000"
+      },
+      "ledger": {
+        "status": 1,
+        "holder": "49fbea54ed81af2b3f9711154818db0278c75405a264ad5db2d64dd08b3d51f6",
+        "coverage": "fe69fb50cabd857ae5284256473b9654de9ab947456abb8c97be3b2794233a5a",
+        "activePolicies": "2",
+        "coverProofs": "3"
+      },
+      "bindingHolds": true,
+      "at": "2026-10-07T03:45:38.023Z"
     }
   ],
   "claims": [
