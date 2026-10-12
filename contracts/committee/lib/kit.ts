@@ -344,6 +344,11 @@ function writeSecret(file: string, text: string) {
 }
 function writePublic(file: string, text: string, overwrite = false) {
   writeFileSync(file, text, { mode: 0o644, flag: overwrite ? "w" : "wx" });
+  // writeFileSync's mode is only a creation mode and is masked by the caller's
+  // umask (umask 007 turns the intended 0644 into 0640), so set it explicitly —
+  // same pattern as writeSecret — or the "public" record is not public on
+  // machines with a restrictive umask.
+  chmodSync(file, 0o644);
 }
 const json = (v: unknown) => `${JSON.stringify(v, null, 2)}\n`;
 
