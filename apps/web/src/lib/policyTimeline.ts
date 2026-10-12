@@ -306,7 +306,9 @@ export function buildTimeline(i: TimelineInput): TimelineEvent[] {
       source: "live",
     });
   }
-  return ev.sort((a, b) => (a.at ?? Infinity) - (b.at ?? Infinity) || (a.block ?? 0) - (b.block ?? 0));
+  // Same tx and time: the deciding vote's seat row comes before the outcome it produced.
+  const rank = (e: TimelineEvent) => (e.key.includes("-dec-") ? 1 : 0);
+  return ev.sort((a, b) => (a.at ?? Infinity) - (b.at ?? Infinity) || (a.block ?? 0) - (b.block ?? 0) || rank(a) - rank(b));
 }
 
 export type Stage = { label: string; state: "done" | "current" | "todo" | "skipped" };
