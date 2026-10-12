@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { MIRROR_STATE_LABEL, mirrorSummary, type MirrorState } from "@plutusshield/sdk/relay";
 import { MidnightHash } from "@/components/midnight/MidnightHash";
 import { RELAY_SNAPSHOT, relayEntry, useMidnightActivity } from "@/lib/useMidnightActivity";
@@ -74,6 +75,7 @@ export function LiveCounters() {
 
 // registerPolicy rows already say what happened; claim lifecycle rows name the policy and the outcome.
 const showChanges = (entryPoint: string) =>
+  entryPoint === "registerPolicy" ||
   entryPoint === "fileClaim" || entryPoint === "resolveClaim" || entryPoint === "voteClaim" || entryPoint === "expirePolicy" || entryPoint === "rotateHolder";
 
 const changeTone = (c: PolicyChange) =>
@@ -82,9 +84,13 @@ const changeTone = (c: PolicyChange) =>
 function ChangeLine({ c, entryPoint }: { c: PolicyChange; entryPoint: string }) {
   return (
     <span className="flex flex-wrap items-baseline gap-x-2 text-[11px] leading-snug">
-      <span className="font-mono text-[10.5px] text-text-dim" title={c.policyId}>
+      <Link
+        href={`/policy/?id=${c.policyId}`}
+        className="font-mono text-[10.5px] text-text-dim underline underline-offset-4 hover:text-text"
+        title={`${c.policyId}: open the lifecycle tracker`}
+      >
         policy {shortHash(c.policyId)}
-      </span>
+      </Link>
       <span className={changeTone(c)}>
         {describeChange(c, entryPoint)}
         {c.from !== "NONE" && c.from !== c.to ? (

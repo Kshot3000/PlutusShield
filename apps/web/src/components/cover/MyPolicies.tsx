@@ -5,6 +5,7 @@
  * at the cover script whose user token this wallet holds, or whose refund
  * address is this wallet. Decoded with the SDK from the datum bytes.
  */
+import Link from "next/link";
 import { useMemo } from "react";
 import { useNow } from "@/lib/useNow";
 import { Badge } from "@/components/ui/Badge";
@@ -99,7 +100,7 @@ export function MyPolicies({ chain }: { chain: CoverChain }) {
                 <th scope="col" className="py-2 pr-4 font-normal">Premium paid</th>
                 <th scope="col" className="py-2 pr-4 font-normal">Cover period</th>
                 <th scope="col" className="py-2 pr-4 font-normal">Status</th>
-                <th scope="col" className="py-2 pr-4 font-normal">Bought in</th>
+                <th scope="col" className="py-2 pr-4 font-normal">Bought in · lifecycle</th>
                 <th scope="col" className="py-2 pr-4 font-normal">Midnight key</th>
                 <th scope="col" className="py-2 font-normal">Action</th>
               </tr>
@@ -147,6 +148,13 @@ export function MyPolicies({ chain }: { chain: CoverChain }) {
                       >
                         {hash.slice(0, 8)}…{hash.slice(-6)} ↗
                       </a>
+                      <Link
+                        href={`/policy/?id=${p.policy.policyId}`}
+                        className="mt-1 block text-[11px] text-accent-strong underline underline-offset-4 hover:text-text"
+                        aria-label={`Lifecycle timeline for policy ${p.policy.policyId}`}
+                      >
+                        Track lifecycle →
+                      </Link>
                     </td>
                     <td className="py-3 pr-4">
                       <MidnightKeyCell policyId={p.policy.policyId} midnightCommitment={p.policy.midnightCommitment} holder={p.holder} />

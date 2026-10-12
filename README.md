@@ -203,7 +203,7 @@ Requires Node 22+, pnpm 9, and the Compact toolchain (`compact update 0.31.1`). 
 - [x] Multi-asset pools: ADA + USDC (USDCx) tranches, premiums and payouts per policy currency
 - [x] Preview deploy tooling + runbook, full flow verified in the Lucid Emulator
 - [x] Testnet deployment (Preview): fund deployer, init pool, first buy (see runbook)
-- [ ] Real oracle feed integration
+- [x] Real oracle feed integration: live multi-venue USDM oracle (CoinGecko + Minswap ADA/USDM and USDCx/USDM pools read on-chain, `services/oracle-relay/src/venues.ts`) publishing a 24h TWAP to the three Preview feeds on a loop, which keeps cover sales open while the peg is healthy (independent feed operators are still to come)
 - [x] Sale circuit-breaker: no buys into an active depeg (every allowlisted feed must report a fresh healthy peg, plus a waiting period)
 - [x] Expiry returns the policy deposit to the buyer, not the submitter
 - [x] Compact contract: private policy commitment + coverage proof (`contracts/midnight`)
@@ -214,11 +214,12 @@ Requires Node 22+, pnpm 9, and the Compact toolchain (`compact update 0.31.1`). 
 - [x] Exploit claims flow end to end: `fileClaim` on the Midnight Preprod registry, assessor resolution, approved payout from the Cardano Preview exploit-cover pool
 - [x] Multi-assessor payouts: exploit `Settle` needs M-of-N distinct assessor-committee signatures (2-of-3 live on Preview, v2 pool; first committee payout `c35535dd…` paid 50 tADA on assessor-1 + assessor-3, a 1-of-3 Settle rejected by both the local and the Preview evaluator); malformed committees refused at InitPool
 - [x] Committee-gated claim decisions on Midnight: `policy-cover-v2.compact` replaces the single-assessor `resolveClaim` with an M-of-3 `voteClaim` (one vote per member per claim round, public attributable votes, re-filed claims start a fresh round); 10 simulation tests, v1 commitments unchanged
-- [ ] Independent assessor operators (today all three Preview committee keys are team-run) and the v2 Midnight registry deployed on Preprod
+- [x] v2 Midnight registry deployed on Preprod (`5430b803…`, `contracts/midnight/deployments/preprod-v2.json`): batch relay mirrors Preview policies into it, first committee claim decided by 2-of-3 `voteClaim`
+- [ ] Independent assessor operators (today all three Preview committee keys and all three Midnight committee seats are team-run)
 - [x] Marketing site + app shell (`apps/web`)
 - [x] Web app: interactive quote on `/cover`
 - [x] Web app: claim checker on `/claim` (oracle quorum, TWAP trigger, claim window, sale circuit-breaker)
-- [ ] Web app: buy → manage → claim
+- [x] Web app: buy → manage → claim: Buy on `/cover`, My policies (claim / release actions, Midnight key backup), and a per-policy lifecycle tracker on `/policy` that stitches the Cardano Buy, the 7731 ticket, Midnight `registerPolicy` / `proveCover`, `fileClaim` and committee votes, and the Cardano Settle or release into one timeline (exploit `fileClaim` is still submitted by the Preprod relay CLI, not from the browser)
 - [ ] External audits of Cardano and Midnight contracts before any mainnet capital
 
 ## Disclaimer

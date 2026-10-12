@@ -48,6 +48,30 @@ try {
 }
 
 /*
+ * policy-cover v1 record (registrations with their proveCover txs, claims):
+ * copied into the site so the /policy lifecycle tracker reads the same
+ * finalized tx data the Preprod relay wrote. Public values only.
+ */
+{
+  const V1_COPY = new URL("../src/data/midnight-preprod-v1.json", import.meta.url);
+  try {
+    const raw = readFileSync(RECORD, "utf8");
+    let old = "";
+    try {
+      old = readFileSync(V1_COPY, "utf8");
+    } catch {
+      /* first sync */
+    }
+    if (old !== raw) {
+      writeFileSync(V1_COPY, raw);
+      console.log("midnight v1: synced src/data/midnight-preprod-v1.json from the Preprod record");
+    }
+  } catch (e) {
+    console.warn(`midnight v1: record copy skipped (${e instanceof Error ? e.message : e})`);
+  }
+}
+
+/*
  * policy-cover v2 (M-of-3 committee voteClaim). The relay writes
  * contracts/midnight/deployments/preprod-v2.json; copy it into the site so the
  * committee panel never drifts from the record, then bake the v2 contract's

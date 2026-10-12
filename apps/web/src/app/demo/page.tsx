@@ -143,6 +143,9 @@ export default function DemoPage() {
           <Button href="/cover" className="w-full sm:w-auto">
             Buy cover
           </Button>
+          <Button href="/policy" variant="secondary" className="w-full sm:w-auto">
+            Track a policy end to end
+          </Button>
           <Button href="/app" variant="secondary" className="w-full sm:w-auto">
             Open the app
           </Button>
