@@ -26,6 +26,7 @@ import { ChoiceGroup, Chip } from "@/components/ui/ChoiceGroup";
 import { useMidnightActivity } from "@/lib/useMidnightActivity";
 import { downloadText, usePolicyKeys } from "@/lib/policyKeys";
 import { buildClaimKit, claimKitFileName, claimKitFileText } from "@plutusshield/sdk/claimkit";
+import { FileWithLace } from "@/components/claim/FileWithLace";
 
 /** Live Midnight Preprod registry the holder claim kit targets (contracts/midnight/deployments/preprod-v2.json). */
 const PREPROD_V2_ADDRESS = "5430b803b6b3df6e6ee1d498bb02e2f2d06cb46661e72af1e6208d864feb8110";
@@ -563,10 +564,11 @@ function ClaimKitPanel({ sealed }: { sealed: SealedEvidence }) {
       {key ? (
         <>
           <p className="text-[12.5px] leading-relaxed text-text-muted">
-            This browser holds the Midnight policy key for this policy. Wrap it and the sealed evidence into one claim kit,
-            locked with a passphrase, and file the claim from your own machine. Your holder key never goes to the PlutusShield relay.
-            Lace Midnight connect is available above for Preprod address / service URIs; browser <span className="font-mono">fileClaim</span> from that wallet is next.
+            This browser holds the Midnight policy key for this policy. File with Lace below when the Compact prover is
+            loaded, or wrap the key and sealed evidence into a passphrase-locked claim kit and file from your own machine
+            with the CLI — your holder key never goes to the PlutusShield relay.
           </p>
+          <FileWithLace sealed={sealed} policyKey={key} />
           <div className="grid gap-2 sm:grid-cols-2">
             <div>
               <label htmlFor={passId} className="font-mono-label text-[9.5px] text-text-dim">Kit passphrase</label>

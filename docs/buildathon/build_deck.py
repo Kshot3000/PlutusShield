@@ -197,7 +197,7 @@ footer(s, n)
 
 # 8 Engineering
 s = slide(); n += 1
-kicker(s, "Engineering"); title(s, "315 unit tests plus an end-to-end emulator run, all green.")
+kicker(s, "Engineering"); title(s, "322 unit tests plus an end-to-end emulator run, all green.")
 stats = [("131", "Aiken validator tests"), ("97", "SDK: quote engine, codecs, evidence vault, claim kit, relay"),
          ("60", "Compact circuit simulation, claims relay, relay plan, state decode"), ("14 + 3", "oracle relay · committee kit")]
 for i, (big, small) in enumerate(stats):
@@ -220,7 +220,7 @@ card(s, 0.8, 2.4, 5.7, 3.9, "Today", [
     "Midnight retired its hosted Preprod indexer; reads now go through Blockfrost."], head_color=GOLD)
 card(s, 6.83, 2.4, 5.7, 3.9, "Next", [
     "Independent assessor operators (offline keygen and signed enrollment kit is in the repo).",
-    "Lace Midnight connect is live on the site; next is proveCover / fileClaim from that browser wallet (claims already file from the holder's claim kit).",
+    "Lace circuit-submit path for proveCover / fileClaim is live on /claim/evidence (hints, proving strategy, balance+submit); Compact prove still needs the browser prover — claim kit files today.",
     "Security audit, then a capped mainnet launch.",
     "Catalyst funding for claim capital."], head_color=BLUE)
 footer(s, n)

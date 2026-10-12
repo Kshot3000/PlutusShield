@@ -58,10 +58,11 @@ export default function EvidencePage() {
       <p className="mt-6 text-xs leading-relaxed text-text-dim">
         The live registry on Midnight Preprod is the v2 committee contract (<code className="font-mono">policy-cover-v2.compact</code>);
         the claims drill above ran <code className="font-mono">fileClaim</code> and <code className="font-mono">resolveClaim</code> on
-        the v1 registry (<code className="font-mono">policy-cover.compact</code>) from the operator relay, and is kept as its history. Lace Midnight connect is live on this page (Preprod address + Lace service URIs). Submitting{" "}
-        <code className="font-mono">proveCover</code> / <code className="font-mono">fileClaim</code> from the browser
-        wallet still needs ZK configs and a proof server in the page — until then the page seals the bundle, offers a
-        holder claim kit, and shows the exact <code className="font-mono">fileClaim</code> arguments for{" "}
+        the v1 registry (<code className="font-mono">policy-cover.compact</code>) from the operator relay, and is kept as its history. Lace Midnight connect is live on this page (Preprod address + Lace service URIs). The evidence vault now drives the
+        Lace circuit-submit path for <code className="font-mono">proveCover</code> /{" "}
+        <code className="font-mono">fileClaim</code> (proving strategy, prover health, permission hints, balance +
+        submit via the connector). Building the Compact proof still needs the browser midnight-js prover + ZK configs —
+        until that lands, seal the bundle, use File with Lace readiness, or download the holder claim kit for{" "}
         <code className="font-mono">policy-cover-preprod.mjs --claim … --kit …</code>. Exploit cover is bought
         from the operator tooling on the Preview exploit pool for now (a browser Buy for it is next), and an approved claim is
         paid on Cardano by a Settle signed by 2 of the 3 assessors on the pool&apos;s committee. Read the{" "}

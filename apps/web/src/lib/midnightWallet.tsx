@@ -4,9 +4,10 @@
  * Lace Midnight DApp Connector for the static site.
  *
  * Discover + connect on Preprod via PlutusShield-owned helpers in
- * `@plutusshield/sdk/lace` (DApp Connector API 4.0.1). Circuit submit
- * (proveCover / fileClaim from this wallet) is the remaining browser gap —
- * until then holders file with the claim kit CLI.
+ * `@plutusshield/sdk/lace` (DApp Connector API 4.0.1). Circuit submit helpers
+ * live in `@plutusshield/sdk/laceCircuits` and `/claim/evidence` (File with Lace).
+ * Compact prove still needs an injected BrowserCircuitProver; until then the
+ * claim kit CLI remains the production filer.
  */
 import {
   createContext,

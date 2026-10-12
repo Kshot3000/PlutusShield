@@ -6,8 +6,9 @@
  * `window.midnight.mnLace` — wallets inject under a fresh UUID key each load;
  * always enumerate `window.midnight` and filter by apiVersion / rdns.
  *
- * Scope today: discover + connect + read addresses / service URIs.
- * Browser circuit submit (proveCover / fileClaim from the wallet) is next.
+ * Scope: discover + connect + read addresses / service URIs.
+ * Circuit submit (proveCover / fileClaim) lives in laceCircuits.ts — Lace
+ * balance/submit + proving strategy; Compact prove is an injectable prover.
  *
  * Pure discovery / formatting / error helpers are injectable for Node tests.
  * Browser connect wraps the official InitialAPI.connect(networkId).
