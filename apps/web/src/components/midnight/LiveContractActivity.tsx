@@ -33,8 +33,10 @@ function ago(ms: number, now: number | null): string {
   return `${Math.round(h / 24)} d ago`;
 }
 
-const stamp = (ms: number) =>
-  new Date(ms).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+/** Local time once mounted; UTC during prerender/hydration so static HTML matches (React #418). */
+const stamp = (ms: number, local = true) =>
+  new Date(ms).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", ...(local ? {} : { timeZone: "UTC" }) }) +
+  (local ? "" : " UTC");
 
 /**
  * Live counters for the panel header: successful calls on the current registry
@@ -128,7 +130,7 @@ export function ActivityFeed({ limit = 8 }: { limit?: number }) {
         <h3 className="font-mono-label text-[10px] text-text-dim">Contract activity</h3>
         <p className="flex items-center gap-2 text-[11px] text-text-dim" role="status">
           <span className={`h-1.5 w-1.5 rounded-full ${live ? "bg-success animate-pulse-dot" : "bg-border-strong"}`} aria-hidden="true" />
-          {live ? "Streaming both registries from the Midnight Preprod indexer" : `Snapshot from ${stamp(a.asOf)}`}
+          {live ? "Streaming both registries from the Midnight Preprod indexer" : `Snapshot from ${stamp(a.asOf, now !== null)}`}
           {a.error && !live ? " · indexer unreachable, retrying" : null}
         </p>
       </div>
