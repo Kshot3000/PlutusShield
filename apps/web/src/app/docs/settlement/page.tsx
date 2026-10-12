@@ -230,7 +230,9 @@ policy.start         ≥ tx_upper_bound + waiting_period_ms`}</Formula>
           the assessor verified each bundle against its on-ledger commitment, then approved one (PAID) and
           rejected the other (back to ACTIVE, commitment cleared). On the v2 committee registry, the first live
           decision was a split vote — seat 0 approve, seat 1 reject (still CLAIM_PENDING under 2-of-3), seat 2
-          approve → PAID. Tx hashes are on the{" "}
+          approve → PAID. The first claim a holder filed themselves, from a passphrase-encrypted claim kit
+          (policy <C>496dced8…</C>, 25 tADA), was approved by seats 0 and 2 and paid on Cardano Preview by a
+          2-of-3 committee-signed Settle; the operator relay never held that policy key. Tx hashes are on the{" "}
           <DocLink href="/claim/evidence">evidence vault page</DocLink> and in the public deployment record.
         </P>
         <P>

@@ -1,0 +1,25 @@
+{
+  "_note": "TEST / DEMO evidence for the first holder-filed claim from a claim kit (Cardano Preview exploit pool v2 + Midnight Preprod policy-cover-v2 2-of-3 committee). There was no real exploit. Not a real incident report.",
+  "policyId": "496dced8f54b702f215bff1756db2ac6120349df42666404019e4a6cf939a594",
+  "protocol": {
+    "name": "DEMO ONLY - PlutusShield holder claim kit drill (no real incident)",
+    "chain": "cardano",
+    "contracts": [
+      "097ba40ad0a18377b4b2149f64b8cb600142784c7216d898da7994f0 (PlutusShield Preview exploit-cover v2 script, 2-of-3 assessor committee, named only as the drill target)"
+    ]
+  },
+  "incident": {
+    "kind": "logic-bug",
+    "description": "TEST / DEMO exploit report for the PlutusShield holder claim kit drill on Cardano Preview + Midnight Preprod. No funds were lost and no contract was exploited. The holder seals this bundle into a passphrase-encrypted claim kit (no operator key dir), files it with fileClaim on the v2 registry, two of three committee seats verify it off-ledger and vote, and the Cardano exploit pool pays only on a 2-of-3 committee-signed Settle. The tx hash listed is the policy's own Buy tx, used as a placeholder reference. Incident timestamps are drill placeholders.",
+    "startedAt": "2026-10-12T19:45:30.000Z",
+    "detectedAt": "2026-10-12T19:46:00.000Z"
+  },
+  "txHashes": [
+    "9e261a3db5573b06206c84c308ac5591b8871ab329e1decfc52c866ca22d5439"
+  ],
+  "loss": {
+    "amount": "25",
+    "asset": "tADA"
+  },
+  "attachments": []
+}
