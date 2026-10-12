@@ -163,6 +163,8 @@ See [contracts/cardano/README.md](contracts/cardano/README.md) for validators, d
 
 ## Midnight Buildathon
 
+**Submission kit:** pitch deck ([PDF](docs/buildathon/PlutusShield-Wave2-deck.pdf)), 3-minute [demo video script](docs/buildathon/VIDEO_SCRIPT.md), and the [kit checklist](docs/buildathon/README.md).
+
 PlutusShield is entered in the Midnight Foundation Buildathon (Wave 2). The Midnight half is two Compact contracts, both compiled with **compactc 0.31.1** (`compact` CLI 0.5.2, `pragma language_version >= 0.23`) and deployed on **Midnight Preprod**:
 
 | Contract | Source | Preprod address | What it does |
