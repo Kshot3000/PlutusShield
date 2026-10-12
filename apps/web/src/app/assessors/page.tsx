@@ -29,6 +29,19 @@ export const metadata: Metadata = {
   title: "Assessors",
   description:
     "How independent assessors join PlutusShield's 2-of-3 claims committee: co-sign Cardano Preview Settle payouts and cast zero-knowledge voteClaim votes on Midnight Preprod. Offline enrollment kit, the current committee, and the first committee drill. Testnet only, not audited.",
+  openGraph: {
+    title: "Assessors · PlutusShield",
+    description: "Join the 2-of-3 claims committee on Cardano + Midnight with an offline 5-command kit.",
+    url: "https://kshot3000.github.io/PlutusShield/assessors/",
+    type: "website",
+    images: [{ url: "https://kshot3000.github.io/PlutusShield/og/og-assessors.png", width: 1200, height: 630, alt: "Assessors · PlutusShield" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Assessors · PlutusShield",
+    description: "Join the 2-of-3 claims committee on Cardano + Midnight with an offline 5-command kit.",
+    images: ["https://kshot3000.github.io/PlutusShield/og/og-assessors.png"],
+  },
 };
 
 const chainBadge = {
