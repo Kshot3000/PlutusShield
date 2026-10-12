@@ -21,6 +21,7 @@ const columns = [
       { href: "/docs/how-cover-works", label: "How cover works" },
       { href: "/docs/settlement", label: "Settlement" },
       { href: "/docs/risks", label: "Risks & disclosures" },
+      { href: "/docs/security", label: "Security & audit scope" },
       {
         href: "https://github.com/Kshot3000/PlutusShield/blob/main/docs/ARCHITECTURE.md",
         label: "Architecture",

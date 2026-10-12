@@ -221,7 +221,7 @@ Requires Node 22+, pnpm 9, and the Compact toolchain (`compact update 0.31.1`). 
 - [x] Web app: interactive quote on `/cover`
 - [x] Web app: claim checker on `/claim` (oracle quorum, TWAP trigger, claim window, sale circuit-breaker)
 - [x] Web app: buy → manage → claim: Buy on `/cover`, My policies (claim / release actions, Midnight key backup), and a per-policy lifecycle tracker on `/policy` that stitches the Cardano Buy, the 7731 ticket, Midnight `registerPolicy` / `proveCover`, `fileClaim` and committee votes, and the Cardano Settle or release into one timeline (exploit `fileClaim` is still submitted by the Preprod relay CLI, not from the browser)
-- [ ] External audits of Cardano and Midnight contracts before any mainnet capital
+- [ ] External audits of Cardano and Midnight contracts before any mainnet capital. Shipped toward it: a pre-audit pack ([`SECURITY.md`](SECURITY.md) and the [`/docs/security`](https://kshot3000.github.io/PlutusShield/docs/security/) page) with the in-scope components, every Cardano and Midnight invariant mapped to the tests that check it, privileged roles and who holds them today, known gaps, and private vulnerability reporting through GitHub security advisories
 
 ## Disclaimer
 

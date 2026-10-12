@@ -42,13 +42,14 @@ export default function RisksPage() {
             ["Buying cover", "Open on the Preview testnet: any CIP-30 wallet can buy on /cover (test value only)"],
             ["Underwriting", "Open on the Preview testnet: deposits and withdrawals on /pool (test value only)"],
             ["Real funds", "None. The pools hold testnet value only (test ADA and mock tUSDCx)"],
-            ["Tests", "Cardano: 131 Aiken checks passing. Midnight: 53 simulation tests passing, full ZK compile OK"],
+            ["Tests", "Cardano: 131 Aiken checks passing. Midnight: 55 simulation tests passing, full ZK compile OK"],
           ]}
         />
         <P>
           Passing tests show the code does what the tests check, nothing more. They don&apos;t replace an
           external audit. Mainnet capital is planned only after an external audit of both the Cardano and
-          Midnight contracts.
+          Midnight contracts. The scope we would hand that auditor, with every invariant mapped to its tests,
+          is on <DocLink href="/docs/security">Security &amp; audit scope</DocLink>.
         </P>
       </Section>
 

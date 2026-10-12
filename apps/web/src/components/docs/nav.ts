@@ -5,7 +5,8 @@ export type DocSlug =
   | "underwriting-pool"
   | "settlement"
   | "privacy"
-  | "risks";
+  | "risks"
+  | "security";
 
 export interface DocPage {
   slug: DocSlug;
@@ -58,6 +59,13 @@ export const DOC_PAGES: DocPage[] = [
     tag: "Disclosures",
     tone: "gold",
   },
+  {
+    slug: "security",
+    title: "Security & audit scope",
+    summary: "The audit scope, every invariant mapped to the tests that check it, who holds which keys today, known gaps, and private reporting.",
+    tag: "Audit",
+    tone: "accent",
+  },
 ];
 
 export const REPO = "https://github.com/Kshot3000/PlutusShield";
@@ -92,10 +100,12 @@ export const SOURCE_DOCS = [
 
 export const SOURCE_CODE = [
   { label: "validators/cover.ak", href: src("contracts/cardano/validators/cover.ak"), note: "Cardano validator (mint + spend)" },
+  { label: "validators/exploit_cover.ak", href: src("contracts/cardano/validators/exploit_cover.ak"), note: "Exploit cover pool (M-of-N committee Settle)" },
   { label: "lib/plutusshield/pricing.ak", href: src("contracts/cardano/lib/plutusshield/pricing.ak"), note: "On-chain premium floor" },
   { label: "lib/plutusshield/oracle.ak", href: src("contracts/cardano/lib/plutusshield/oracle.ak"), note: "Oracle auth, trigger, sale breaker" },
   { label: "lib/plutusshield/types.ak", href: src("contracts/cardano/lib/plutusshield/types.ak"), note: "Params, datums, redeemers" },
-  { label: "src/policy-cover.compact", href: src("contracts/midnight/src/policy-cover.compact"), note: "Midnight private registry" },
+  { label: "src/policy-cover-v2.compact", href: src("contracts/midnight/src/policy-cover-v2.compact"), note: "Midnight registry v2 (2-of-3 committee, live)" },
+  { label: "src/policy-cover.compact", href: src("contracts/midnight/src/policy-cover.compact"), note: "Midnight registry v1 (single assessor)" },
   { label: "packages/sdk/src", href: `${REPO}/tree/main/packages/sdk/src`, note: "Quote engine, pool ledger, codecs" },
   { label: "packages/sdk/src/evidence.ts", href: src("packages/sdk/src/evidence.ts"), note: "Private evidence vault" },
 ];
