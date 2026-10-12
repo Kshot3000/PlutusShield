@@ -197,9 +197,9 @@ footer(s, n)
 
 # 8 Engineering
 s = slide(); n += 1
-kicker(s, "Engineering"); title(s, "302 unit tests plus an end-to-end emulator run, all green.")
+kicker(s, "Engineering"); title(s, "305 unit tests plus an end-to-end emulator run, all green.")
 stats = [("131", "Aiken validator tests"), ("97", "SDK: quote engine, codecs, evidence vault, claim kit, relay"),
-         ("57", "Compact circuit simulation, relay plan, state decode"), ("14 + 3", "oracle relay · committee kit")]
+         ("60", "Compact circuit simulation, claims relay, relay plan, state decode"), ("14 + 3", "oracle relay · committee kit")]
 for i, (big, small) in enumerate(stats):
     x = 0.8 + i * 3.0
     text(s, x, 2.6, 2.8, 1.0, big, size=48, color=BLUE, font=SERIF)
@@ -220,7 +220,7 @@ card(s, 0.8, 2.4, 5.7, 3.9, "Today", [
     "Midnight retired its hosted Preprod indexer; reads now go through Blockfrost."], head_color=GOLD)
 card(s, 6.83, 2.4, 5.7, 3.9, "Next", [
     "Independent assessor operators (offline keygen and signed enrollment kit is in the repo).",
-    "proveCover and fileClaim straight from the browser wallet.",
+    "proveCover and fileClaim straight from the browser wallet (claims already file from the holder's own claim kit).",
     "Security audit, then a capped mainnet launch.",
     "Catalyst funding for claim capital."], head_color=BLUE)
 footer(s, n)

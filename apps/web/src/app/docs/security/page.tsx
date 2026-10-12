@@ -64,7 +64,7 @@ export default function SecurityPage() {
           rows={[
             ["Cardano validators (Aiken)", <C key="c">pnpm test:cardano</C>, "131 checks, 0 errors, 0 warnings"],
             ["Cardano end-to-end (Lucid emulator)", <C key="c">pnpm test:deploy</C>, "Full depeg + exploit-cover flow, including refused Buys and refused Settles"],
-            ["Midnight circuits (Compact simulator)", <C key="c">pnpm test:midnight</C>, "57 tests (v1 + v2 registry, claims relay and holder claim kits, relay plan, ledger decoding)"],
+            ["Midnight circuits (Compact simulator)", <C key="c">pnpm test:midnight</C>, "60 tests (v1 + v2 registry, claims relay, holder claim kits and the Settle gate, relay plan, ledger decoding)"],
             ["SDK (quote, pool ledger, codecs, evidence, claim kit, committee)", <C key="c">pnpm test:sdk</C>, "97 tests"],
             ["Oracle relay", <C key="c">pnpm test:relay</C>, "14 tests"],
             ["Committee enrollment kit", <C key="c">pnpm --filter @plutusshield/committee test</C>, "3 tests"],

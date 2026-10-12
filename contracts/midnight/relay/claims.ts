@@ -21,7 +21,8 @@ import {
   type EvidenceInput,
   type SealedEvidence,
 } from "../../../packages/sdk/src/evidence.ts";
-import { openClaimKit } from "../../../packages/sdk/src/claimkit.ts";
+import { buildClaimKit, claimKitFileText, openClaimKit, type ClaimKit } from "../../../packages/sdk/src/claimkit.ts";
+import { parsePolicyKey } from "../../../packages/sdk/src/midnight.ts";
 
 const HEX32 = /^[0-9a-f]{64}$/;
 
@@ -132,6 +133,40 @@ export async function openClaimKitFile(file: string, policyId: string, passphras
   return opened;
 }
 
+/**
+ * Build a holder claim kit from files, for holders who keep their policy key on
+ * disk instead of in a browser (`pnpm midnight:claim-kit`): the same SDK calls
+ * /claim/evidence makes (sealEvidence -> buildClaimKit), so the kit is
+ * byte-compatible with a browser download. The evidence input names the policy
+ * (or inherits it from the key); a key and input for different policies are
+ * refused. Re-opens the kit with the passphrase before returning it, so a kit
+ * that can't be filed is never written.
+ */
+export async function buildClaimKitFromFiles(a: {
+  keyFile: string;
+  evidenceFile: string;
+  passphrase: string;
+  address?: string;
+  contract?: ClaimKit["target"]["contract"];
+  now?: Date;
+  iterations?: number;
+}): Promise<{ kit: ClaimKit; text: string }> {
+  if (!a.passphrase) throw new Error("a claim kit needs a passphrase (PLUTUSSHIELD_CLAIM_KIT_PASSPHRASE)");
+  const key = parsePolicyKey(readFileSync(a.keyFile, "utf8"));
+  const sealed = await sealEvidenceFile(a.evidenceFile, key.policyId, a.now);
+  const kit = await buildClaimKit({
+    key,
+    sealed,
+    passphrase: a.passphrase,
+    target: { contract: a.contract ?? "policy-cover-v2", ...(a.address ? { address: a.address } : {}) },
+    now: a.now,
+    iterations: a.iterations,
+  });
+  const text = claimKitFileText(kit);
+  await openClaimKit(text, a.passphrase);
+  return { kit, text };
+}
+
 /** Where the relay keeps a filing's envelope and key file (outside the repo). */
 export const evidencePaths = (secretsDir: string, commitment: string) => ({
   dir: join(secretsDir, "evidence"),
@@ -240,4 +275,77 @@ export function applyVote(
   };
   const status = next.approvals >= threshold ? "PAID" : next.rejections >= threshold ? "ACTIVE" : "CLAIM_PENDING";
   return { tally: next, status };
+}
+
+/**
+ * The committee's check before a Cardano exploit Settle: does a public Midnight
+ * Preprod record show this policy's claim decided APPROVED (PAID)? Accepts
+ *   v1 (deployments/preprod.json): resolveClaim(approved) by the one assessor,
+ *       finalized, ledger PAID after it;
+ *   v2 (deployments/preprod-v2.json): finalized voteClaim approvals from at
+ *       least `threshold` distinct committee seats on the filed evidence, each
+ *       after a passing off-ledger assessment, the deciding vote approving and
+ *       the ledger PAID after it.
+ * Returns the resolution the Settle names in its label-7732 metadata (for v2,
+ * `resolveTx` is the deciding voteClaim tx). Throws when neither record shows
+ * an approved claim, or when both do (one policy is decided on one registry).
+ */
+export interface PayoutApproval {
+  registry: "policy-cover" | "policy-cover-v2";
+  midnight: { network: "preprod"; contract: string; claim: string; evidence: string; resolveTx: string };
+  fileClaim: { txHash: string | null; block: number | null };
+  /** Who filed: "holder-claim-kit" when the holder filed from their own kit, else the operator relay. */
+  filedBy: "holder-claim-kit" | "operator-relay";
+  decision:
+    | { kind: "resolveClaim"; txHash: string; block: number | null }
+    | { kind: "committee"; txHash: string; block: number | null; threshold: number; approvals: { seat: number; txHash: string; block: number | null }[]; rejections: number };
+}
+
+type Rec = Record<string, any>;
+const finalizedOk = (t: Rec | undefined) => !!t?.txHash && t.blockHeight != null && t.status === "SucceedEntirely";
+
+export function approvedPayout(records: { v1?: Rec | null; v2?: Rec | null }, policyId: string): PayoutApproval {
+  const id = policyId.toLowerCase();
+  const found: PayoutApproval[] = [];
+  const v1 = records.v1?.claims?.find((c: Rec) => c.policyId === id && c.resolveClaim?.approved === true);
+  if (v1) {
+    if (v1.ledgerAfterResolve?.status !== "PAID" || !finalizedOk(v1.resolveClaim)) throw new Error("v1 Midnight ledger does not show the claim PAID after a finalized resolveClaim");
+    found.push({
+      registry: "policy-cover",
+      midnight: { network: "preprod", contract: records.v1!.contractAddress, claim: id, evidence: v1.evidenceCommitment, resolveTx: v1.resolveClaim.txHash },
+      fileClaim: { txHash: v1.fileClaim?.txHash ?? null, block: v1.fileClaim?.blockHeight ?? null },
+      filedBy: v1.source === "holder-claim-kit" ? "holder-claim-kit" : "operator-relay",
+      decision: { kind: "resolveClaim", txHash: v1.resolveClaim.txHash, block: v1.resolveClaim.blockHeight ?? null },
+    });
+  }
+  const v2 = records.v2?.claims?.find((c: Rec) => c.policyId === id && c.decided?.status === "PAID");
+  if (v2) {
+    const votes: Rec[] = v2.votes ?? [];
+    const threshold = Number(v2.decided.threshold);
+    if (!finalizedOk(v2.fileClaim) || v2.ledgerAfterFile?.evidence !== v2.evidenceCommitment) throw new Error("v2 claim has no finalized fileClaim of its evidence commitment");
+    if (votes.some((v) => !finalizedOk(v))) throw new Error("v2 claim has a vote that did not finalize");
+    const approving = votes.filter((v) => v.approved === true);
+    if (approving.some((v) => v.assessment?.ok !== true)) throw new Error("v2 approval cast without a passing off-ledger assessment");
+    const seats = new Set(approving.map((v) => Number(v.seat)));
+    if (!(threshold >= 1) || seats.size < threshold) throw new Error(`v2 claim has ${seats.size} approving seats, threshold ${threshold}`);
+    const last = votes[votes.length - 1];
+    if (!last?.approved || last.ledgerAfterVote?.status !== "PAID") throw new Error("v2 deciding vote did not leave the ledger PAID");
+    found.push({
+      registry: "policy-cover-v2",
+      midnight: { network: "preprod", contract: records.v2!.contractAddress, claim: id, evidence: v2.evidenceCommitment, resolveTx: last.txHash },
+      fileClaim: { txHash: v2.fileClaim.txHash, block: v2.fileClaim.blockHeight ?? null },
+      filedBy: v2.source === "holder-claim-kit" ? "holder-claim-kit" : "operator-relay",
+      decision: {
+        kind: "committee",
+        txHash: last.txHash,
+        block: last.blockHeight ?? null,
+        threshold,
+        approvals: approving.map((v) => ({ seat: Number(v.seat), txHash: v.txHash, block: v.blockHeight ?? null })),
+        rejections: votes.length - approving.length,
+      },
+    });
+  }
+  if (!found.length) throw new Error(`no approved Midnight claim for ${id}; the assessors do not sign`);
+  if (found.length > 1) throw new Error(`policy ${id.slice(0, 16)}… shows approved claims on both registries; refusing to pick one`);
+  return found[0];
 }

@@ -9,9 +9,9 @@ import { mkdtempSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pureCircuits } from '../src/managed/policy-cover/contract/index.js';
-import { parseClaimOps, sealEvidenceFile, saveSealed, assessClaim, loadFiling, applyVote, openClaimKitFile } from '../relay/claims.ts';
+import { parseClaimOps, sealEvidenceFile, saveSealed, assessClaim, loadFiling, applyVote, openClaimKitFile, buildClaimKitFromFiles, approvedPayout } from '../relay/claims.ts';
 import { buildClaimKit, claimKitFileText } from '../../../packages/sdk/src/claimkit.ts';
-import { makePolicyKey } from '../../../packages/sdk/src/midnight.ts';
+import { makePolicyKey, policyKeyFileText } from '../../../packages/sdk/src/midnight.ts';
 import { evidenceFileText } from '../../../packages/sdk/src/evidence.ts';
 
 const A = '72512facd0a8eb5257888b8f3b0ee71b774862cc7f4c7d7cc4f124c6f6d745d0';
@@ -140,4 +140,64 @@ test('openClaimKitFile: browser-sealed kit opens to the commitment the contract 
   await assert.rejects(openClaimKitFile(file, A, ''), /PLUTUSSHIELD_CLAIM_KIT_PASSPHRASE/);
   const p = saveSealed(dir, opened.sealed);
   assert.equal(statSync(p.keyFile).mode & 0o777, 0o600);
+});
+
+test('buildClaimKitFromFiles: a key file + evidence input make a kit the filer opens; secrets never in the clear; mismatches refused', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ps-kitcli-'));
+  const key = await makePolicyKey({ network: 'preview', policyId: A, coverage: 50_000_000n });
+  const keyFile = join(dir, 'key.json');
+  writeFileSync(keyFile, policyKeyFileText(key));
+  const { kit, text } = await buildClaimKitFromFiles({ keyFile, evidenceFile: DEMO, passphrase: 'kit passphrase 2', address: 'ab'.repeat(32), iterations: 1_000 });
+  assert.equal(kit.policyId, A);
+  assert.equal(kit.target.contract, 'policy-cover-v2');
+  assert.equal(kit.target.address, 'ab'.repeat(32));
+  assert.ok(!text.includes(key.holderSecret) && !text.includes(key.coverageSalt), 'holder secret and coverage salt stay encrypted');
+  const file = join(dir, 'kit.json');
+  writeFileSync(file, text);
+  const opened = await openClaimKitFile(file, A, 'kit passphrase 2');
+  assert.equal(opened.key.holderSecret, key.holderSecret);
+  assert.equal(opened.sealed.commitment, kit.call.evidenceCommitment);
+  const keyB = await makePolicyKey({ network: 'preview', policyId: B, coverage: 1n });
+  const keyFileB = join(dir, 'keyB.json');
+  writeFileSync(keyFileB, policyKeyFileText(keyB));
+  await assert.rejects(buildClaimKitFromFiles({ keyFile: keyFileB, evidenceFile: DEMO, passphrase: 'kit passphrase 2', iterations: 1_000 }), /names policy/);
+  await assert.rejects(buildClaimKitFromFiles({ keyFile, evidenceFile: DEMO, passphrase: '', iterations: 1_000 }), /needs a passphrase/);
+});
+
+const V1_RECORD = JSON.parse(readFileSync(new URL('../deployments/preprod.json', import.meta.url), 'utf8'));
+const V2_RECORD = JSON.parse(readFileSync(new URL('../deployments/preprod-v2.json', import.meta.url), 'utf8'));
+const V1_PAID = '4db47733332317c805a9b79b6964ada18c527719612ff68c375f452250475b19';
+const V2_PAID = '7c24be86268f54972c49f6f6e4ec10be6c59506e4c28d3869d33635979468ccb';
+
+test('approvedPayout: Cardano Settle gate accepts a v1 resolveClaim or a v2 2-of-3 committee decision from the live records', () => {
+  const a1 = approvedPayout({ v1: V1_RECORD, v2: V2_RECORD }, V1_PAID);
+  assert.equal(a1.registry, 'policy-cover');
+  assert.equal(a1.decision.kind, 'resolveClaim');
+  assert.equal(a1.midnight.contract, V1_RECORD.contractAddress);
+  const a2 = approvedPayout({ v1: V1_RECORD, v2: V2_RECORD }, V2_PAID);
+  assert.equal(a2.registry, 'policy-cover-v2');
+  assert.equal(a2.decision.kind, 'committee');
+  assert.deepEqual(a2.decision.approvals.map((v) => v.seat), [0, 2]);
+  assert.equal(a2.decision.rejections, 1);
+  assert.equal(a2.filedBy, 'operator-relay');
+  const claim = V2_RECORD.claims.find((c) => c.policyId === V2_PAID);
+  assert.equal(a2.midnight.resolveTx, claim.votes[claim.votes.length - 1].txHash, 'Settle names the deciding vote');
+  assert.equal(a2.midnight.evidence, claim.evidenceCommitment);
+  assert.throws(() => approvedPayout({ v1: V1_RECORD, v2: V2_RECORD }, B), /no approved Midnight claim/);
+});
+
+test('approvedPayout: refuses below-threshold, unassessed or unfinalized committee votes, a non-PAID ledger, and a policy approved on both registries', () => {
+  const v2With = (edit) => {
+    const r = structuredClone(V2_RECORD);
+    edit(r.claims.find((c) => c.policyId === V2_PAID));
+    return r;
+  };
+  assert.throws(() => approvedPayout({ v2: v2With((c) => { c.votes = c.votes.filter((v) => v.seat !== 0); }) }, V2_PAID), /1 approving seats, threshold 2/);
+  assert.throws(() => approvedPayout({ v2: v2With((c) => { c.votes[0].assessment.ok = false; }) }, V2_PAID), /without a passing off-ledger assessment/);
+  assert.throws(() => approvedPayout({ v2: v2With((c) => { c.votes[1].status = 'FailFallible'; }) }, V2_PAID), /did not finalize/);
+  assert.throws(() => approvedPayout({ v2: v2With((c) => { c.votes[c.votes.length - 1].ledgerAfterVote.status = 'CLAIM_PENDING'; }) }, V2_PAID), /did not leave the ledger PAID/);
+  assert.throws(() => approvedPayout({ v2: v2With((c) => { c.votes.push({ ...c.votes[0] }); }) }, V2_PAID), /deciding vote/);
+  const both = structuredClone(V1_RECORD);
+  both.claims.push({ ...structuredClone(V1_RECORD.claims.find((c) => c.policyId === V1_PAID)), policyId: V2_PAID });
+  assert.throws(() => approvedPayout({ v1: both, v2: V2_RECORD }, V2_PAID), /both registries/);
 });

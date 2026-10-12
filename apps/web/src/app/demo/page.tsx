@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 const next = [
-  "proveCover and fileClaim straight from a browser Midnight wallet",
+  "A holder proveCover kit like the claim kit, then proveCover and fileClaim straight from a browser Midnight wallet (holders already file claims from their own machine with a claim kit)",
   "Independent operators for the three assessor seats (the enrollment kit is live on /assessors)",
   "External audits of the Cardano and Midnight contracts",
   "Then a capped mainnet launch",

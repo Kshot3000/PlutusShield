@@ -26,7 +26,8 @@
     "compile:midnight": "pnpm --filter @plutusshield/midnight-contracts compile",
     "midnight:relay:plan": "pnpm --filter @plutusshield/midnight-contracts relay:plan",
     "committee": "node --experimental-strip-types --no-warnings contracts/committee/cli.ts",
-    "midnight:relay:plan:v2": "pnpm --filter @plutusshield/midnight-contracts relay:plan --v2"
+    "midnight:relay:plan:v2": "pnpm --filter @plutusshield/midnight-contracts relay:plan --v2",
+    "midnight:claim-kit": "pnpm --filter @plutusshield/midnight-contracts claim-kit"
   },
   "engines": {
     "node": ">=20"

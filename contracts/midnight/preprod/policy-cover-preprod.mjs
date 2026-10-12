@@ -312,7 +312,7 @@ async function main() {
         if (onLedger && onLedger.holder !== c.key.holderCommitment.toLowerCase()) throw new Error(`--claim ${op.policyId.slice(0, 16)}…: key is not the ledger's holder (rotated?)`);
         const sealed = kit ? kit.sealed : await Claims.sealEvidenceFile(path.resolve(op.evidence), op.policyId);
         const files = Claims.saveSealed(SECRETS, sealed);
-        log(`${kit ? 'claim kit opened' : 'sealed evidence'} for ${op.policyId.slice(0, 16)}…: commitment ${sealed.commitment.slice(0, 16)}… (${kit ? 'sealed in the browser' : 'fresh salt'}; envelope + key file in ${path.dirname(files.envelope)})`);
+        log(`${kit ? 'claim kit opened' : 'sealed evidence'} for ${op.policyId.slice(0, 16)}…: commitment ${sealed.commitment.slice(0, 16)}… (${kit ? 'sealed by the holder, not re-sealed' : 'fresh salt'}; envelope + key file in ${path.dirname(files.envelope)})`);
         prepared.push({ op, key: c.key, cardano: { network: 'preview', buyTx: c.key.txHash, policyDatum: c.outRef }, sealed, register, midnightCommitment: c.policy.midnightCommitment });
         planned.set(op.policyId, 'CLAIM_PENDING');
         tallies.set(op.policyId, { approvals: 0, rejections: 0, voted: [] });
