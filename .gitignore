@@ -21,6 +21,8 @@ aiken.toml.bak
 proof-server/
 *.zkir
 *.bincode
+# Pages ships verifier + zkir for readiness probes (never commit multi-MB .prover)
+!apps/web/public/zk/**/*.zkir
 
 # Env / secrets
 .env

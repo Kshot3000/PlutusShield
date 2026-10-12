@@ -163,10 +163,60 @@ test("assessCircuitSubmitReadiness separates Lace path vs midnight-js prover gap
     },
     hasCircuitProver: true,
     callPrepared: true,
+    zkAssets: { ok: true, detail: "ZK assets ready" },
   });
   assert.equal(full2.ready, true);
   assert.equal(full2.proving.kind, "delegated");
+  assert.equal(full2.checks.find((c) => c.id === "zk-assets")?.ok, true);
   assert.ok(CIRCUIT_SUBMIT_HINT_METHODS.includes("submitTransaction"));
+});
+
+test("assessCircuitSubmitReadiness zk-assets: skip / require / fail", () => {
+  const skipped = assessCircuitSubmitReadiness({
+    connected: true,
+    networkId: "preprod",
+    api: { getProvingProvider: async () => ({}) } as unknown as ConnectedAPI,
+    hasCircuitProver: false,
+    callPrepared: true,
+  });
+  assert.equal(skipped.checks.find((c) => c.id === "zk-assets"), undefined);
+  assert.equal(skipped.lacePathReady, true);
+
+  const probedBad = assessCircuitSubmitReadiness({
+    connected: true,
+    networkId: "preprod",
+    api: { getProvingProvider: async () => ({}) } as unknown as ConnectedAPI,
+    hasCircuitProver: false,
+    callPrepared: true,
+    zkAssets: { ok: false, detail: "missing verifier" },
+  });
+  assert.equal(probedBad.checks.find((c) => c.id === "zk-assets")?.ok, false);
+  assert.equal(probedBad.checks.find((c) => c.id === "zk-assets")?.required, true);
+  // Lace path ignores zk-assets (prover-adjacent)
+  assert.equal(probedBad.lacePathReady, true);
+  assert.equal(probedBad.ready, false);
+
+  const proverNeedsProbe = assessCircuitSubmitReadiness({
+    connected: true,
+    networkId: "preprod",
+    api: { getProvingProvider: async () => ({}) } as unknown as ConnectedAPI,
+    hasCircuitProver: true,
+    callPrepared: true,
+  });
+  assert.equal(proverNeedsProbe.checks.find((c) => c.id === "zk-assets")?.ok, false);
+  assert.equal(proverNeedsProbe.ready, false);
+
+  const probedOk = assessCircuitSubmitReadiness({
+    connected: true,
+    networkId: "preprod",
+    api: { getProvingProvider: async () => ({}) } as unknown as ConnectedAPI,
+    hasCircuitProver: false,
+    callPrepared: true,
+    zkAssets: { ok: true, detail: "ready" },
+  });
+  assert.equal(probedOk.checks.find((c) => c.id === "zk-assets")?.ok, true);
+  assert.equal(probedOk.lacePathReady, true);
+  assert.equal(probedOk.ready, false); // still missing circuit-prover
 });
 
 test("hintCircuitPermissions and balanceAndSubmitViaLace drive ConnectedAPI", async () => {

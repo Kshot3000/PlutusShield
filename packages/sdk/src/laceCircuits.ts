@@ -247,6 +247,7 @@ export type ReadinessCheckId =
   | "network-preprod"
   | "proving-strategy"
   | "prover-reachable"
+  | "zk-assets"
   | "circuit-prover"
   | "call-prepared";
 
@@ -278,6 +279,13 @@ export type AssessCircuitSubmitArgs = {
   callPrepared?: boolean;
   /** Optional live prover probe result (skip network in unit tests). */
   proverHealth?: ProverHealth | null;
+  /**
+   * Optional ZK asset probe (verifier + zkir; prover optional).
+   * When provided, a `zk-assets` check is required and fails if not ok.
+   * When omitted and hasCircuitProver is true, zk-assets is required and fails
+   * until probed. When omitted and no prover, the check is skipped.
+   */
+  zkAssets?: { ok: boolean; detail: string } | null;
 };
 
 export function assessCircuitSubmitReadiness(a: AssessCircuitSubmitArgs): CircuitSubmitReadiness {
@@ -339,6 +347,24 @@ export function assessCircuitSubmitReadiness(a: AssessCircuitSubmitArgs): Circui
     });
   }
 
+  const zkProbed = a.zkAssets != null;
+  if (zkProbed) {
+    checks.push({
+      id: "zk-assets",
+      ok: a.zkAssets!.ok,
+      required: true,
+      detail: a.zkAssets!.detail,
+    });
+  } else if (a.hasCircuitProver === true) {
+    checks.push({
+      id: "zk-assets",
+      ok: false,
+      required: true,
+      detail:
+        "ZK assets not probed — Compact prover needs verifier/zkir (prover keys ~3MB, local/dev only)",
+    });
+  }
+
   checks.push({
     id: "circuit-prover",
     ok: a.hasCircuitProver === true,
@@ -355,8 +381,9 @@ export function assessCircuitSubmitReadiness(a: AssessCircuitSubmitArgs): Circui
     detail: a.callPrepared ? "Circuit call args prepared" : "Seal evidence (and restore the policy key) to prepare the call",
   });
 
+  // Lace path = wallet/network/prover-server/call; ZK assets + Compact prover are separate gaps.
   const lacePathReady = checks
-    .filter((c) => c.id !== "circuit-prover")
+    .filter((c) => c.id !== "circuit-prover" && c.id !== "zk-assets")
     .every((c) => c.ok);
   const ready = checks.every((c) => c.ok);
 

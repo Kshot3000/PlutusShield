@@ -4,8 +4,8 @@
  * Browser fileClaim / proveCover path wired to the connected Lace Midnight
  * wallet: readiness checklist, proving strategy (delegated vs HTTP), prover
  * health probe, permission hints, and submit via ConnectedAPI when a
- * BrowserCircuitProver is available. Until midnight-js is bundled, Lace
- * plumbing still runs and the holder claim kit remains the production filer.
+ * BrowserCircuitProver is available. Until midnight-js is injected, Lace
+ * plumbing + ZK asset probes still run and the holder claim kit remains the production filer.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -29,7 +29,8 @@ import type { SealedEvidence } from "@plutusshield/sdk/evidence";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/ChoiceGroup";
 import { useMidnightWallet } from "@/lib/midnightWallet";
-import { getBrowserCircuitProver } from "@/lib/browserCircuit";
+import { getBrowserCircuitProver, probeDefaultZkAssets } from "@/lib/browserCircuit";
+import { zkAssetsReadinessSummary } from "@plutusshield/sdk/fetchZkConfig";
 
 const short = (h: string, n = 8) => (h.length > 2 * n + 1 ? `${h.slice(0, n)}…${h.slice(-n)}` : h);
 
@@ -88,13 +89,16 @@ export function FileWithLace({
     setProving(strategy);
 
     let proverHealth = null;
-    if (strategy.kind === "http" && connected) {
-      setBusy("probe");
-      try {
+    let zkAssets: { ok: boolean; detail: string } | null = null;
+    setBusy("probe");
+    try {
+      if (strategy.kind === "http" && connected) {
         proverHealth = await probeProverHealth(strategy.proverServerUri);
-      } finally {
-        setBusy(null);
       }
+      const zkProbe = await probeDefaultZkAssets();
+      zkAssets = zkAssetsReadinessSummary(zkProbe);
+    } finally {
+      setBusy(null);
     }
 
     setReadiness(
@@ -106,6 +110,7 @@ export function FileWithLace({
         hasCircuitProver: !!prover,
         callPrepared: callOk,
         proverHealth,
+        zkAssets,
       }),
     );
   }, [connected, policyKey, sealed.commitment, wallet]);
@@ -218,8 +223,9 @@ export function FileWithLace({
         <span className="font-mono">getProvingProvider</span> or Lace&apos;s HTTP{" "}
         <span className="font-mono">proverServerUri</span>), and{" "}
         <span className="font-mono">balanceUnsealedTransaction</span> + <span className="font-mono">submitTransaction</span>.
-        Building the Compact proof still needs the browser midnight-js prover (not in the Pages bundle yet) — until then
-        the claim kit below files the same <span className="font-mono">fileClaim</span> from your machine.
+        ZK verifier/zkir for fileClaim and proveCover are probed from /zk/policy-cover-v2. Compact prove still needs an injected midnight-js
+        <span className="font-mono">BrowserCircuitProver</span> (not in the Pages bundle yet) — until then the claim kit below files the same{" "}
+        <span className="font-mono">fileClaim</span> from your machine.
       </p>
 
       <pre className="overflow-x-auto rounded-lg border border-[var(--hairline)] bg-bg/60 p-2.5 font-mono text-[11px] leading-relaxed text-text-muted">{`fileClaim(
@@ -252,7 +258,7 @@ proving:  ${strategyLabel}`}</pre>
 
       <div className="flex flex-wrap gap-2">
         <Button variant="secondary" size="sm" disabled={!connected || busy !== null} onClick={() => void refresh()}>
-          {busy === "probe" ? "Probing prover…" : "Re-check Lace path"}
+          {busy === "probe" ? "Probing prover + ZK…" : "Re-check Lace path"}
         </Button>
         <Button variant="secondary" size="sm" disabled={!connected || busy !== null} onClick={() => void onHint()}>
           {busy === "hint" ? "Hinting…" : "Hint Lace permissions"}
