@@ -4,3 +4,4 @@ export * from "./assets.ts";
 export * from "./evidence.ts";
 export * from "./midnight.ts";
 export * from "./relay.ts";
+export * from "./lace.ts";

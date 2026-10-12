@@ -5,6 +5,7 @@ import { EvidenceVault } from "@/components/claim/EvidenceVault";
 import { ClaimLifecycle } from "@/components/claim/ClaimLifecycle";
 import { ExploitPayout } from "@/components/claim/ExploitPayout";
 import { MidnightCommittee } from "@/components/claim/MidnightCommittee";
+import { MidnightWalletStatusCard } from "@/components/wallet/MidnightWalletButton";
 
 export const metadata: Metadata = {
   title: "Exploit evidence vault",
@@ -39,6 +40,9 @@ export default function EvidencePage() {
           ← Depeg claim checker
         </Link>
       </p>
+      <div className="mb-6" id="claim-kit-note">
+        <MidnightWalletStatusCard />
+      </div>
       <EvidenceVault />
       <div className="mt-10 grid gap-4 md:grid-cols-3">
         {notes.map((n) => (
@@ -54,8 +58,11 @@ export default function EvidencePage() {
       <p className="mt-6 text-xs leading-relaxed text-text-dim">
         The live registry on Midnight Preprod is the v2 committee contract (<code className="font-mono">policy-cover-v2.compact</code>);
         the claims drill above ran <code className="font-mono">fileClaim</code> and <code className="font-mono">resolveClaim</code> on
-        the v1 registry (<code className="font-mono">policy-cover.compact</code>) from the operator relay, and is kept as its history. Filing straight from this page (a browser Midnight wallet and proof) is next; today the page
-        seals the bundle and shows the exact <code className="font-mono">fileClaim</code> arguments. Exploit cover is bought
+        the v1 registry (<code className="font-mono">policy-cover.compact</code>) from the operator relay, and is kept as its history. Lace Midnight connect is live on this page (Preprod address + Lace service URIs). Submitting{" "}
+        <code className="font-mono">proveCover</code> / <code className="font-mono">fileClaim</code> from the browser
+        wallet still needs ZK configs and a proof server in the page — until then the page seals the bundle, offers a
+        holder claim kit, and shows the exact <code className="font-mono">fileClaim</code> arguments for{" "}
+        <code className="font-mono">policy-cover-preprod.mjs --claim … --kit …</code>. Exploit cover is bought
         from the operator tooling on the Preview exploit pool for now (a browser Buy for it is next), and an approved claim is
         paid on Cardano by a Settle signed by 2 of the 3 assessors on the pool&apos;s committee. Read the{" "}
         <Link href="/docs/privacy#evidence-vault" className="text-text-muted underline underline-offset-4 hover:text-text">

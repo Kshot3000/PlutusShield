@@ -3,6 +3,7 @@ import { Instrument_Sans, Instrument_Serif, JetBrains_Mono } from "next/font/goo
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { WalletProvider } from "@/lib/wallet";
+import { MidnightWalletProvider } from "@/lib/midnightWallet";
 import "./globals.css";
 
 const instrumentSans = Instrument_Sans({
@@ -75,11 +76,13 @@ export default function RootLayout({
           Skip to content
         </a>
         <WalletProvider>
-          <Header />
-          <main id="main" className="flex flex-1 flex-col">
-            {children}
-          </main>
-          <Footer />
+          <MidnightWalletProvider>
+            <Header />
+            <main id="main" className="flex flex-1 flex-col">
+              {children}
+            </main>
+            <Footer />
+          </MidnightWalletProvider>
         </WalletProvider>
       </body>
     </html>

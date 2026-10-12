@@ -13,6 +13,9 @@ importers:
       '@lucid-evolution/lucid':
         specifier: 0.6.7
         version: 0.6.7(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.6.6)(@harmoniclabs/crypto@0.2.5)(@harmoniclabs/pair@1.0.0)(fast-check@3.23.2)
+      '@midnight-ntwrk/dapp-connector-api':
+        specifier: 4.0.1
+        version: 4.0.1
       '@plutusshield/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
@@ -67,7 +70,11 @@ importers:
         specifier: 0.16.0
         version: 0.16.0
 
-  packages/sdk: {}
+  packages/sdk:
+    dependencies:
+      '@midnight-ntwrk/dapp-connector-api':
+        specifier: 4.0.1
+        version: 4.0.1
 
   services/oracle-relay: {}
 
@@ -565,6 +572,9 @@ packages:
 
   '@midnight-ntwrk/compact-runtime@0.16.0':
     resolution: {integrity: sha512-UR8+MI5zol+gkne17ZZru8xmZNf11xMgQJkiLT9KWsF+QD8Wuz1WONaqQLL0RAZ2aN2XlRsBFd0ViKDVh8prFw==}
+
+  '@midnight-ntwrk/dapp-connector-api@4.0.1':
+    resolution: {integrity: sha512-IstRo8xfmlJlGgUcAJeRzPUmGCp0/xZR3/bfTOk33MHrzbGmB79r/zYziGavcclo1pkkoBHAodX4vz3xgFxczw==}
 
   '@midnight-ntwrk/onchain-runtime-v3@3.1.2':
     resolution: {integrity: sha512-BQjmK6yVbHnRt9/l013ek3doLbmjaP08fbwSsphhIbEKIhaUZ5eW7oj8mc7DFDU7qtK35oLNr9GaiujHMXKZvQ==}
@@ -3053,6 +3063,8 @@ snapshots:
       '@midnight-ntwrk/onchain-runtime-v3': 3.1.2
       '@types/object-inspect': 1.13.0
       object-inspect: 1.13.4
+
+  '@midnight-ntwrk/dapp-connector-api@4.0.1': {}
 
   '@midnight-ntwrk/onchain-runtime-v3@3.1.2': {}
 

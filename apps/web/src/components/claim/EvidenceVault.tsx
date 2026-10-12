@@ -565,6 +565,7 @@ function ClaimKitPanel({ sealed }: { sealed: SealedEvidence }) {
           <p className="text-[12.5px] leading-relaxed text-text-muted">
             This browser holds the Midnight policy key for this policy. Wrap it and the sealed evidence into one claim kit,
             locked with a passphrase, and file the claim from your own machine. Your holder key never goes to the PlutusShield relay.
+            Lace Midnight connect is available above for Preprod address / service URIs; browser <span className="font-mono">fileClaim</span> from that wallet is next.
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
             <div>

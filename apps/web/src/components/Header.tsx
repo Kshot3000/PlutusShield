@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Button } from "./ui/Button";
 import { Logo } from "./Logo";
 import { WalletButton } from "./wallet/WalletButton";
+import { MidnightWalletButton } from "./wallet/MidnightWalletButton";
 
 const nav = [
   { href: "/cover", label: "Buy cover" },
@@ -103,7 +104,12 @@ export function Header() {
               GitHub
             </Button>
           </span>
-          {inApp && <WalletButton />}
+          {inApp && (
+            <>
+              <WalletButton />
+              <MidnightWalletButton />
+            </>
+          )}
           <Button href={cta.href} size="sm">
             {cta.label}
           </Button>
@@ -159,6 +165,7 @@ export function Header() {
           </ul>
           <div className="mt-auto flex flex-col gap-2.5 pt-8">
             <WalletButton block />
+            <MidnightWalletButton block />
             <Button href="/cover" size="lg" className="w-full">
               Get a quote
             </Button>

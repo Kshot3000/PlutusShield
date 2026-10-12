@@ -4,6 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { ShieldMark } from "@/components/Logo";
 import { Button } from "@/components/ui/Button";
 import { WalletStatusCard } from "@/components/wallet/WalletStatusCard";
+import { MidnightWalletStatusCard } from "@/components/wallet/MidnightWalletButton";
 import { PoliciesCard } from "@/components/cover/PoliciesCard";
 import { LpPositionsCard } from "@/components/pool/LpPositionsCard";
 import { MidnightPreprodPanel } from "@/components/midnight/MidnightPreprodPanel";
@@ -29,8 +30,9 @@ export default function AppPage() {
       title="Your shield"
       description="Your cover and underwriting on Cardano Preview, with a private twin on Midnight Preprod. Buy depeg cover in ADA or USDC, provide liquidity, and check claims. The math matches the validator exactly."
     >
-      <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
         <WalletStatusCard />
+        <MidnightWalletStatusCard />
         <PoliciesCard />
         <LpPositionsCard />
       </div>
