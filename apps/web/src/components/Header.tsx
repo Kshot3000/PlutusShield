@@ -13,6 +13,7 @@ const nav = [
   { href: "/#how-it-works", label: "How it works" },
   { href: "/#dual-chain", label: "Architecture" },
   { href: "/docs", label: "Docs" },
+  { href: "/demo", label: "Demo" },
 ];
 
 export function Header() {

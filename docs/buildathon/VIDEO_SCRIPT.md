@@ -5,13 +5,14 @@ About 3 minutes. Record at 1600×900 or 1920×1080 in a desktop browser with a C
 Links used on screen (all checked Oct 12, 2026):
 
 - Live site: https://kshot3000.github.io/PlutusShield/
+- Guided demo (this script as a page, every step with its on-chain receipts): https://kshot3000.github.io/PlutusShield/demo/
 - Cover desk: https://kshot3000.github.io/PlutusShield/cover/
 - App dashboard: https://kshot3000.github.io/PlutusShield/app/
 - Evidence vault: https://kshot3000.github.io/PlutusShield/claim/evidence/
 - Midnight v2 contract: https://preprod.midnightexplorer.com/contracts/0x5430b803b6b3df6e6ee1d498bb02e2f2d06cb46661e72af1e6208d864feb8110
 - Midnight v2 proveCover tx (policy 72512fac…): https://preprod.midnightexplorer.com/transactions/0x853bab79c11f0a5ea42ff46121efc60e32b74fe5ca07b18761b71a6f442c39ce
 - 2-of-3 committee payout on Cardano: https://preview.cexplorer.io/tx/c35535dd089693d5b9676d5569a8d31b405726f7d02f782647d6afa67899ab38
-- Latest oracle publish (99.84%, Oct 12): https://preview.cexplorer.io/tx/3a8cdf2b338b06802b502f29a77f9ba56cfad1c1b07609930e12ed6dcea263fc
+- Latest oracle publish (peg 99.77%, published Oct 12 14:11 UTC; confirmed on Preview, checked Oct 12, 2026): https://preview.cexplorer.io/tx/b2e0fbe6efef3a5fdad0b135f6968172ff509e0ddcf7c61f6205de4b5ab81b29
 
 ---
 

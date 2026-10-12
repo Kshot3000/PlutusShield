@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Button } from "../ui/Button";
 import { Container } from "../ui/Container";
 import { ShieldVisual } from "./ShieldVisual";
@@ -52,7 +53,18 @@ export function Hero() {
             </Button>
           </div>
 
-          <ul className="animate-rise delay-4 mt-12 grid w-full max-w-[30rem] grid-cols-2 gap-x-6 gap-y-3 border-t border-[var(--hairline)] pt-6">
+          <Link
+            href="/demo"
+            className="animate-rise delay-4 group mt-5 inline-flex items-center gap-2.5 rounded-full border border-[color-mix(in_srgb,var(--midnight)_30%,transparent)] bg-[var(--midnight-soft)] py-1.5 pl-2 pr-3.5 text-[13px] text-text-muted transition-colors hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <span className="rounded-full bg-white/[0.06] px-2 py-0.5 font-mono-label text-[9.5px] text-midnight">
+              Buildathon
+            </span>
+            Judges: take the 3-minute guided demo
+            <span className="transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden="true">→</span>
+          </Link>
+
+          <ul className="animate-rise delay-5 mt-10 grid w-full max-w-[30rem] grid-cols-2 gap-x-6 gap-y-3 border-t border-[var(--hairline)] pt-6">
             {pillars.map((p) => (
               <li key={p.label} className="flex items-center gap-2 text-[12.5px] text-text-muted">
                 <span className={`h-1.5 w-1.5 rounded-full ${p.tone}`} aria-hidden="true" />

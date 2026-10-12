@@ -20,7 +20,7 @@ export function AppShell({
 }: {
   title: string;
   description: string;
-  active: "app" | "cover" | "pool" | "claim" | "docs";
+  active: "app" | "cover" | "pool" | "claim" | "docs" | "demo";
   children?: ReactNode;
 }) {
   return (
