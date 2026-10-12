@@ -9,7 +9,9 @@ import { mkdtempSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pureCircuits } from '../src/managed/policy-cover/contract/index.js';
-import { parseClaimOps, sealEvidenceFile, saveSealed, assessClaim, loadFiling, applyVote } from '../relay/claims.ts';
+import { parseClaimOps, sealEvidenceFile, saveSealed, assessClaim, loadFiling, applyVote, openClaimKitFile } from '../relay/claims.ts';
+import { buildClaimKit, claimKitFileText } from '../../../packages/sdk/src/claimkit.ts';
+import { makePolicyKey } from '../../../packages/sdk/src/midnight.ts';
 import { evidenceFileText } from '../../../packages/sdk/src/evidence.ts';
 
 const A = '72512facd0a8eb5257888b8f3b0ee71b774862cc7f4c7d7cc4f124c6f6d745d0';
@@ -112,4 +114,30 @@ test('applyVote mirrors voteClaim: 2-of-3 split vote, double votes, rejection', 
   assert.equal(applyVote(applyVote(t0, 0, true, 3).tally, 1, true, 3).status, 'CLAIM_PENDING', '3-of-3 needs all seats');
   assert.throws(() => applyVote(t0, 3, true, 2), /seat 3/);
   assert.throws(() => applyVote(t0, 0, true, 0), /threshold/);
+});
+
+test('parseClaimOps: --kit files a holder claim kit instead of --evidence', () => {
+  assert.deepEqual(parseClaimOps(['--claim', A, '--kit', 'kit.json']), [{ kind: 'claim', policyId: A, evidence: '', kit: 'kit.json' }]);
+  assert.throws(() => parseClaimOps(['--claim', A, '--kit', 'k.json', '--evidence', 'e.json']), /not both/);
+  assert.throws(() => parseClaimOps(['--claim', A, '--kit', 'a.json', '--kit', 'b.json']), /one --kit/);
+  assert.throws(() => parseClaimOps(['--kit', 'k.json']), /must follow --claim/);
+  assert.throws(() => parseClaimOps(['--claim', A]), /--evidence <file> or --kit/);
+});
+
+test('openClaimKitFile: browser-sealed kit opens to the commitment the contract recomputes; wrong policy or no passphrase refused', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ps-kit-'));
+  const sealed = await sealEvidenceFile(DEMO, A);
+  const key = await makePolicyKey({ network: 'preview', policyId: A, coverage: 50_000_000n });
+  const kit = await buildClaimKit({ key, sealed, passphrase: 'kit passphrase 1', iterations: 1_000 });
+  const file = join(dir, 'kit.json');
+  writeFileSync(file, claimKitFileText(kit));
+  const opened = await openClaimKitFile(file, A, 'kit passphrase 1');
+  assert.equal(opened.sealed.commitment, sealed.commitment);
+  assert.equal(opened.key.holderSecret, key.holderSecret);
+  const salt = new Uint8Array(Buffer.from(sealed.keyFile.salt, 'hex'));
+  assert.equal(hex(pureCircuits.evidenceCommitment(new Uint8Array(Buffer.from(sealed.digest, 'hex')), salt)), opened.sealed.commitment);
+  await assert.rejects(openClaimKitFile(file, B, 'kit passphrase 1'), /is for policy/);
+  await assert.rejects(openClaimKitFile(file, A, ''), /PLUTUSSHIELD_CLAIM_KIT_PASSPHRASE/);
+  const p = saveSealed(dir, opened.sealed);
+  assert.equal(statSync(p.keyFile).mode & 0o777, 0o600);
 });

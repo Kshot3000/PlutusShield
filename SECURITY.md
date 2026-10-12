@@ -34,4 +34,4 @@ With Node 20+, pnpm 9, Aiken v1.1.24 and the Compact toolchain (compactc 0.31.1)
 pnpm install && pnpm test
 ```
 
-On main today that runs 131 Aiken checks, the Lucid-emulator end-to-end flow, 55 Midnight simulation tests, 92 SDK tests, 14 oracle-relay tests and 3 committee-kit tests.
+On main today that runs 131 Aiken checks, the Lucid-emulator end-to-end flow, 57 Midnight simulation tests, 97 SDK tests, 14 oracle-relay tests and 3 committee-kit tests.

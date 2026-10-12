@@ -52,7 +52,7 @@ Links used on screen (all checked Oct 12, 2026):
 
 **On screen:** the README Buildathon section or deck slide 9, then the repo.
 
-**Say:** "Everything you saw is on testnet and not audited yet. The three committee seats are run by us today, and the repo already has the kit for independent assessors to enroll. Next up: proveCover and fileClaim straight from the browser wallet, an audit, then a capped mainnet launch. The code, 295 tests and all the transactions are linked in the repo. Thanks for watching."
+**Say:** "Everything you saw is on testnet and not audited yet. The three committee seats are run by us today, and the repo already has the kit for independent assessors to enroll. Next up: proveCover and fileClaim straight from the browser wallet, an audit, then a capped mainnet launch. The code, 302 tests and all the transactions are linked in the repo. Thanks for watching."
 
 ---
 

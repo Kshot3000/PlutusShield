@@ -26,7 +26,7 @@ export const MILESTONES: Milestone[] = [
   },
   {
     label: "Midnight policy registry",
-    detail: "Deployed on Midnight Preprod. The v2 committee registry leads /app: Cardano Preview policies are mirrored into the private registry, holders prove cover on-chain without revealing the amount, and the first 2-of-3 committee vote decided a claim PAID. 55 simulation tests pass.",
+    detail: "Deployed on Midnight Preprod. The v2 committee registry leads /app: Cardano Preview policies are mirrored into the private registry, holders prove cover on-chain without revealing the amount, and the first 2-of-3 committee vote decided a claim PAID. 57 simulation tests pass.",
     state: "done",
   },
   {

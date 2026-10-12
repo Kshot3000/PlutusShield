@@ -14,7 +14,8 @@
     "./evidence": "./src/evidence.ts",
     "./chain": "./src/chain.ts",
     "./midnight": "./src/midnight.ts",
-    "./relay": "./src/relay.ts"
+    "./relay": "./src/relay.ts",
+    "./claimkit": "./src/claimkit.ts"
   },
   "scripts": {
     "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts"

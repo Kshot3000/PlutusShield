@@ -64,8 +64,8 @@ export default function SecurityPage() {
           rows={[
             ["Cardano validators (Aiken)", <C key="c">pnpm test:cardano</C>, "131 checks, 0 errors, 0 warnings"],
             ["Cardano end-to-end (Lucid emulator)", <C key="c">pnpm test:deploy</C>, "Full depeg + exploit-cover flow, including refused Buys and refused Settles"],
-            ["Midnight circuits (Compact simulator)", <C key="c">pnpm test:midnight</C>, "55 tests (v1 + v2 registry, claims relay, relay plan, ledger decoding)"],
-            ["SDK (quote, pool ledger, codecs, evidence, committee)", <C key="c">pnpm test:sdk</C>, "92 tests"],
+            ["Midnight circuits (Compact simulator)", <C key="c">pnpm test:midnight</C>, "57 tests (v1 + v2 registry, claims relay and holder claim kits, relay plan, ledger decoding)"],
+            ["SDK (quote, pool ledger, codecs, evidence, claim kit, committee)", <C key="c">pnpm test:sdk</C>, "97 tests"],
             ["Oracle relay", <C key="c">pnpm test:relay</C>, "14 tests"],
             ["Committee enrollment kit", <C key="c">pnpm --filter @plutusshield/committee test</C>, "3 tests"],
           ]}
@@ -330,8 +330,10 @@ export default function SecurityPage() {
             datum doesn&apos;t yet.
           </li>
           <li>
-            <Strong>Exploit claims are filed by the relay CLI.</Strong> <C>fileClaim</C> needs the holder&apos;s
-            Midnight key in a proving client; the browser doesn&apos;t submit it yet.
+            <Strong>Exploit claims still need a CLI.</Strong> <C>fileClaim</C> needs the holder&apos;s Midnight
+            key in a proving client. The holder can now file it from their own machine with a passphrase-encrypted
+            claim kit from <DocLink href="/claim/evidence">/claim/evidence</DocLink> (<C>--claim … --kit …</C>), so
+            the key never goes to the operator relay, but the browser wallet doesn&apos;t submit it yet.
           </li>
           <li>
             <Strong>Young toolchains.</Strong> Pinned to Aiken v1.1.24 (stdlib v4.0.0), compactc 0.31.1 and

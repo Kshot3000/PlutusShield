@@ -21,6 +21,7 @@ import {
   type EvidenceInput,
   type SealedEvidence,
 } from "../../../packages/sdk/src/evidence.ts";
+import { openClaimKit } from "../../../packages/sdk/src/claimkit.ts";
 
 const HEX32 = /^[0-9a-f]{64}$/;
 
@@ -29,13 +30,14 @@ export const POLICY_STATUS = ["NONE", "ACTIVE", "CLAIM_PENDING", "PAID", "EXPIRE
 export type PolicyStatusName = (typeof POLICY_STATUS)[number];
 
 export type ClaimOp =
-  | { kind: "claim"; policyId: string; evidence: string }
+  | { kind: "claim"; policyId: string; evidence: string; kit?: string }
   | { kind: "resolve"; policyId: string; approved: boolean; envelope?: string; keyFile?: string }
   | { kind: "vote"; policyId: string; member: number; approved: boolean; envelope?: string; keyFile?: string };
 
 /**
  * Parse claim operations from argv, in order:
  *   --claim <policyId> --evidence <evidence-input.json>
+ *   --claim <policyId> --kit <plutusshield-claim-….json>   (holder claim kit from /claim/evidence)
  *   --resolve <policyId> (--approve | --reject) [--envelope <file> --evidence-key <file>]   (v1, one assessor)
  *   --vote <policyId> --member <0|1|2> (--approve | --reject) [--envelope … --evidence-key …]   (v2 committee)
  * Several may be chained (file then resolve in one wallet sync). Throws on
@@ -73,6 +75,11 @@ export function parseClaimOps(argv: string[]): ClaimOp[] {
       if (op?.kind !== "claim") throw new Error("--evidence must follow --claim <policyId>");
       if (op.evidence) throw new Error("one --evidence per --claim");
       op.evidence = val();
+    } else if (a === "--kit") {
+      const op = last();
+      if (op?.kind !== "claim") throw new Error("--kit must follow --claim <policyId>");
+      if (op.kit) throw new Error("one --kit per --claim");
+      op.kit = val();
     } else if (a === "--approve" || a === "--reject") {
       const op = last();
       if (op?.kind !== "resolve" && op?.kind !== "vote") throw new Error(`${a} must follow --resolve or --vote <policyId>`);
@@ -86,7 +93,8 @@ export function parseClaimOps(argv: string[]): ClaimOp[] {
     }
   }
   for (const op of ops) {
-    if (op.kind === "claim" && !op.evidence) throw new Error(`--claim ${op.policyId.slice(0, 16)}… needs --evidence <file>`);
+    if (op.kind === "claim" && !op.evidence && !op.kit) throw new Error(`--claim ${op.policyId.slice(0, 16)}… needs --evidence <file> or --kit <claim kit>`);
+    if (op.kind === "claim" && op.evidence && op.kit) throw new Error(`--claim ${op.policyId.slice(0, 16)}…: give --evidence or --kit, not both`);
     if (op.kind === "resolve" && op.approved === undefined) throw new Error(`--resolve ${op.policyId.slice(0, 16)}… needs --approve or --reject`);
     if (op.kind === "vote" && op.member === -1) throw new Error(`--vote ${op.policyId.slice(0, 16)}… needs --member <0|1|2>`);
     if (op.kind === "vote" && op.approved === undefined) throw new Error(`--vote ${op.policyId.slice(0, 16)}… needs --approve or --reject`);
@@ -107,6 +115,21 @@ export async function sealEvidenceFile(file: string, policyId: string, now = new
   const pid = String(rest.policyId ?? policyId).toLowerCase();
   if (pid !== policyId) throw new Error(`evidence file names policy ${pid.slice(0, 16)}…, not ${policyId.slice(0, 16)}…`);
   return sealEvidence({ ...rest, policyId }, { now });
+}
+
+/**
+ * Open a holder claim kit (packages/sdk/src/claimkit.ts) for `--claim <id> --kit <file>`:
+ * decrypts the policy key with the kit passphrase, re-derives its commitments,
+ * and re-verifies that the sealed evidence opens to the commitment the kit will
+ * file. The kit must be for `policyId`. Returns the key and a SealedEvidence-
+ * shaped filing (no re-seal: the commitment the holder sealed in the browser is
+ * the one that goes on-ledger).
+ */
+export async function openClaimKitFile(file: string, policyId: string, passphrase: string) {
+  if (!passphrase) throw new Error("--kit needs the kit passphrase in PLUTUSSHIELD_CLAIM_KIT_PASSPHRASE");
+  const opened = await openClaimKit(readFileSync(file, "utf8"), passphrase);
+  if (opened.kit.policyId !== policyId) throw new Error(`claim kit is for policy ${opened.kit.policyId.slice(0, 16)}…, not ${policyId.slice(0, 16)}…`);
+  return opened;
 }
 
 /** Where the relay keeps a filing's envelope and key file (outside the repo). */

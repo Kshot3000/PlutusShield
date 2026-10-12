@@ -41,6 +41,12 @@
  * `--register-first` lets `--claim` take a policy that isn't mirrored yet
  * (e.g. a new exploit-cover pool's Buy): registerPolicy + proveCover from the
  * local holder key, then fileClaim, all in the same wallet sync.
+ *
+ * Holder claim kit: `--claim <policyId> --kit plutusshield-claim-….json` files
+ * with the kit downloaded from /claim/evidence instead of a key dir + evidence
+ * input. Set PLUTUSSHIELD_CLAIM_KIT_PASSPHRASE to the kit passphrase. The kit's
+ * policy key is checked against the Cardano datum and the ledger's holder, and
+ * its evidence must open to the commitment it files.
  * Preflight (ledger state, keys, Cardano datum, sealing) runs before the wallet
  * syncs, so a bad request fails in seconds, not after the dust sync; add
  * `--dry-run` to stop after it (no wallet, no proof, no tx).
@@ -296,14 +302,17 @@ async function main() {
         // --register-first: a policy not yet mirrored is registered (issuer) + proven (holder) in the same sync.
         const register = now === 'NONE' && REGISTER_FIRST;
         if (now !== 'ACTIVE' && !register) throw new Error(`--claim ${op.policyId.slice(0, 16)}…: policy is ${now} on Midnight, not ACTIVE${now === 'NONE' ? ' (add --register-first to mirror it in this run)' : ''}`);
-        const local = keys.get(op.policyId);
-        if (!local) throw new Error(`--claim ${op.policyId.slice(0, 16)}…: no holder policy key in ${KEY_DIRS.join(', ')}`);
-        const c = await checkKey(fs.readFileSync(local.file, 'utf8'));
+        // --kit: the holder's own claim kit from /claim/evidence (passphrase-encrypted policy key +
+        // evidence sealed in the browser), so no key dir and no re-seal; otherwise key dirs + --evidence.
+        const kit = op.kit ? await Claims.openClaimKitFile(path.resolve(op.kit), op.policyId, env('PLUTUSSHIELD_CLAIM_KIT_PASSPHRASE', '')) : null;
+        const local = kit ? null : keys.get(op.policyId);
+        if (!kit && !local) throw new Error(`--claim ${op.policyId.slice(0, 16)}…: no holder policy key in ${KEY_DIRS.join(', ')} (or pass --kit <claim kit>)`);
+        const c = await checkKey(kit ? JSON.stringify(kit.key) : fs.readFileSync(local.file, 'utf8'));
         const onLedger = claimView(l0, op.policyId);
         if (onLedger && onLedger.holder !== c.key.holderCommitment.toLowerCase()) throw new Error(`--claim ${op.policyId.slice(0, 16)}…: key is not the ledger's holder (rotated?)`);
-        const sealed = await Claims.sealEvidenceFile(path.resolve(op.evidence), op.policyId);
+        const sealed = kit ? kit.sealed : await Claims.sealEvidenceFile(path.resolve(op.evidence), op.policyId);
         const files = Claims.saveSealed(SECRETS, sealed);
-        log(`sealed evidence for ${op.policyId.slice(0, 16)}…: commitment ${sealed.commitment.slice(0, 16)}… (fresh salt; envelope + key file in ${path.dirname(files.envelope)})`);
+        log(`${kit ? 'claim kit opened' : 'sealed evidence'} for ${op.policyId.slice(0, 16)}…: commitment ${sealed.commitment.slice(0, 16)}… (${kit ? 'sealed in the browser' : 'fresh salt'}; envelope + key file in ${path.dirname(files.envelope)})`);
         prepared.push({ op, key: c.key, cardano: { network: 'preview', buyTx: c.key.txHash, policyDatum: c.outRef }, sealed, register, midnightCommitment: c.policy.midnightCommitment });
         planned.set(op.policyId, 'CLAIM_PENDING');
         tallies.set(op.policyId, { approvals: 0, rejections: 0, voted: [] });
@@ -498,7 +507,7 @@ async function main() {
             policyId: id,
             cardano: p.cardano,
             evidenceCommitment: p.sealed.commitment,
-            evidenceInput: path.relative(REPO, path.resolve(op.evidence)),
+            ...(op.kit ? { source: 'holder-claim-kit' } : { evidenceInput: path.relative(REPO, path.resolve(op.evidence)) }),
             fileClaim: filed,
             ledgerAfterFile: after,
             filedAt: new Date().toISOString(),

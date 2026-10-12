@@ -153,6 +153,23 @@ node policy-cover-preprod.mjs
 
 It needs a funded Preprod wallet (tNIGHT plus generated tDUST) and a local proof server on `:6300`. Set `MIDNIGHT_POLICY_COVER_ADDRESS` (or keep the deploy record) to reuse the contract instead of deploying again.
 
+### Holder claim kit
+
+A holder can file an exploit claim from their own machine instead of handing their policy key to the operator relay. On [`/claim/evidence`](https://kshot3000.github.io/PlutusShield/claim/evidence/), after sealing the evidence, a browser that holds the policy key (saved at Buy, or restored under My policies) downloads one **claim kit** (`plutusshield.claim-kit.v1`, `packages/sdk/src/claimkit.ts`):
+
+- the policy key, always passphrase-encrypted (PBKDF2-SHA-256 → AES-256-GCM, the same envelope as the key backup); the holder secret is never written in the clear,
+- the AES-256-GCM evidence bundle and its key file, sealed in the browser,
+- the exact call: `fileClaim(policyId, evidenceCommitment)` on the v2 registry.
+
+Then, with a funded Preprod wallet and a local proof server, file it with the same script and env as above:
+
+```bash
+PLUTUSSHIELD_COVER_VERSION=2 PLUTUSSHIELD_CLAIM_KIT_PASSPHRASE='<kit passphrase>' \
+node policy-cover-preprod.mjs --claim <policyId> --kit plutusshield-claim-<policy>.json
+```
+
+`--kit` replaces `--evidence` and the key dirs for that claim. Before any wallet call the script decrypts the kit, re-derives the key's commitments, checks the key opens the Cardano datum's `midnight_commitment` and is the holder in the Midnight ledger record, and re-verifies that the evidence opens to the commitment it will file (no re-seal: the commitment sealed in the browser is the one recorded). It then saves the envelope and key file under `$PLUTUSSHIELD_SECRETS/evidence/` for the committee. The kit format, its refusals (wrong passphrase, tampered evidence, foreign datum, mismatched policy) and the CLI parsing are covered by `packages/sdk/test/claimkit.test.ts` and `test/claims.test.mjs`; the first holder-filed Preprod claim from a kit is next.
+
 ### Batch relay: every Cardano Buy
 
 `registerPolicy` needs the holder and coverage commitments, but the datum only holds their hash. So every Buy (same shared builder: `/cover`, `pnpm web-buy`, `pnpm preview buy`, the emulator) also publishes a **registration ticket** as Cardano tx metadata:

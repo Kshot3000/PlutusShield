@@ -243,7 +243,9 @@ salt   = 32 random bytes, kept in the claimant's key file`}</Formula>
             <Strong>Filing is operator-run.</Strong> The registry is live on Midnight Preprod and claims drills ran
             <C>fileClaim</C> there from the relay — decided by <C>resolveClaim</C> on v1 and by committee{" "}
             <C>voteClaim</C> on the live v2 registry — but the vault page can&apos;t submit
-            <C>fileClaim</C> from the browser yet: it seals the bundle and shows the exact call.
+            <C>fileClaim</C> from the browser wallet yet. It seals the bundle, shows the exact call, and, when this
+            browser holds the policy key, downloads a passphrase-encrypted claim kit the holder files from their
+            own machine (<C>policy-cover-preprod.mjs --claim … --kit …</C>), so the holder key stays with the holder.
           </p>
           <p>
             <Strong>Disclosure is all or nothing.</Strong> The key file opens the whole bundle. There is no

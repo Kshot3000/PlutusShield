@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useId, useRef, useState, type ReactNode } from "react";
 import {
   EVIDENCE_LIMITS,
@@ -23,6 +24,11 @@ import {
 import { Button } from "@/components/ui/Button";
 import { ChoiceGroup, Chip } from "@/components/ui/ChoiceGroup";
 import { useMidnightActivity } from "@/lib/useMidnightActivity";
+import { downloadText, usePolicyKeys } from "@/lib/policyKeys";
+import { buildClaimKit, claimKitFileName, claimKitFileText } from "@plutusshield/sdk/claimkit";
+
+/** Live Midnight Preprod registry the holder claim kit targets (contracts/midnight/deployments/preprod-v2.json). */
+const PREPROD_V2_ADDRESS = "5430b803b6b3df6e6ee1d498bb02e2f2d06cb46661e72af1e6208d864feb8110";
 
 /* ---------- small helpers ---------- */
 
@@ -501,25 +507,107 @@ function SealedPanel({ sealed, onReset }: { sealed: SealedEvidence | null; onRes
         can&apos;t be opened. Give it only to the assessor, over a private channel, and never post it publicly.
       </p>
 
-      <div className="rounded-xl border border-[var(--hairline)] bg-bg-muted/60 p-3.5">
-        <div className="flex items-center justify-between gap-3">
-          <p className="font-mono-label text-[9.5px] text-text-dim">Midnight call · policy-cover.compact</p>
-          <Chip tone="gold">Browser filing next</Chip>
-        </div>
-        <pre className="mt-2 overflow-x-auto font-mono text-[11.5px] leading-relaxed text-text-muted">{`fileClaim(
-  policyId:           ${short(b.policyId, 8)},
-  evidenceCommitment: ${short(sealed.commitment, 8)}
-)`}</pre>
-        <p className="mt-2 text-[12px] leading-relaxed text-text-dim">
-          The registry is live on Midnight Preprod, and the operator relay files exactly this call
-          (<span className="font-mono">policy-cover-preprod.mjs --claim</span>); filing it from this browser with your policy key is
-          next. The bundle never enters the circuit; only the commitment is recorded.
-        </p>
-      </div>
+      <ClaimKitPanel sealed={sealed} />
       <Button variant="ghost" size="sm" onClick={onReset}>
         Start a new bundle
       </Button>
     </section>
+  );
+}
+
+/* ---------- holder claim kit ---------- */
+
+function ClaimKitPanel({ sealed }: { sealed: SealedEvidence }) {
+  const keys = usePolicyKeys();
+  const policyId = sealed.bundle.policyId;
+  const key = keys[policyId];
+  const [pass, setPass] = useState("");
+  const [again, setAgain] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const passId = useId();
+  const againId = useId();
+  const tooShort = pass.length > 0 && pass.length < 8;
+  const mismatch = again.length > 0 && again !== pass;
+  const ready = !!key && pass.length >= 8 && again === pass && !busy;
+  const file = claimKitFileName(policyId);
+
+  const make = async () => {
+    if (!key) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const kit = await buildClaimKit({ key, sealed, passphrase: pass, target: { address: PREPROD_V2_ADDRESS } });
+      downloadText(file, claimKitFileText(kit));
+      setSaved(true);
+      setPass("");
+      setAgain("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 rounded-xl border border-[var(--hairline)] bg-bg-muted/60 p-3.5">
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-mono-label text-[9.5px] text-text-dim">File it yourself · Midnight Preprod</p>
+        <Chip tone={saved ? "accent" : "gold"}>{saved ? "Kit saved" : "Holder claim kit"}</Chip>
+      </div>
+      <pre className="overflow-x-auto font-mono text-[11.5px] leading-relaxed text-text-muted">{`fileClaim(
+  policyId:           ${short(policyId, 8)},
+  evidenceCommitment: ${short(sealed.commitment, 8)}
+)`}</pre>
+      {key ? (
+        <>
+          <p className="text-[12.5px] leading-relaxed text-text-muted">
+            This browser holds the Midnight policy key for this policy. Wrap it and the sealed evidence into one claim kit,
+            locked with a passphrase, and file the claim from your own machine. Your holder key never goes to the PlutusShield relay.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div>
+              <label htmlFor={passId} className="font-mono-label text-[9.5px] text-text-dim">Kit passphrase</label>
+              <input id={passId} type="password" autoComplete="new-password" value={pass} onChange={(e) => setPass(e.target.value)} className={`${inputCls} mt-1 h-10 border-[var(--hairline)]`} placeholder="8+ characters" />
+            </div>
+            <div>
+              <label htmlFor={againId} className="font-mono-label text-[9.5px] text-text-dim">Repeat it</label>
+              <input id={againId} type="password" autoComplete="new-password" value={again} onChange={(e) => setAgain(e.target.value)} className={`${inputCls} mt-1 h-10 border-[var(--hairline)]`} />
+            </div>
+          </div>
+          {(tooShort || mismatch) && (
+            <p className="text-[12px] text-[var(--danger)]">{tooShort ? "Use at least 8 characters." : "The passphrases don't match."}</p>
+          )}
+          {error && <p className="text-[12px] text-[var(--danger)]">{error}</p>}
+          <Button variant="secondary" size="sm" disabled={!ready} onClick={() => void make()}>
+            {busy ? "Encrypting…" : saved ? "✓ Download the claim kit again" : "↓ Download claim kit"}
+          </Button>
+          <div>
+            <p className="font-mono-label text-[9.5px] text-text-dim">Then, with a funded Preprod wallet and a local proof server</p>
+            <pre className="mt-1.5 overflow-x-auto rounded-lg border border-[var(--hairline)] bg-bg/60 p-2.5 font-mono text-[11px] leading-relaxed text-text-muted">{`PLUTUSSHIELD_COVER_VERSION=2 \
+PLUTUSSHIELD_CLAIM_KIT_PASSPHRASE='…' \
+node policy-cover-preprod.mjs \
+  --claim ${policyId} \
+  --kit ${file}`}</pre>
+            <p className="mt-2 text-[12px] leading-relaxed text-text-dim">
+              Before it files, the script decrypts the kit, checks that your key opens the Cardano datum and is the holder on the
+              Midnight ledger, and re-verifies that the evidence opens to the commitment above. Setup is in{" "}
+              <a className="underline underline-offset-4" href="https://github.com/Kshot3000/PlutusShield/blob/main/contracts/midnight/README.md#holder-claim-kit" target="_blank" rel="noreferrer">the Midnight README</a>.
+              The kit holds your holder secret and the evidence key, so keep it like a wallet backup.
+            </p>
+          </div>
+        </>
+      ) : (
+        <p className="text-[12.5px] leading-relaxed text-text-muted">
+          To file this yourself, this browser needs the policy key for <span className="font-mono">{short(policyId, 6)}</span>. Restore
+          your key backup under <Link className="underline underline-offset-4" href="/cover#my-policies">My policies</Link>, then come back:
+          a claim kit button appears here. Or hand the claim to the operator relay
+          (<span className="font-mono">policy-cover-preprod.mjs --claim</span>), which files exactly this call. Either way, only the
+          commitment is recorded on-ledger.
+        </p>
+      )}
+    </div>
   );
 }
 
