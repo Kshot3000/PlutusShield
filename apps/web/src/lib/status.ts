@@ -46,12 +46,12 @@ export const MILESTONES: Milestone[] = [
   },
   {
     label: "Production oracle feeds",
-    detail: "Live USDM venues (CoinGecko, Minswap, Kraken) feed a fail-closed publisher that refreshes the Preview peg every 20 minutes. Next: independent oracle operators (for example Charli3 or Orcfax).",
+    detail: "Live USDM venues (CoinGecko plus the Minswap ADA/USDM and USDCx/USDM pools read on-chain, with Kraken ADA/USD to price the ADA leg) feed a fail-closed publisher. It checks the peg every 20 minutes and republishes a 24h TWAP to the three Preview feeds well before the 2h price age lapses, so sales stay open while the peg is healthy. Next: independent oracle operators (for example Charli3 or Orcfax).",
     state: "next",
   },
   {
     label: "External audit",
-    detail: "Required before any mainnet capital.",
+    detail: "Required before any mainnet capital. The pre-audit pack is out: scope, every Cardano and Midnight invariant mapped to the tests that check it, privileged roles, known gaps, and private vulnerability reporting (/docs/security).",
     state: "planned",
   },
 ];
