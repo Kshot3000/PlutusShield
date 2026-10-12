@@ -16,7 +16,7 @@ export function Hero() {
 
       <Container className="relative grid items-center gap-14 pb-20 pt-14 sm:pt-20 lg:grid-cols-[1.08fr_0.92fr] lg:gap-10 lg:pb-28 lg:pt-24">
         <div className="flex flex-col items-start">
-          <p className="animate-rise inline-flex items-center gap-2.5 rounded-full border border-[var(--hairline)] bg-white/[0.03] py-1.5 pl-2 pr-3.5 text-[12.5px] text-text-muted backdrop-blur-md">
+          <p className="animate-rise inline-flex items-center gap-2.5 rounded-full border border-[var(--hairline)] bg-white/[0.03] py-1.5 pl-2 pr-3.5 text-[12.5px] text-text-muted">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold-soft)] px-2 py-0.5 font-mono-label text-[9.5px] text-gold">
               <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-gold text-gold" />
               Preview
