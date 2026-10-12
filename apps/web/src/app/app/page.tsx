@@ -5,6 +5,7 @@ import { ShieldMark } from "@/components/Logo";
 import { Button } from "@/components/ui/Button";
 import { WalletStatusCard } from "@/components/wallet/WalletStatusCard";
 import { PoliciesCard } from "@/components/cover/PoliciesCard";
+import { LpPositionsCard } from "@/components/pool/LpPositionsCard";
 import { MidnightPreprodPanel } from "@/components/midnight/MidnightPreprodPanel";
 import { MILESTONES, RUNBOOK, type MilestoneState } from "@/lib/status";
 
@@ -31,7 +32,7 @@ export default function AppPage() {
       <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
         <WalletStatusCard />
         <PoliciesCard />
-        <StatusCard label="LP positions" value="0" hint="lp00 (ADA) and lp01 (USDC) shares" />
+        <LpPositionsCard />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.1fr_1fr]">
@@ -140,15 +141,5 @@ export default function AppPage() {
 
       <MidnightPreprodPanel />
     </AppShell>
-  );
-}
-
-function StatusCard({ label, value, hint }: { label: string; value: string; hint: string }) {
-  return (
-    <div className="glass-panel relative flex items-center justify-between gap-4 rounded-[1.4rem] px-5 py-4 sm:block sm:p-6">
-      <p className="font-mono-label text-[9.5px] text-text-dim">{label}</p>
-      <p className="font-display text-2xl text-text-muted sm:mt-3 sm:text-3xl">{value}</p>
-      <p className="mt-1 hidden text-xs text-text-dim sm:block">{hint}</p>
-    </div>
   );
 }
