@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/Button";
+import { MidnightHash } from "@/components/midnight/MidnightHash";
 import { MirroredOnMidnight } from "@/components/midnight/LiveContractActivity";
 import { explorerTx } from "@/lib/preview";
 import { MIDNIGHT_PREPROD as M, shortHash } from "@/lib/midnightPreprod";
@@ -29,8 +30,8 @@ const steps = [
 
 function Hash({ h, block }: { h: string; block: number }) {
   return (
-    <span className="font-mono text-[11px] text-text" title={h}>
-      {shortHash(h)} <span className="text-text-dim">· block {block.toLocaleString("en-US")}</span>
+    <span className="font-mono text-[11px] text-text">
+      <MidnightHash h={h} /> <span className="text-text-dim">· block {block.toLocaleString("en-US")}</span>
     </span>
   );
 }

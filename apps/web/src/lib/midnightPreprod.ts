@@ -51,3 +51,17 @@ export const MIDNIGHT_PREPROD = {
 };
 
 export const shortHash = (h: string, n = 8) => `${h.slice(0, n)}…${h.slice(-6)}`;
+
+/**
+ * Midnight Preprod explorer. Midnight's own explorer.preprod.midnight.network
+ * returns 503 (Oct 2026); preprod.midnightexplorer.com resolves real 64-hex
+ * tx hashes and contract addresses (verified against live Preprod txs).
+ * Tx *identifiers* (66 hex, 00-prefixed) do not resolve there: no link.
+ */
+export const MIDNIGHT_EXPLORER = "https://preprod.midnightexplorer.com";
+const HEX64 = /^(0x)?[0-9a-f]{64}$/i;
+const strip0x = (h: string) => h.replace(/^0x/i, "");
+export const midnightExplorerTx = (hash: string): string | null =>
+  HEX64.test(hash) ? `${MIDNIGHT_EXPLORER}/transactions/0x${strip0x(hash)}` : null;
+export const midnightExplorerContract = (addr: string): string | null =>
+  HEX64.test(addr) ? `${MIDNIGHT_EXPLORER}/contracts/0x${strip0x(addr)}` : null;

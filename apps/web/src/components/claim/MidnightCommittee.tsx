@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/Button";
+import { MidnightHash } from "@/components/midnight/MidnightHash";
 import { explorerTx } from "@/lib/preview";
 import { shortHash } from "@/lib/midnightPreprod";
 import { MIDNIGHT_V2 as V, type CommitteeClaim } from "@/lib/midnightPreprodV2";
@@ -11,12 +12,8 @@ const statusTone: Record<string, string> = {
 };
 const statusLabel: Record<string, string> = { PAID: "PAID", ACTIVE: "Rejected → ACTIVE", CLAIM_PENDING: "Pending" };
 
-function Hash({ h, title }: { h: string; title?: string }) {
-  return (
-    <span className="font-mono text-[11px] text-text" title={title ?? h}>
-      {shortHash(h)}
-    </span>
-  );
+function Hash({ h, title, kind = "tx" }: { h: string; title?: string; kind?: "tx" | "contract" }) {
+  return <MidnightHash h={h} title={title} kind={kind} />;
 }
 
 function Tally({ yes, no }: { yes: number; no: number }) {
@@ -182,7 +179,7 @@ export function MidnightCommittee() {
       <dl className="relative mt-4 grid gap-3 text-[11px] sm:grid-cols-3">
         <div>
           <dt className="text-text-dim">v2 contract</dt>
-          <dd className="mt-0.5">{V.contractAddress ? <Hash h={V.contractAddress} /> : <span className="text-text-muted">Deploying</span>}</dd>
+          <dd className="mt-0.5">{V.contractAddress ? <Hash h={V.contractAddress} kind="contract" /> : <span className="text-text-muted">Deploying</span>}</dd>
         </div>
         <div>
           <dt className="text-text-dim">Deploy tx</dt>

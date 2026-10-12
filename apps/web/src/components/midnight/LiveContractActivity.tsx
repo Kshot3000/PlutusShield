@@ -1,6 +1,7 @@
 "use client";
 
 import { MIRROR_STATE_LABEL, mirrorSummary, type MirrorState } from "@plutusshield/sdk/relay";
+import { MidnightHash } from "@/components/midnight/MidnightHash";
 import { RELAY_SNAPSHOT, relayEntry, useMidnightActivity } from "@/lib/useMidnightActivity";
 import { RELAY_SNAPSHOT_V2, useMidnightV2Activity } from "@/lib/useMidnightV2Activity";
 import { MIDNIGHT_V2 } from "@/lib/midnightPreprodV2";
@@ -147,7 +148,7 @@ export function ActivityFeed({ limit = 8 }: { limit?: number }) {
               {r.status !== "SUCCESS" && <span className="ml-2 text-[10.5px] text-[var(--gold)]">{r.status.toLowerCase().replace("_", " ")}</span>}
             </span>
             <span className="font-mono text-[10.5px] text-text-dim" title={`${r.txHash} · ${new Date(r.timestamp).toISOString()}`}>
-              {shortHash(r.txHash)} · block {r.height.toLocaleString("en-US")}
+              <MidnightHash h={r.txHash} title={`${r.txHash} · ${new Date(r.timestamp).toISOString()}`} className="font-mono text-[10.5px] text-text-dim" /> · block {r.height.toLocaleString("en-US")}
               {now !== null && <> · {ago(r.timestamp, now)}</>}
             </span>
             {showChanges(r.entryPoint) && r.changes?.length ? (

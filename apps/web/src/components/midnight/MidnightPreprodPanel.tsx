@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/Button";
+import { MidnightHash } from "@/components/midnight/MidnightHash";
 import { explorerTx } from "@/lib/preview";
 import { MIDNIGHT_PREPROD as M, shortHash } from "@/lib/midnightPreprod";
 import { MIDNIGHT_V2 as V2 } from "@/lib/midnightPreprodV2";
@@ -64,7 +65,7 @@ export function MidnightPreprodPanel() {
                 </a>
               ) : (
                 <>
-                  {shortHash(r.hash)}
+                  <MidnightHash h={r.hash} />
                   {r.block ? <span className="text-text-dim"> · block {r.block.toLocaleString("en-US")}</span> : null}
                 </>
               )}
@@ -80,13 +81,15 @@ export function MidnightPreprodPanel() {
       <div className="relative mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--hairline)] pt-4">
         <div className="min-w-0 space-y-1 font-mono text-[11px] text-text-dim">
           <p>
-            Registry v2 <span className="break-all text-text-muted">{V2.contractAddress ?? "not deployed"}</span>
+            Registry v2{" "}
+            {V2.contractAddress ? (
+              <MidnightHash h={V2.contractAddress} kind="contract" full className="font-mono text-[11px] text-text-muted" />
+            ) : (
+              <span className="text-text-muted">not deployed</span>
+            )}
           </p>
           <p>
-            Registry v1{" "}
-            <a href={M.record} target="_blank" rel="noreferrer" className="break-all underline decoration-dotted underline-offset-4 hover:text-accent-strong">
-              {M.contractAddress}
-            </a>
+            Registry v1 <MidnightHash h={M.contractAddress} kind="contract" full className="font-mono text-[11px] text-text-muted" />
           </p>
         </div>
         <div className="flex gap-2">

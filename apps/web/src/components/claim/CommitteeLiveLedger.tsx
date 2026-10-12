@@ -1,6 +1,7 @@
 "use client";
 
 import { useMidnightV2Activity } from "@/lib/useMidnightV2Activity";
+import { MidnightHash } from "@/components/midnight/MidnightHash";
 import { MIDNIGHT_V2 as V } from "@/lib/midnightPreprodV2";
 import { shortHash } from "@/lib/midnightPreprod";
 import { useNow } from "@/lib/useNow";
@@ -102,9 +103,7 @@ export function CommitteeLiveLedger() {
                 {x.status !== "SUCCESS" && <span className="ml-2 text-danger">{x.status}</span>}
               </span>
               <span className="text-[10.5px] text-text-dim">
-                <span className="font-mono" title={x.txHash}>
-                  {shortHash(x.txHash)}
-                </span>{" "}
+                <MidnightHash h={x.txHash} className="font-mono text-[10.5px] text-text-dim" />{" "}
                 · block {x.height.toLocaleString("en-US")} {now !== null ? `· ${ago(x.timestamp, now)}` : ""}
               </span>
             </li>
