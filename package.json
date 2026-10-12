@@ -28,7 +28,8 @@
     "committee": "node --experimental-strip-types --no-warnings contracts/committee/cli.ts",
     "midnight:relay:plan:v2": "pnpm --filter @plutusshield/midnight-contracts relay:plan --v2",
     "midnight:claim-kit": "pnpm --filter @plutusshield/midnight-contracts claim-kit",
-    "midnight:prove-bridge": "bash contracts/midnight/preprod/run-prove-bridge.sh"
+    "midnight:prove-bridge": "bash contracts/midnight/preprod/run-prove-bridge.sh",
+    "midnight:bridge-drill": "bash contracts/midnight/preprod/run-bridge-drill.sh"
   },
   "engines": {
     "node": ">=20"
