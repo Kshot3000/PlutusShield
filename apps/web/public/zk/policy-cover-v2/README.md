@@ -18,11 +18,16 @@ Compact prove in the browser still needs:
 
 1. Verifier + zkir (here)
 2. Prover keys (local — see below)
-3. A midnight-js runtime implementing `BrowserCircuitProver` (inject via
-   `window.__PLUTUSSHIELD_CIRCUIT_PROVER__` or `registerBrowserCircuitProver` /
-   `tryCreateMidnightJsProver`)
+3. A midnight-js runtime implementing `BrowserCircuitProver`. Shipped: the
+   holder prove bridge — `pnpm midnight:prove-bridge` runs
+   `contracts/midnight/preprod/prove-bridge.mjs` on 127.0.0.1:6310, which builds
+   the call with `createUnprovenCallTx` against the live Preprod v2 registry and
+   proves it on your proof server; /claim/evidence finds it automatically and
+   hands the unsealed tx to Lace to balance + submit. (Injection via
+   `window.__PLUTUSSHIELD_CIRCUIT_PROVER__` / `registerBrowserCircuitProver`
+   still takes precedence.)
 
-Until (3) lands, holders file with the claim kit CLI.
+No bridge running? Holders file with the claim kit CLI.
 
 ## Local prover keys
 

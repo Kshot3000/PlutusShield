@@ -7,3 +7,4 @@ export * from "./relay.ts";
 export * from "./lace.ts";
 export * from "./laceCircuits.ts";
 export * from "./fetchZkConfig.ts";
+export * from "./proveBridge.ts";

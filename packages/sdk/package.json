@@ -18,7 +18,8 @@
     "./claimkit": "./src/claimkit.ts",
     "./lace": "./src/lace.ts",
     "./laceCircuits": "./src/laceCircuits.ts",
-    "./fetchZkConfig": "./src/fetchZkConfig.ts"
+    "./fetchZkConfig": "./src/fetchZkConfig.ts",
+    "./proveBridge": "./src/proveBridge.ts"
   },
   "scripts": {
     "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts"

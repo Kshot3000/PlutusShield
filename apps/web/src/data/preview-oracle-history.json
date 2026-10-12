@@ -316,6 +316,12 @@
       "bps": 9985,
       "tx": "3a90dd839fbbc81b1e5b78f200d105f7a1c5c159abb7d5ce04468c716d1c5a18",
       "live": true
+    },
+    {
+      "at": "2026-10-12T22:25:37.549Z",
+      "bps": 10002,
+      "tx": "ce37944bb6d441d7a08f07be2e8214c3af1021b71ba7cec32212ead8f1552868",
+      "live": true
     }
   ]
 }

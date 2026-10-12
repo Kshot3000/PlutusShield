@@ -4,8 +4,10 @@
  * Browser fileClaim / proveCover path wired to the connected Lace Midnight
  * wallet: readiness checklist, proving strategy (delegated vs HTTP), prover
  * health probe, permission hints, and submit via ConnectedAPI when a
- * BrowserCircuitProver is available. Until midnight-js is injected, Lace
- * plumbing + ZK asset probes still run and the holder claim kit remains the production filer.
+ * BrowserCircuitProver is available. The default prover is the holder's local
+ * prove bridge (`pnpm midnight:prove-bridge`, 127.0.0.1:6310): it builds and
+ * proves the Compact call with midnight-js, Lace balances + submits. Without a
+ * bridge, Lace plumbing + ZK asset probes still run and the claim kit files.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -29,7 +31,12 @@ import type { SealedEvidence } from "@plutusshield/sdk/evidence";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/ChoiceGroup";
 import { useMidnightWallet } from "@/lib/midnightWallet";
-import { getBrowserCircuitProver, probeDefaultZkAssets } from "@/lib/browserCircuit";
+import {
+  getBrowserCircuitProver,
+  probeDefaultZkAssets,
+  probeLocalProveBridge,
+  type ProveBridgeHealth,
+} from "@/lib/browserCircuit";
 import { zkAssetsReadinessSummary } from "@plutusshield/sdk/fetchZkConfig";
 
 const short = (h: string, n = 8) => (h.length > 2 * n + 1 ? `${h.slice(0, n)}…${h.slice(-n)}` : h);
@@ -55,13 +62,27 @@ export function FileWithLace({
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState<"fileClaim" | "proveCover" | null>(null);
+  const [bridge, setBridge] = useState<ProveBridgeHealth | null>(null);
+  const [lastProof, setLastProof] = useState<string | null>(null);
+
+  const resolveProver = useCallback(
+    (health: ProveBridgeHealth | null = bridge) =>
+      getBrowserCircuitProver({
+        bridge: {
+          health,
+          api: wallet.sessionApi(),
+          onProved: (circuit, r) =>
+            setLastProof(`${circuit} proved by the local bridge: ${r.bytes.toLocaleString()} bytes in ${(r.provedMs / 1000).toFixed(1)} s`),
+        },
+      }),
+    [bridge, wallet],
+  );
 
   const connected = wallet.status === "connected";
   const policyId = sealed.bundle.policyId;
 
   const refresh = useCallback(async () => {
     setError(null);
-    const prover = getBrowserCircuitProver();
     const api = wallet.sessionApi();
     let callOk = false;
     let preparedFile: FileClaimCall | null = null;
@@ -90,6 +111,7 @@ export function FileWithLace({
 
     let proverHealth = null;
     let zkAssets: { ok: boolean; detail: string } | null = null;
+    let bridgeHealth: ProveBridgeHealth | null = null;
     setBusy("probe");
     try {
       if (strategy.kind === "http" && connected) {
@@ -97,9 +119,12 @@ export function FileWithLace({
       }
       const zkProbe = await probeDefaultZkAssets();
       zkAssets = zkAssetsReadinessSummary(zkProbe);
+      bridgeHealth = await probeLocalProveBridge();
+      setBridge(bridgeHealth);
     } finally {
       setBusy(null);
     }
+    const prover = resolveProver(bridgeHealth);
 
     setReadiness(
       assessCircuitSubmitReadiness({
@@ -113,6 +138,8 @@ export function FileWithLace({
         zkAssets,
       }),
     );
+    // resolveProver is derived from bridge state; omit to avoid a probe loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connected, policyKey, sealed.commitment, wallet]);
 
   useEffect(() => {
@@ -143,9 +170,9 @@ export function FileWithLace({
 
   const onFileClaim = async () => {
     const api = wallet.sessionApi();
-    const prover = getBrowserCircuitProver();
+    const prover = resolveProver();
     if (!api || !prover || !fileCall) {
-      setError("Browser Compact prover is not loaded. Download the claim kit and file with the CLI.");
+      setError("No Compact prover: start the local prove bridge (pnpm midnight:prove-bridge) and re-check, or file with the claim kit.");
       return;
     }
     setBusy("file");
@@ -173,9 +200,9 @@ export function FileWithLace({
 
   const onProveCover = async () => {
     const api = wallet.sessionApi();
-    const prover = getBrowserCircuitProver();
+    const prover = resolveProver();
     if (!api || !prover || !proveCall) {
-      setError("Browser Compact prover is not loaded. proveCover still runs from the Preprod relay / holder tooling.");
+      setError("No Compact prover: start the local prove bridge (pnpm midnight:prove-bridge) and re-check.");
       return;
     }
     setBusy("prove");
@@ -223,8 +250,9 @@ export function FileWithLace({
         <span className="font-mono">getProvingProvider</span> or Lace&apos;s HTTP{" "}
         <span className="font-mono">proverServerUri</span>), and{" "}
         <span className="font-mono">balanceUnsealedTransaction</span> + <span className="font-mono">submitTransaction</span>.
-        ZK verifier/zkir for fileClaim and proveCover are probed from /zk/policy-cover-v2. Compact prove still needs an injected midnight-js
-        <span className="font-mono">BrowserCircuitProver</span> (not in the Pages bundle yet) — until then the claim kit below files the same{" "}
+        ZK verifier/zkir for fileClaim and proveCover are probed from /zk/policy-cover-v2. The Compact call itself is built and proven by
+        your local prove bridge (<span className="font-mono">pnpm midnight:prove-bridge</span> on 127.0.0.1:6310, next to your proof
+        server) — it holds no wallet and never submits; Lace balances and submits. No bridge? The claim kit below files the same{" "}
         <span className="font-mono">fileClaim</span> from your machine.
       </p>
 
@@ -237,7 +265,8 @@ proveCover(
   minCoverage:  ${proveCall?.minCoverage ?? policyKey.coverage}
 )
 contract: ${short(PREPROD_V2_CONTRACT_ADDRESS, 10)}
-proving:  ${strategyLabel}`}</pre>
+proving:  ${strategyLabel}
+bridge:   ${bridge ? (bridge.ok ? `ready · ${bridge.uri}` : "not running") : "…"}`}</pre>
 
       {readiness && (
         <ul className="space-y-1.5">
@@ -271,12 +300,14 @@ proving:  ${strategyLabel}`}</pre>
         </Button>
       </div>
 
-      {!getBrowserCircuitProver() && (
+      {bridge && !bridge.ok && !resolveProver() && (
         <p className="text-[12px] leading-relaxed text-text-dim">
-          Compact prover not loaded in this page — Lace balance/submit is wired; download the claim kit to file today.
-          Dev injection: <span className="font-mono">window.__PLUTUSSHIELD_CIRCUIT_PROVER__</span>.
+          No prove bridge on {bridge.uri}. From a PlutusShield checkout run{" "}
+          <span className="font-mono">pnpm midnight:prove-bridge</span> (needs a proof server on :6300), then re-check — or download
+          the claim kit to file today.
         </p>
       )}
+      {lastProof && <p className="text-[12px] text-text-muted">{lastProof}</p>}
       {error && <p className="text-[12px] text-[var(--danger)]">{error}</p>}
       {note && <p className="text-[12px] text-[var(--accent)]">{note}</p>}
     </div>
