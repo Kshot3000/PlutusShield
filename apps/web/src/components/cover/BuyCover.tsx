@@ -13,6 +13,7 @@
  * saved to localStorage before the wallet prompt and offered as a backup file
  * when the Buy lands.
  */
+import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { useNow } from "@/lib/useNow";
 import { AmountField } from "@/components/ui/AmountField";
@@ -391,7 +392,11 @@ function OracleStatus({ sale, now, error }: { sale: ReturnType<typeof saleCheck>
           <p className="mt-3 border-t border-border pt-2.5 text-[11px] leading-relaxed text-text-dim">
             Readings are real market data: the 24h median TWAP of CoinGecko&apos;s USDM price, the Minswap ADA/USDM pool (priced with
             Kraken ADA/USD), and the Minswap USDCx/USDM pool, published on Preview by the PlutusShield relay. On mainnet each feed is
-            an independent operator.
+            an independent operator.{" "}
+            <Link href="/oracle" className="text-accent hover:underline">
+              See every reading on the oracle page
+            </Link>
+            .
           </p>
         </>
       )}

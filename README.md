@@ -204,7 +204,7 @@ Requires Node 22+, pnpm 9, and the Compact toolchain (`compact update 0.31.1`). 
 - [x] Multi-asset pools: ADA + USDC (USDCx) tranches, premiums and payouts per policy currency
 - [x] Preview deploy tooling + runbook, full flow verified in the Lucid Emulator
 - [x] Testnet deployment (Preview): fund deployer, init pool, first buy (see runbook)
-- [x] Real oracle feed integration: live multi-venue USDM oracle (CoinGecko + Minswap ADA/USDM and USDCx/USDM pools read on-chain, `services/oracle-relay/src/venues.ts`) publishing a 24h TWAP to the three Preview feeds on a loop, which keeps cover sales open while the peg is healthy (independent feed operators are still to come)
+- [x] Real oracle feed integration: live multi-venue USDM oracle (CoinGecko + Minswap ADA/USDM and USDCx/USDM pools read on-chain, `services/oracle-relay/src/venues.ts`) publishing a 24h TWAP to the three Preview feeds on a loop, which keeps cover sales open while the peg is healthy; the live feeds, the sale circuit-breaker and every published reading with its transaction are on [`/oracle`](https://kshot3000.github.io/PlutusShield/oracle/) (independent feed operators are still to come)
 - [x] Sale circuit-breaker: no buys into an active depeg (every allowlisted feed must report a fresh healthy peg, plus a waiting period)
 - [x] Expiry returns the policy deposit to the buyer, not the submitter
 - [x] Compact contract: private policy commitment + coverage proof (`contracts/midnight`)

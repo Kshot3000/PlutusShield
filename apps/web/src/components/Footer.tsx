@@ -9,6 +9,7 @@ const columns = [
       { href: "/cover", label: "Quote cover" },
       { href: "/pool", label: "Underwrite" },
       { href: "/claim", label: "Claim checker" },
+      { href: "/oracle", label: "Live oracle" },
       { href: "/assessors", label: "Assessors" },
       { href: "/app", label: "App" },
       { href: "/demo", label: "Guided demo" },
