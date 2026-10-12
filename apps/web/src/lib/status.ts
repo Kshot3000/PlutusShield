@@ -41,7 +41,7 @@ export const MILESTONES: Milestone[] = [
   },
   {
     label: "Exploit claims, end to end",
-    detail: "A smart-contract exploit claim runs across both chains: sealed evidence filed on Midnight Preprod and approved there (the recorded payout by v1 resolveClaim; the live v2 registry decides by 2-of-3 committee voteClaim), then paid from the Cardano Preview exploit-cover pool by a Settle that names that Midnight approval tx. Payouts now need 2 of 3 assessor-committee signatures (no single trusted key); 1-of-3 is rejected by the validator.",
+    detail: "A smart-contract exploit claim runs across both chains: sealed evidence filed on Midnight Preprod and approved there (the recorded payout by v1 resolveClaim; the live v2 registry decides by 2-of-3 committee voteClaim), then paid from the Cardano Preview exploit-cover pool by a Settle that names that Midnight approval tx. Payouts now need 2 of 3 assessor-committee signatures (no single trusted key); 1-of-3 is rejected by the validator. The seats are team-run today; the offline enrollment kit for independent assessors is live on /assessors.",
     state: "done",
   },
   {

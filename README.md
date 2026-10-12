@@ -6,7 +6,7 @@ PlutusShield is protection you can verify on-chain, with privacy where it actual
 
 **Live site:** [kshot3000.github.io/PlutusShield](https://kshot3000.github.io/PlutusShield/) — static export of `apps/web`, deployed to GitHub Pages on every push to `main`.
 
-> **Status: Preview testnet live.** Cardano Preview pool is initialised at `addr_test1wp89ggl7ls5gwxh02w7ja6zhytqe4a6zu6m6n82s0cxw9tq4j5tgr` (see `contracts/cardano/deploy/deployments/preview.json`). Seeded ADA + tUSDCx capital and first buys are on-chain. This repo also holds the product vision and docs, a Next.js site (`apps/web`), the shared quote engine and Cardano datum codecs (`packages/sdk`), the Cardano validators (`contracts/cardano`, 131 Aiken tests + Lucid emulator e2e), and the Midnight Compact policy registry (`contracts/midnight`). Not audited. Test value only. Buy, claim and release run from a CIP-30 wallet on `/cover`. **Exploit cover payout is live on Preview too, with no single trusted key:** a separate exploit-cover pool (`contracts/cardano/validators/exploit_cover.ak`, v2 record in `contracts/cardano/deploy/deployments/preview-exploit-v2.json`) pays an approved Midnight Preprod claim only through a `Settle` signed by **2 of 3 assessors** on a committee fixed in the script parameters; 1-of-3 is rejected by the validator. The cross-chain trust point is that 2-of-3 assessor committee (three Preview keys run by the team today, not yet independent operators). The first exploit pool (v1, single assessor, `preview-exploit.json`) is kept as history.
+> **Status: Preview testnet live.** Cardano Preview pool is initialised at `addr_test1wp89ggl7ls5gwxh02w7ja6zhytqe4a6zu6m6n82s0cxw9tq4j5tgr` (see `contracts/cardano/deploy/deployments/preview.json`). Seeded ADA + tUSDCx capital and first buys are on-chain. This repo also holds the product vision and docs, a Next.js site (`apps/web`), the shared quote engine and Cardano datum codecs (`packages/sdk`), the Cardano validators (`contracts/cardano`, 131 Aiken tests + Lucid emulator e2e), and the Midnight Compact policy registry (`contracts/midnight`). Not audited. Test value only. Buy, claim and release run from a CIP-30 wallet on `/cover`. **Exploit cover payout is live on Preview too, with no single trusted key:** a separate exploit-cover pool (`contracts/cardano/validators/exploit_cover.ak`, v2 record in `contracts/cardano/deploy/deployments/preview-exploit-v2.json`) pays an approved Midnight Preprod claim only through a `Settle` signed by **2 of 3 assessors** on a committee fixed in the script parameters; 1-of-3 is rejected by the validator. The cross-chain trust point is that 2-of-3 assessor committee (three Preview keys run by the team today, not yet independent operators; the offline enrollment kit for outside assessors is in [`contracts/committee`](contracts/committee/README.md) and walked through on [`/assessors`](https://kshot3000.github.io/PlutusShield/assessors/)). The first exploit pool (v1, single assessor, `preview-exploit.json`) is kept as history.
 
 ---
 
@@ -79,6 +79,7 @@ PlutusShield/
 ├── contracts/
 │   ├── cardano/            # Aiken: multi-asset (ADA + USDC) pool, policy NFTs, oracle-quorum payout
 │   │   └── deploy/         # Preview runbook: keys, param application, tx builders, emulator
+│   ├── committee/          # Offline assessor-operator kit: keygen, signed enrollment, 2-of-3 committee plan
 │   └── midnight/           # Compact: private cover registry, holder proofs, claims
 ├── packages/
 │   └── sdk/                # Products, quote engine, Cardano datum/redeemer codecs, evidence vault
@@ -163,7 +164,7 @@ See [contracts/cardano/README.md](contracts/cardano/README.md) for validators, d
 
 ## Midnight Buildathon
 
-**Submission kit:** pitch deck ([PDF](docs/buildathon/PlutusShield-Wave2-deck.pdf)), 3-minute [demo video script](docs/buildathon/VIDEO_SCRIPT.md), the [kit checklist](docs/buildathon/README.md), and the live **[guided demo](https://kshot3000.github.io/PlutusShield/demo/)** (the script as a click-through page with every transaction linked).
+**Submission kit:** pitch deck ([PDF](docs/buildathon/PlutusShield-Wave2-deck.pdf)), 3-minute [demo video script](docs/buildathon/VIDEO_SCRIPT.md), the [kit checklist](docs/buildathon/README.md), and the live **[guided demo](https://kshot3000.github.io/PlutusShield/demo/)** (the script as a click-through page with every transaction linked). How outside assessors take the committee seats on both chains: **[/assessors](https://kshot3000.github.io/PlutusShield/assessors/)**.
 
 PlutusShield is entered in the Midnight Foundation Buildathon (Wave 2). The Midnight half is two Compact contracts, both compiled with **compactc 0.31.1** (`compact` CLI 0.5.2, `pragma language_version >= 0.23`) and deployed on **Midnight Preprod**:
 
@@ -215,7 +216,7 @@ Requires Node 22+, pnpm 9, and the Compact toolchain (`compact update 0.31.1`). 
 - [x] Multi-assessor payouts: exploit `Settle` needs M-of-N distinct assessor-committee signatures (2-of-3 live on Preview, v2 pool; first committee payout `c35535dd…` paid 50 tADA on assessor-1 + assessor-3, a 1-of-3 Settle rejected by both the local and the Preview evaluator); malformed committees refused at InitPool
 - [x] Committee-gated claim decisions on Midnight: `policy-cover-v2.compact` replaces the single-assessor `resolveClaim` with an M-of-3 `voteClaim` (one vote per member per claim round, public attributable votes, re-filed claims start a fresh round); 10 simulation tests, v1 commitments unchanged
 - [x] v2 Midnight registry deployed on Preprod (`5430b803…`, `contracts/midnight/deployments/preprod-v2.json`): batch relay mirrors Preview policies into it, first committee claim decided by 2-of-3 `voteClaim`
-- [ ] Independent assessor operators (today all three Preview committee keys and all three Midnight committee seats are team-run)
+- [ ] Independent assessor operators (today all three Preview committee keys and all three Midnight committee seats are team-run). Shipped toward it: the offline enrollment kit ([`contracts/committee`](contracts/committee/README.md): `pnpm committee keygen` → signed public `enrollment.json` → `verify` → a dry-run `plan` with the exact Cardano `Committee` CBOR and Midnight v2 constructor args, compared by `planSha256`) and the [`/assessors`](https://kshot3000.github.io/PlutusShield/assessors/) page (why 2-of-3, assessor duties, enrollment how-to, today's seats, first committee drills). Still to do: three outside operators enroll, a new exploit-cover pool and policy-cover v2 contract with their seats, a drill claim voted and co-signed from their own machines
 - [x] Marketing site + app shell (`apps/web`)
 - [x] Web app: interactive quote on `/cover`
 - [x] Web app: claim checker on `/claim` (oracle quorum, TWAP trigger, claim window, sale circuit-breaker)

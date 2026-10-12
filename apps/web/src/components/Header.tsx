@@ -13,6 +13,7 @@ const nav = [
   { href: "/#how-it-works", label: "How it works" },
   { href: "/#dual-chain", label: "Architecture" },
   { href: "/docs", label: "Docs" },
+  { href: "/assessors", label: "Assessors" },
   { href: "/demo", label: "Demo" },
 ];
 
@@ -90,15 +91,18 @@ export function Header() {
         </nav>
 
         <div className="hidden items-center gap-1.5 lg:flex">
-          <Button
-            href="https://github.com/Kshot3000/PlutusShield"
-            external
-            variant="ghost"
-            size="sm"
-          >
-            <GitHubIcon />
-            GitHub
-          </Button>
+          {/* GitHub sits in the mobile menu and footer too; hide it at lg so seven links fit. */}
+          <span className="hidden xl:flex">
+            <Button
+              href="https://github.com/Kshot3000/PlutusShield"
+              external
+              variant="ghost"
+              size="sm"
+            >
+              <GitHubIcon />
+              GitHub
+            </Button>
+          </span>
           {inApp && <WalletButton />}
           <Button href={cta.href} size="sm">
             {cta.label}

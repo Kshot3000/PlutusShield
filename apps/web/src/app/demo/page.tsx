@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 const next = [
   "proveCover and fileClaim straight from a browser Midnight wallet",
-  "Independent operators for the three assessor seats (the enrolment kit is in the repo)",
+  "Independent operators for the three assessor seats (the enrollment kit is live on /assessors)",
   "External audits of the Cardano and Midnight contracts",
   "Then a capped mainnet launch",
 ];
@@ -43,7 +43,11 @@ export default function DemoPage() {
             </h2>
             <p className="mt-1.5 text-[14px] leading-relaxed text-text-muted text-pretty">
               Everything here runs on test networks with test ADA and tUSDCx: no real value and no offer of insurance.
-              The three committee seats are run by the PlutusShield team today. Links checked {DEMO_CHECKED}.
+              The three committee seats are run by the PlutusShield team today (
+              <Link href="/assessors" className="text-text underline underline-offset-4 hover:text-accent">
+                how independent assessors enroll
+              </Link>
+              ). Links checked {DEMO_CHECKED}.
             </p>
           </div>
           <div className="flex shrink-0 flex-col gap-2.5 whitespace-nowrap sm:flex-row">
@@ -151,6 +155,9 @@ export default function DemoPage() {
           </Button>
           <Button href="/claim/evidence" variant="secondary" className="w-full sm:w-auto">
             Seal evidence
+          </Button>
+          <Button href="/assessors" variant="secondary" className="w-full sm:w-auto">
+            Become an assessor
           </Button>
           <Button href={KIT.readme} external variant="ghost" className="w-full sm:w-auto">
             Buildathon README

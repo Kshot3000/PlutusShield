@@ -206,6 +206,9 @@ export function MidnightCommittee() {
         <Button href={V.source} external variant="ghost" size="sm">
           policy-cover-v2.compact <span aria-hidden="true">↗</span>
         </Button>
+        <Button href="/assessors" variant="ghost" size="sm">
+          Take a committee seat →
+        </Button>
       </div>
     </section>
   );

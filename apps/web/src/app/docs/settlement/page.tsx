@@ -269,7 +269,8 @@ policy.start         ≥ tx_upper_bound + waiting_period_ms`}</Formula>
             by both the local evaluator and the Preview provider&apos;s (links on the{" "}
             <DocLink href="/claim/evidence">evidence vault page</DocLink>). The first exploit pool (v1, one assessor
             key) is kept as history. Still open: the three Preview keys are run by the PlutusShield team, not yet
-            independent operators; the v1 registry&apos;s single assessor key is history — the live v2 registry
+            independent operators (the enrollment kit for them is on the{" "}
+            <DocLink href="/assessors">assessors page</DocLink>); the v1 registry&apos;s single assessor key is history — the live v2 registry
             decides by the same 2-of-3 <C>voteClaim</C> committee (and no Midnight decision can move Cardano
             capital alone); and committee rotation means a new pool. Depeg policies still settle only on
             an oracle quorum, so an approved Midnight claim on a depeg policy isn&apos;t paid on Cardano.
