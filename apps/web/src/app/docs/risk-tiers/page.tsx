@@ -39,8 +39,10 @@ export default function RiskTiersPage() {
           Every pool fixes its risk multiplier once, at <C>InitPool</C>, as <C>risk_mult_bps</C> in its
           <C>ProductTerms</C>. Each Buy from that pool is priced with the same multiplier, and the validator&apos;s
           premium floor uses it, so a buyer cannot choose a cheaper tier for the same risk. Both live Preview
-          pools (USDM depeg and the exploit-cover v2 committee pool) are tier B, <C>10_000</C> bps. The tier
-          picker on <DocLink href="/cover/">/cover</DocLink> is there to compare prices across pools.
+          pools (USDM depeg and the exploit-cover v2 committee pool) are tier B, <C>10_000</C> bps. The open
+          <DocLink href="/book/">underwriting book</DocLink> shows the concrete scorecard answers and capital for
+          each live pool. The tier picker on <DocLink href="/cover/">/cover</DocLink> is there to compare prices
+          across pools.
         </P>
         <Callout tone="warn" title="Model assumptions">
           <P>

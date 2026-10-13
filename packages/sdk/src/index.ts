@@ -9,3 +9,4 @@ export * from "./laceCircuits.ts";
 export * from "./fetchZkConfig.ts";
 export * from "./proveBridge.ts";
 export * from "./riskTier.ts";
+export * from "./underwritingBook.ts";

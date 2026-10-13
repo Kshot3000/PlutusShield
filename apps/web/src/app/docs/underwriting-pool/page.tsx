@@ -143,7 +143,8 @@ active_cover[t] × 10_000 ≤ capital_out[t] × max_utilization_bps     -- capit
           ]}
         />
         <P>
-          The <DocLink href="/pool">pool simulator</DocLink> runs <C>packages/sdk/src/pool.ts</C>, an exact bigint
+          The open <DocLink href="/book/">underwriting book</DocLink> lists each live Preview pool&apos;s capital and
+          scorecard. The <DocLink href="/pool">pool simulator</DocLink> runs <C>packages/sdk/src/pool.ts</C>, an exact bigint
           copy of these per-tranche rules, so its previews match what the validator would accept. Its LP
           projection (premium APR, break-even claim rate) is an illustrative model, not a forecast. Real income
           depends on demand.
