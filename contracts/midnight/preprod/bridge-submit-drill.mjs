@@ -32,7 +32,8 @@ import { spawn } from 'node:child_process';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
-import { Transaction } from '@midnight-ntwrk/ledger-v8';
+import { Transaction, CostModel } from '@midnight-ntwrk/ledger-v8';
+import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const env = (k, d) => process.env[k] ?? d;
@@ -50,6 +51,55 @@ const CONTRACT = env('MIDNIGHT_POLICY_COVER_ADDRESS', '5430b803b6b3df6e6ee1d498b
 const redact = (s) => String(s).replace(/(project_id=)[^&\s"]+/g, '$1…').replace(/nightpreprod[A-Za-z0-9]+/g, 'nightpreprod…');
 const log = (...a) => console.log(new Date().toISOString(), '[bridge-drill]', ...a.map(redact));
 const hex = (u) => Buffer.from(u).toString('hex');
+
+/** Walk Error / Effect TaggedError cause chains without printing seeds or keys. */
+function dumpErr(e) {
+  const rows = [];
+  const seen = new Set();
+  let cur = e;
+  for (let depth = 0; cur && depth < 10; depth++) {
+    if (seen.has(cur)) break;
+    seen.add(cur);
+    const row = {
+      depth,
+      tag: cur._tag ?? cur.name ?? typeof cur,
+      message: redact(cur.message ?? String(cur)),
+    };
+    if (cur.status != null) row.status = cur.status;
+    if (cur.code != null) row.code = cur.code;
+    // Non-secret own props (skip huge buffers / nested objects we already walk)
+    try {
+      for (const k of Object.getOwnPropertyNames(cur)) {
+        if (['message', 'stack', 'cause', 'error', 'name', '_tag'].includes(k)) continue;
+        const v = cur[k];
+        if (v == null) continue;
+        if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+          row[k] = typeof v === 'string' ? redact(v).slice(0, 300) : v;
+        } else if (v instanceof Error) {
+          row[k] = redact(v.message);
+        } else if (typeof v === 'object' && v.message) {
+          row[k] = redact(String(v.message)).slice(0, 300);
+        }
+      }
+    } catch {}
+    rows.push(row);
+    cur = cur.cause ?? cur.error ?? cur.originalError ?? null;
+  }
+  return rows;
+}
+
+function previewTx(tx, label) {
+  try {
+    const s = typeof tx?.toString === 'function' ? tx.toString(true) : String(tx);
+    log(`${label}: ${redact(s).slice(0, 600)}`);
+  } catch (e) {
+    log(`${label}: (toString failed: ${redact(e?.message ?? e)})`);
+  }
+  try {
+    const ids = typeof tx?.identifiers === 'function' ? tx.identifiers() : [];
+    log(`${label} ids: ${(ids ?? []).slice(0, 4).map(String).join(', ') || '(none)'}`);
+  } catch {}
+}
 
 async function startBridge() {
   const child = spawn(process.execPath, ['--no-warnings', path.join(here, 'prove-bridge.mjs')], {
@@ -115,16 +165,134 @@ async function main() {
     const proved = await prove('submit');
 
     // Lace balanceUnsealedTransaction: deserialize, add the DUST fee, bind.
-    const unsealed = Transaction.deserialize('signature', 'proof', 'pre-binding', Uint8Array.from(Buffer.from(proved.unsealedTx, 'hex')));
+    // Partition markers match Lace's UnboundTransaction =
+    // Transaction<SignatureEnabled, Proof, PreBinding> (dapp-connector-api).
+    const raw = Uint8Array.from(Buffer.from(proved.unsealedTx, 'hex'));
+    log(`unsealed raw ${raw.length} bytes; ascii tag ${JSON.stringify(Buffer.from(raw.slice(0, 24)).toString('utf8'))}`);
+    const unsealed = Transaction.deserialize('signature', 'proof', 'pre-binding', raw);
+    previewTx(unsealed, 'unsealed (deserialized)');
+    // Round-trip check: serialize must stay Proof+PreBinding sized.
+    try {
+      const round = unsealed.serialize();
+      log(`unsealed round-trip serialize ${round.length} bytes (bridge sent ${proved.bytes})`);
+    } catch (e) {
+      log(`unsealed serialize failed: ${redact(e?.message ?? e)}`);
+    }
+
+    const proofServer = process.env.MIDNIGHT_PROOF_SERVER_URL || process.env.MIDNIGHT_PROOF_SERVER || 'http://127.0.0.1:6300';
+    log(`wallet proving server (fee ZK): ${proofServer}`);
+    try {
+      const h = await fetch(`${proofServer.replace(/\/$/, '')}/health`);
+      log(`proof server /health: ${h.status} ${redact((await h.text()).slice(0, 120))}`);
+    } catch (e) {
+      log(`proof server /health failed: ${redact(e?.message ?? e)}`);
+    }
+
     const provider = W.makeWalletMidnightProvider(ctx.wallet, ctx.shieldedSecretKeys, ctx.dustSecretKey);
     const t0 = Date.now();
-    const balanced = await provider.balanceTx(unsealed);
+    let balanced;
+    try {
+      // Step through the same calls makeWalletMidnightProvider.balanceTx makes so a
+      // Wallet.Proving failure dumps the real cause (not just the tag).
+      const recipe = await ctx.wallet.balanceUnboundTransaction(
+        unsealed,
+        { shieldedSecretKeys: ctx.shieldedSecretKeys, dustSecretKey: ctx.dustSecretKey },
+        { ttl: ttlOneHour() },
+      );
+      log(`recipe type=${recipe.type} hasBalancing=${!!recipe.balancingTransaction}`);
+      if (recipe.balancingTransaction) previewTx(recipe.balancingTransaction, 'balancing (unproven fee)');
+      if (recipe.baseTransaction) previewTx(recipe.baseTransaction, 'base (bound candidate)');
+      balanced = await ctx.wallet.finalizeRecipe(recipe);
+    } catch (e) {
+      const chain = dumpErr(e);
+      console.error('[bridge-drill] balance/finalize failed; cause chain:');
+      console.error(JSON.stringify(chain, null, 2));
+      // One recovery probe: dust-only balancing (skip shielded/unshielded). Soft — if it
+      // also fails we still throw the original error with its dump above.
+      try {
+        log('retry: balanceUnboundTransaction with tokenKindsToBalance=[dust] only…');
+        const recipe2 = await ctx.wallet.balanceUnboundTransaction(
+          unsealed,
+          { shieldedSecretKeys: ctx.shieldedSecretKeys, dustSecretKey: ctx.dustSecretKey },
+          { ttl: ttlOneHour(), tokenKindsToBalance: ['dust'] },
+        );
+        log(`dust-only recipe type=${recipe2.type} hasBalancing=${!!recipe2.balancingTransaction}`);
+        if (recipe2.balancingTransaction) previewTx(recipe2.balancingTransaction, 'dust-only balancing');
+        balanced = await ctx.wallet.finalizeRecipe(recipe2);
+        log('dust-only balance+finalize succeeded');
+      } catch (e2) {
+        console.error('[bridge-drill] dust-only retry also failed; cause chain:');
+        console.error(JSON.stringify(dumpErr(e2), null, 2));
+        // Last probe: does the balancing tx alone prove against the local proof server?
+        try {
+          const recipe3 = await ctx.wallet.balanceUnboundTransaction(
+            unsealed,
+            { shieldedSecretKeys: ctx.shieldedSecretKeys, dustSecretKey: ctx.dustSecretKey },
+            { ttl: ttlOneHour(), tokenKindsToBalance: ['dust'] },
+          );
+          if (recipe3.balancingTransaction) {
+            const { HttpProverClient } = await import('@midnight-ntwrk/wallet-sdk-prover-client/effect');
+            // Manual prove with logging — mirrors wallet provingService.
+            const { Effect } = await import('effect');
+            // Fall through: just try transaction.prove with http provider from midnight-js style
+            const { httpClientProofProvider } = await import('@midnight-ntwrk/midnight-js-http-client-proof-provider');
+            // No zk configs for dust — wallet Http path omits key material. Probe via ledger prove.
+            log('probe: calling balancingTransaction.prove via CostModel.initialCostModel…');
+            // Re-throw original; probe details from dump above are enough if prove throws again.
+            try {
+              await recipe3.balancingTransaction.prove(
+                {
+                  check: async () => { throw new Error('probe check not used'); },
+                  prove: async (preimage, keyLocation, overwriteBindingInput) => {
+                    log(`probe prove call keyLocation=${keyLocation} preimage=${preimage?.byteLength ?? preimage?.length} overwrite=${overwriteBindingInput ?? 'none'}`);
+                    const ledger = await import('@midnight-ntwrk/ledger-v8');
+                    const payload = ledger.createProvingPayload(preimage, overwriteBindingInput);
+                    log(`probe createProvingPayload ok, payload=${payload?.byteLength ?? payload?.length}`);
+                    const r = await fetch(`${proofServer.replace(/\/$/, '')}/prove`, {
+                      method: 'POST',
+                      headers: { 'content-type': 'application/octet-stream' },
+                      body: payload,
+                    });
+                    const body = new Uint8Array(await r.arrayBuffer());
+                    log(`probe /prove -> ${r.status} bytes=${body.byteLength}`);
+                    if (!r.ok) throw new Error(`probe /prove ${r.status}`);
+                    return body;
+                  },
+                },
+                CostModel.initialCostModel(),
+              );
+              log('probe: balancingTransaction.prove succeeded (unexpected given finalize failure)');
+            } catch (e3) {
+              console.error('[bridge-drill] probe prove failed; cause chain:');
+              console.error(JSON.stringify(dumpErr(e3), null, 2));
+            }
+          }
+        } catch (eProbeSetup) {
+          console.error('[bridge-drill] probe setup failed:', redact(eProbeSetup?.message ?? eProbeSetup));
+        }
+        throw e;
+      }
+    }
     const balancedBytes = balanced.serialize().length;
     log(`balanced + bound by the wallet: ${balancedBytes} bytes in ${Date.now() - t0} ms`);
     if (DRY) { log('dry run: not submitting'); return; }
 
     // Lace submitTransaction, then wait for finality.
-    const txId = String(await provider.submitTx(balanced));
+    // Bounded: a submit that never returns must fail loudly, not hold the wallet lock.
+    const SUBMIT_MS = Number(process.env.PLUTUSSHIELD_DRILL_SUBMIT_MS || 10 * 60_000);
+    let balancedIds = [];
+    try { balancedIds = (balanced.identifiers?.() ?? []).map(String); } catch {}
+    log(`submitting; balanced tx ids ${balancedIds.slice(0, 4).join(', ') || '(none)'}; timeout ${Math.round(SUBMIT_MS / 1000)} s`);
+    let submitTimer;
+    const txId = String(await Promise.race([
+      provider.submitTx(balanced),
+      new Promise((_, reject) => {
+        submitTimer = setTimeout(
+          () => reject(new Error(`submitTransaction did not return within ${Math.round(SUBMIT_MS / 1000)} s; not claiming success (check the indexer for ${balancedIds[0] ?? 'the tx ids above'})`)),
+          SUBMIT_MS,
+        );
+      }),
+    ]).finally(() => clearTimeout(submitTimer)));
     log(`submitted txId ${txId}; waiting for finalized tx data…`);
     const bfq = `?project_id=${encodeURIComponent(env('BLOCKFROST_MIDNIGHT_PREPROD_ID', '').trim())}`;
     const pdp = indexerPublicDataProvider(
@@ -171,5 +339,8 @@ async function main() {
 
 main().then(() => process.exit(0)).catch((e) => {
   console.error('[bridge-drill]', redact(e?.stack ?? e?.message ?? e));
+  try {
+    console.error('[bridge-drill] cause chain:', JSON.stringify(dumpErr(e), null, 2));
+  } catch {}
   process.exit(1);
 });

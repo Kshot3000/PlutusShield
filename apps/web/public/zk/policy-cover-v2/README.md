@@ -27,7 +27,7 @@ Compact prove in the browser still needs:
    `window.__PLUTUSSHIELD_CIRCUIT_PROVER__` / `registerBrowserCircuitProver`
    still takes precedence.)
 
-No bridge running? Holders file with the claim kit CLI.
+No bridge running, or the first finalized File-with-Lace drill tx is still pending? Holders file with the claim kit CLI.
 
 ## Local prover keys
 

@@ -334,10 +334,11 @@ export default function SecurityPage() {
             datum doesn&apos;t yet.
           </li>
           <li>
-            <Strong>Exploit claims still need a CLI.</Strong> <C>fileClaim</C> needs the holder&apos;s Midnight
-            key in a proving client. The holder can now file it from their own machine with a passphrase-encrypted
-            claim kit from <DocLink href="/claim/evidence">/claim/evidence</DocLink> (<C>--claim … --kit …</C>), so
-            the key never goes to the operator relay, but the browser wallet doesn&apos;t submit it yet.
+            <Strong>Exploit claim filing is holder-side.</Strong> <C>fileClaim</C> needs the holder&apos;s
+            Midnight key in a proving client. On <DocLink href="/claim/evidence">/claim/evidence</DocLink>, File with
+            Lace uses the local holder prove bridge for Compact prove and Lace for balance + submit; until that path
+            has a finalized Preprod drill tx, production filing is the passphrase-encrypted claim kit (
+            <C>--claim … --kit …</C>). Either way the key never goes to the operator relay.
           </li>
           <li>
             <Strong>Young toolchains.</Strong> Pinned to Aiken v1.1.24 (stdlib v4.0.0), compactc 0.31.1 and

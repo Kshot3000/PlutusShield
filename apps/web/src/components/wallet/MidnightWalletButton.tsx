@@ -115,8 +115,8 @@ export function MidnightWalletDialog({ open, onClose }: { open: boolean; onClose
               Connect Lace&apos;s Midnight edition on Preprod. This reads your address and service URIs, and{" "}
               <span className="font-mono text-[12px]">/claim/evidence</span> drives the Lace circuit-submit path for{" "}
               <span className="text-text">proveCover</span> / <span className="text-text">fileClaim</span> (hints,
-              proving strategy, balance + submit). Compact prove still needs the browser prover; until then use the
-              holder claim kit on that page.
+              proving strategy, balance + submit). Compact prove uses the local holder prove bridge; until the first
+              finalized File-with-Lace drill tx, use the holder claim kit on that page.
             </p>
             <div className="mt-5 space-y-2">
               {w.providers.map((p) => (

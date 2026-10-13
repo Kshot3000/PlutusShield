@@ -6,8 +6,9 @@
  * Discover + connect on Preprod via PlutusShield-owned helpers in
  * `@plutusshield/sdk/lace` (DApp Connector API 4.0.1). Circuit submit helpers
  * live in `@plutusshield/sdk/laceCircuits` and `/claim/evidence` (File with Lace).
- * Compact prove still needs an injected BrowserCircuitProver; until then the
- * claim kit CLI remains the production filer.
+ * Compact prove comes from the local holder prove bridge (`pnpm midnight:prove-bridge`);
+ * Lace balances and submits. The claim kit remains the production filer until the
+ * first finalized File-with-Lace bridge-drill submit on Preprod.
  */
 import {
   createContext,
