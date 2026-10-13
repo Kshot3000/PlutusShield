@@ -51,6 +51,11 @@ export const metadata: Metadata = {
       "Protection you can verify on-chain, with privacy where it actually matters.",
     type: "website",
   },
+  alternates: {
+    types: {
+      "application/atom+xml": [{ url: "feed.xml", title: "PlutusShield activity" }],
+    },
+  },
   robots: {
     index: true,
     follow: true,

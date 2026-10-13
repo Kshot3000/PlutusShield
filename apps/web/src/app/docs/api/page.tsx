@@ -3,6 +3,7 @@ import { OPEN_DATA_ENDPOINTS, OPEN_DATA_SCHEMA } from "@plutusshield/sdk";
 import { DocsLayout } from "@/components/docs/DocsLayout";
 import { C, Callout, DocLink, Formula, List, P, Section, Strong, Table } from "@/components/docs/Prose";
 import { GENERATED_AT, SITE_ROOT, openDataPayload } from "@/lib/openData";
+import { FEED_ORACLE_LIMIT, activityEntries } from "@/lib/activityFeed";
 
 export const metadata: Metadata = {
   title: "Open data API",
@@ -33,6 +34,9 @@ const COUNTS: Record<string, string> = {
   oracle: `${oracle.publishes.length} publishes`,
 };
 
+const feedEntries = activityEntries();
+const feedCount = (k: string) => feedEntries.filter((e) => e.kind === k).length;
+
 const built = new Date(GENERATED_AT).toUTCString().replace(" GMT", " UTC");
 
 export default function ApiDocsPage() {
@@ -45,10 +49,11 @@ export default function ApiDocsPage() {
         { id: "datasets", label: "Datasets" },
         { id: "envelope", label: "The envelope" },
         { id: "read", label: "Reading it" },
+        { id: "feed", label: "Activity feed" },
         { id: "fields", label: "Field notes" },
         { id: "limits", label: "Limits" },
       ]}
-      sourcePaths={["packages/sdk/src/openData.ts", "packages/sdk/test/openData.test.ts", "apps/web/src/lib/openData.ts", "apps/web/src/app/api/v1"]}
+      sourcePaths={["packages/sdk/src/openData.ts", "packages/sdk/src/atom.ts", "apps/web/src/lib/activityFeed.ts", "packages/sdk/test/openData.test.ts", "apps/web/src/lib/openData.ts", "apps/web/src/app/api/v1"]}
     >
       <Section id="datasets" title="Datasets">
         <P>
@@ -99,6 +104,23 @@ curl -s ${SITE_ROOT}/api/v1/oracle.json | jq '.data.latest'`}</Formula>
 
 const claims = await fetchOpenData("${SITE_ROOT}", "claims");
 console.log(claims.data.stats.paidLovelace);   // "125000000" style base-unit string`}</Formula>
+      </Section>
+
+      <Section id="feed" title="Activity feed">
+        <P>
+          To follow PlutusShield instead of polling it, subscribe to the Atom feed at <JsonLink path="feed.xml" /> in
+          any feed reader, or point a Discord, Telegram or Slack feed bot at it. It carries one entry per decided
+          claim ({feedCount("claim")} now) and per refused Settle ({feedCount("refused-settle")}), plus the newest{" "}
+          {FEED_ORACLE_LIMIT} live oracle publishes ({feedCount("oracle")} in this build), each linking to its policy
+          or the oracle page and to the transaction on Cardanoscan Preview or the Midnight Preprod explorer.
+        </P>
+        <P>
+          Entry ids are stable <C>tag:</C> URIs, so a reader never shows the same claim twice after a rebuild, and
+          entries are categorised by kind (<C>claim</C>, <C>refused-settle</C>, <C>oracle</C>), product and chain.
+          The SDK&apos;s <C>buildAtomFeed</C> refuses a feed with a duplicate id, a relative link or a non-UTC time,
+          and the post-build check refuses a malformed <C>feed.xml</C>.
+        </P>
+        <Formula label="curl">{`curl -s ${SITE_ROOT}/feed.xml | grep -o '<title>[^<]*' | head`}</Formula>
       </Section>
 
       <Section id="fields" title="Field notes">

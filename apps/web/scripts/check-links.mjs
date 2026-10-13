@@ -10,6 +10,9 @@
  *
  * 3. Every open-data feed (out/api/v1/*.json) parses, carries the v1
  *    envelope for its own dataset, and shares one build time with the rest.
+ * 4. The Atom activity feed (out/feed.xml) is a well-formed Atom document:
+ *    feed id/title/updated/self link, and every entry has id, title, updated,
+ *    summary and an alternate link, with no unescaped ampersands.
  *
  *   node scripts/check-links.mjs [outDir]
  */
@@ -78,10 +81,37 @@ for (const d of DATASETS) {
 }
 if (builtAt.size > 1) problems.push(`api/v1: feeds disagree on generatedAt (${[...builtAt].join(', ')})`);
 
+const FEED = path.join(OUT, 'feed.xml');
+let feedEntries = 0;
+if (!fs.existsSync(FEED)) problems.push('feed.xml: missing');
+else {
+  const xml = fs.readFileSync(FEED, 'utf8');
+  if (!xml.startsWith('<?xml version="1.0" encoding="utf-8"?>')) problems.push('feed.xml: missing XML declaration');
+  if (!xml.includes('<feed xmlns="http://www.w3.org/2005/Atom">') || !xml.trimEnd().endsWith('</feed>')) problems.push('feed.xml: not an Atom feed');
+  for (const tag of ['id', 'title', 'updated']) if (!new RegExp(`^  <${tag}>[^<]+</${tag}>$`, 'm').test(xml)) problems.push(`feed.xml: no feed <${tag}>`);
+  if (!xml.includes('rel="self"')) problems.push('feed.xml: no self link');
+  const blocks = xml.split('<entry>').slice(1);
+  feedEntries = blocks.length;
+  if (!feedEntries) problems.push('feed.xml: no entries');
+  const ids = new Set();
+  blocks.forEach((b, i) => {
+    for (const tag of ['id', 'title', 'updated', 'summary']) if (!b.includes(`<${tag}`)) problems.push(`feed.xml: entry ${i} has no <${tag}>`);
+    if (!b.includes('rel="alternate"')) problems.push(`feed.xml: entry ${i} has no alternate link`);
+    const id = b.match(/<id>([^<]+)<\/id>/)?.[1];
+    if (id && ids.has(id)) problems.push(`feed.xml: duplicate entry id ${id}`);
+    ids.add(id);
+    for (const [, href] of b.matchAll(/href="([^"]+)"/g)) {
+      const m = href.match(/^https:\/\/preprod\.midnightexplorer\.com\/transactions\/0x([0-9a-f]{64})/i);
+      if (m && !txHashes.has(m[1].toLowerCase())) problems.push(`feed.xml: Midnight explorer link to a non-transaction value ${m[1].slice(0, 12)}…`);
+    }
+  });
+  if (/&(?!(amp|lt|gt|quot|apos);)/.test(xml)) problems.push('feed.xml: unescaped ampersand');
+}
+
 const uniq = [...new Set(problems)];
 if (uniq.length) {
   console.error(`check-links: ${uniq.length} problem(s) in ${pages.length} pages`);
   for (const p of uniq) console.error(`  ${p}`);
   process.exit(1);
 }
-console.log(`check-links: ${pages.length} pages ok, ${txHashes.size} known Midnight tx hashes, ${DATASETS.length} open-data feeds ok`);
+console.log(`check-links: ${pages.length} pages ok, ${txHashes.size} known Midnight tx hashes, ${DATASETS.length} open-data feeds ok, Atom feed ${feedEntries} entries ok`);
