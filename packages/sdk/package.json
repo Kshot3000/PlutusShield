@@ -22,7 +22,8 @@
     "./proveBridge": "./src/proveBridge.ts",
     "./openData": "./src/openData.ts",
     "./coverPlan": "./src/coverPlan.ts",
-    "./embed": "./src/embed.ts"
+    "./embed": "./src/embed.ts",
+    "./calendar": "./src/calendar.ts"
   },
   "scripts": {
     "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts"

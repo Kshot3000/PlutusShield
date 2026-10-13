@@ -34,7 +34,7 @@ Testnet only (Cardano Preview + Midnight Preprod). Not audited.
 | [/book](https://kshot3000.github.io/PlutusShield/book/) | Open underwriting book: live Preview pools, tier B scorecard, capital |
 | [/claims](https://kshot3000.github.io/PlutusShield/claims/) | Public claims register (approved, denied, split votes, refused 1-of-3) |
 | [/status](https://kshot3000.github.io/PlutusShield/status/) | Preview + Preprod systems honesty |
-| [/policy](https://kshot3000.github.io/PlutusShield/policy/) | One policy, both chains, one timeline |
+| [/policy](https://kshot3000.github.io/PlutusShield/policy/) | One policy, both chains, one timeline, plus an .ics / Google Calendar export of its deadlines (cover active, expiry, last moment to claim) built in the browser (`packages/sdk/src/calendar.ts`) |
 | [/plan](https://kshot3000.github.io/PlutusShield/plan/) | Portfolio cover planner: price several exposures against live Preview tranches; deep-link any portfolio via URL (`encodePlanShare`) |
 | [/docs/api](https://kshot3000.github.io/PlutusShield/docs/api/) | Open data API: products, claims, book, oracle and a sample cover plan as versioned JSON (`/api/v1/*.json`) |
 | [/docs/embed](https://kshot3000.github.io/PlutusShield/docs/embed/) | Embeddable cover quote: one iframe puts a live depeg or exploit quote in a partner dApp (same `quote()` as /cover, no wallet in the widget), with a snippet builder and live preview (`packages/sdk/src/embed.ts`) |

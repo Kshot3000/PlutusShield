@@ -15,6 +15,7 @@ import { refTokenName } from "@plutusshield/sdk/cardano";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { MidnightHash } from "@/components/midnight/MidnightHash";
+import { PolicyCalendar } from "@/components/policy/PolicyCalendar";
 import { BLOCKFROST_ID, BLOCKFROST_URL } from "@/lib/chainRead";
 import { PREVIEW, explorerTx } from "@/lib/preview";
 import { shortHash } from "@/lib/midnightPreprod";
@@ -332,6 +333,8 @@ export function PolicyTracker() {
           </Button>
         </div>
       </section>
+
+      <PolicyCalendar policy={policy} claimGraceMs={grace} coverage={policy.coverage ? fmtAmt(policy.coverage, policy.ticker) : null} />
     </>
   );
 }
