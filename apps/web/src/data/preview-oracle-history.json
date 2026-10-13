@@ -364,6 +364,18 @@
       "bps": 10013,
       "tx": "dbf8256e50755dee38eebd990e242fd87e48db7d3dbe0726acc22e064edd9239",
       "live": true
+    },
+    {
+      "at": "2026-10-13T17:29:55.939Z",
+      "bps": 10004,
+      "tx": "ff254d2bd8d5c7fb36e5099b9e62d920022aac8a6895f23a398a817d4cdae0b0",
+      "live": true
+    },
+    {
+      "at": "2026-10-13T18:55:47.682Z",
+      "bps": 9996,
+      "tx": "e2173d920d7629031e9018908d2fde3c28fb2a72e39f6282a4541100f9c5a278",
+      "live": true
     }
   ]
 }
