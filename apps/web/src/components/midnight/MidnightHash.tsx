@@ -5,7 +5,9 @@ import { midnightExplorerContract, midnightExplorerTx, shortHash } from "@/lib/m
 /**
  * A Midnight Preprod tx hash or contract address: links to the working
  * explorer when the value resolves there, and always offers a copy button
- * so nobody is stuck on a dead link.
+ * so nobody is stuck on a dead link. Use kind="value" for on-chain values that
+ * are not transactions (committee member keys, evidence commitments): those get
+ * the copy button but never an explorer link, since the explorer 404s on them.
  */
 export function MidnightHash({
   h,
@@ -15,13 +17,13 @@ export function MidnightHash({
   title,
 }: {
   h: string;
-  kind?: "tx" | "contract";
+  kind?: "tx" | "contract" | "value";
   full?: boolean;
   className?: string;
   title?: string;
 }) {
   const [copied, setCopied] = useState(false);
-  const href = kind === "contract" ? midnightExplorerContract(h) : midnightExplorerTx(h);
+  const href = kind === "value" ? null : kind === "contract" ? midnightExplorerContract(h) : midnightExplorerTx(h);
   const label = full ? h : shortHash(h);
   const copy = async () => {
     try {
@@ -57,7 +59,7 @@ export function MidnightHash({
       <button
         type="button"
         onClick={copy}
-        aria-label={copied ? "Copied" : `Copy ${kind === "contract" ? "contract address" : "transaction hash"}`}
+        aria-label={copied ? "Copied" : `Copy ${kind === "contract" ? "contract address" : kind === "value" ? "value" : "transaction hash"}`}
         className="shrink-0 rounded px-1 font-mono text-[10px] text-text-dim hover:text-text"
       >
         {copied ? "copied" : "copy"}

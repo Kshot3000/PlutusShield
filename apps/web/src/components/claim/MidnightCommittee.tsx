@@ -12,7 +12,7 @@ const statusTone: Record<string, string> = {
 };
 const statusLabel: Record<string, string> = { PAID: "PAID", ACTIVE: "Rejected → ACTIVE", CLAIM_PENDING: "Pending" };
 
-function Hash({ h, title, kind = "tx" }: { h: string; title?: string; kind?: "tx" | "contract" }) {
+function Hash({ h, title, kind = "tx" }: { h: string; title?: string; kind?: "tx" | "contract" | "value" }) {
   return <MidnightHash h={h} title={title} kind={kind} />;
 }
 
@@ -78,7 +78,7 @@ function ClaimVotes({ c }: { c: CommitteeClaim }) {
               <td className="px-4 py-3 text-text-muted">Holder</td>
               <td className="px-4 py-3"><Hash h={c.fileClaim.txHash} /></td>
               <td className="px-4 py-3 text-text-dim">
-                Evidence commitment <Hash h={c.evidenceCommitment} />
+                Evidence commitment <Hash h={c.evidenceCommitment} kind="value" />
               </td>
               <td className="px-4 py-3 text-midnight">CLAIM_PENDING</td>
             </tr>
@@ -87,7 +87,7 @@ function ClaimVotes({ c }: { c: CommitteeClaim }) {
             <tr key={v.txHash}>
               <td className="px-4 py-3">voteClaim · {v.approved ? "approve" : "reject"}</td>
               <td className="px-4 py-3 text-text-muted">
-                Seat #{v.seat} <Hash h={v.member} />
+                Seat #{v.seat} <Hash h={v.member} kind="value" />
               </td>
               <td className="px-4 py-3">
                 <Hash h={v.txHash} />
@@ -156,7 +156,7 @@ export function MidnightCommittee() {
             <li key={m.commitment} className="rounded-xl border border-midnight/25 bg-midnight/[0.04] px-3 py-2.5">
               <p className="font-mono-label text-[9px] text-text-dim">Seat #{m.seat} · role commitment</p>
               <p className="mt-0.5">
-                <Hash h={m.commitment} />
+                <Hash h={m.commitment} kind="value" />
               </p>
               <p className="mt-0.5 text-[10.5px] text-text-dim">
                 {cast.length ? cast.map((v) => (v.approved ? "Approved" : "Rejected")).join(", ") : "No votes cast yet"}

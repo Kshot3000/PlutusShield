@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/snapshot-pool.mjs && node scripts/oracle-history.mjs && node --experimental-strip-types --no-warnings scripts/snapshot-midnight.mjs && next build",
+    "build": "node scripts/snapshot-pool.mjs && node scripts/oracle-history.mjs && node --experimental-strip-types --no-warnings scripts/snapshot-midnight.mjs && next build && node scripts/check-links.mjs",
     "build:pages": "NEXT_PUBLIC_BASE_PATH=/PlutusShield pnpm build",
     "preview": "npx --yes serve@14 out",
     "lint": "eslint",
+    "check:links": "node scripts/check-links.mjs",
     "snapshot": "node scripts/snapshot-pool.mjs && node scripts/oracle-history.mjs && node --experimental-strip-types --no-warnings scripts/snapshot-midnight.mjs"
   },
   "dependencies": {
