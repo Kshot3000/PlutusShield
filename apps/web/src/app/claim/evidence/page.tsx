@@ -61,10 +61,12 @@ export default function EvidencePage() {
         the v1 registry (<code className="font-mono">policy-cover.compact</code>) from the operator relay, and is kept as its history. Lace Midnight connect is live on this page (Preprod address + Lace service URIs). The evidence vault now drives the
         Lace circuit-submit path for <code className="font-mono">proveCover</code> /{" "}
         <code className="font-mono">fileClaim</code> (proving strategy, prover health, permission hints, balance +
-        submit via the connector). Building the Compact proof still needs the browser midnight-js prover + ZK configs —
-        until that lands, seal the bundle, use File with Lace readiness, or download the holder claim kit for{" "}
+        submit via the connector). Compact prove comes from the local holder prove bridge (
+        <code className="font-mono">pnpm midnight:prove-bridge</code>); File with Lace uses it automatically when it is
+        up. Without the bridge, seal the bundle or download the holder claim kit for{" "}
         <code className="font-mono">policy-cover-preprod.mjs --claim … --kit …</code>. Exploit cover is bought
-        from the operator tooling on the Preview exploit pool for now (a browser Buy for it is next), and an approved claim is
+        in the browser on <Link href="/cover#buy-exploit" className="text-text-muted underline underline-offset-4 hover:text-text">/cover</Link>{" "}
+        from the Preview exploit pool (your Midnight key is saved in this browser for this page), and an approved claim is
         paid on Cardano by a Settle signed by 2 of the 3 assessors on the pool&apos;s committee. Read the{" "}
         <Link href="/docs/privacy#evidence-vault" className="text-text-muted underline underline-offset-4 hover:text-text">
           vault&apos;s trust model

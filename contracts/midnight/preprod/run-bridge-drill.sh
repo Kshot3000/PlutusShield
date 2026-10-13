@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Bridge submit drill on Midnight Preprod: prove-bridge proves proveCover, a headless
 # wallet balances + submits it the way Lace does. Shares the relay wallet lock.
+# Relies on MIDNIGHT_WALLET_FACADE waitForSynced dust-balance (>0) / dust-stall bypass
+# so Preprod dust index crawl does not block a funded wallet for hours.
 #   ./run-bridge-drill.sh --key <policy-key.json> [--dry-run]
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"

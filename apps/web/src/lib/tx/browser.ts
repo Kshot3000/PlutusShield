@@ -8,12 +8,15 @@
 import type { LucidEvolution, WalletApi } from "@lucid-evolution/lucid";
 import { PREVIEW } from "@/lib/preview";
 import artifact from "@/data/preview-deployment.json";
+import exploitArtifact from "@/data/preview-exploit-v2-deployment.json";
 import { BLOCKFROST_ID, BLOCKFROST_URL } from "@/lib/chainRead";
 import { poolScriptFrom } from "./lp";
 import { coverScriptFrom } from "./cover";
 
 export const POOL_SCRIPT = poolScriptFrom(artifact);
 export const COVER_SCRIPT = coverScriptFrom(artifact);
+/** Exploit-cover v2 pool (2-of-3 assessor committee). No oracle: assessed cover. */
+export const EXPLOIT_COVER_SCRIPT = coverScriptFrom(exploitArtifact);
 export { CHAIN_API } from "@/lib/chainRead";
 
 /**

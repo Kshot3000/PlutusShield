@@ -302,9 +302,9 @@ export function QuoteCalculator() {
           <p className="mt-5 rounded-xl border border-[color-mix(in_srgb,var(--gold)_30%,var(--border))] bg-[var(--gold-soft)] p-3 text-[11px] leading-relaxed text-text-muted">
             <span className="text-gold">Model-only quote.</span>{" "}
             {product === "exploit"
-              ? "Exploit cover is assessed: claims resolve on Midnight Preprod and pay from the Preview exploit pool on 2 of 3 assessor-committee signatures (bought from operator tooling for now; a browser Buy is next)."
+              ? "Exploit cover is assessed: claims resolve on Midnight Preprod and pay from the Preview exploit pool on 2 of 3 assessor-committee signatures (buy it live above, under Buy smart-contract exploit cover)."
               : "SLA cover needs an uptime oracle that doesn't exist yet."}{" "}
-            Browser buys are live for stablecoin depeg cover.
+            Browser buys are live for stablecoin depeg and exploit cover.
           </p>
         )}
 

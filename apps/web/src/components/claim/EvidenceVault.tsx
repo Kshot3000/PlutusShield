@@ -564,8 +564,8 @@ function ClaimKitPanel({ sealed }: { sealed: SealedEvidence }) {
       {key ? (
         <>
           <p className="text-[12.5px] leading-relaxed text-text-muted">
-            This browser holds the Midnight policy key for this policy. File with Lace below when the Compact prover is
-            loaded, or wrap the key and sealed evidence into a passphrase-locked claim kit and file from your own machine
+            This browser holds the Midnight policy key for this policy. File with Lace below when the local prove bridge
+            is up (`pnpm midnight:prove-bridge`), or wrap the key and sealed evidence into a passphrase-locked claim kit and file from your own machine
             with the CLI — your holder key never goes to the PlutusShield relay.
           </p>
           <FileWithLace sealed={sealed} policyKey={key} />

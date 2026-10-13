@@ -6,12 +6,16 @@
  *   pnpm web-buy buy <ada|usdc> <coverage> [days=14]   whole units; premium = validator floor
  *   pnpm web-buy policies                              this wallet's policies (the /cover "My policies" view)
  *   pnpm web-buy oracle                                sale circuit-breaker status of every feed
+ *   pnpm web-buy exploit <ada|usdc> <coverage> [days=30]
+ *                                                      exploit cover on the v2 committee pool, built from
+ *                                                      apps/web/src/data/preview-exploit-v2-deployment.json
+ *                                                      exactly like the /cover exploit Buy (no oracle feeds)
  *
  * If the oracle readings are too old for a sale, `buy` first publishes fresh
  * healthy-peg readings with the Preview test-oracle key (the operator's job;
  * the website can't do it). It never papers over a feed that reports a depeg.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { LucidEvolution } from "@lucid-evolution/lucid";
 import { DAY_MS, textHex } from "../../../../packages/sdk/src/cardano.ts";
@@ -123,6 +127,42 @@ switch (cmd) {
     record(`web-buy Buy ${amt} ${which} cover ${daysArg}d (website builder, premium ${built.premium})`, hash);
     break;
   }
+  case "exploit": {
+    if (!["ada", "usdc"].includes(which ?? "") || !amt) {
+      console.error("usage: pnpm web-buy exploit <ada|usdc> <coverage> [days=30]");
+      process.exit(1);
+    }
+    const webData = join(DEPLOY_DIR, "..", "..", "..", "apps", "web", "src", "data");
+    const ex = coverScriptFrom(JSON.parse(readFileSync(join(webData, "preview-exploit-v2-deployment.json"), "utf8")));
+    const days = process.argv[5] ?? "30";
+    const tranche = which === "ada" ? 0 : 1;
+    const coverage = BigInt(Math.round(Number(amt) * 1e6));
+    // Exploit pools take no oracle feeds; the builder skips the circuit-breaker for them.
+    const built = await buildBuy(lucid, ex, { tranche, coverage, days: BigInt(days), now: Date.now(), feeds: [] });
+    console.log(toJson({ policyId: built.policy.policyId, midnightCommitment: built.policy.midnightCommitment, tranche, premium: built.premium, start: new Date(Number(built.policy.start)).toISOString(), expiry: new Date(Number(built.policy.expiry)).toISOString() }));
+    const hash = await (await built.tx.sign.withWallet().complete()).submit();
+    console.log(`Buy ${amt} ${which} exploit cover (${days}d, website builder): ${hash}; waiting…`);
+    const keyFile = savePolicyKey(withBuyTx(built.policyKey, hash));
+    console.log(`Midnight policy key (holder secret; keep it private): ${keyFile}`);
+    await confirm(hash);
+    const landed = (await listWalletPolicies(lucid, ex)).find((p) => p.policy.policyId === built.policy.policyId);
+    if (!landed) throw new Error("exploit policy datum not found after confirmation");
+    const chk = await checkPolicyKey(built.policyKey, landed.policy.midnightCommitment);
+    console.log(`policy datum ${landed.ref}: midnight_commitment ${chk.ok ? "opens with the saved key" : `DOES NOT match the key (${chk.reason})`}`);
+    if (!chk.ok) process.exitCode = 1;
+    // Public record (no keys): the exploit v2 deployment + its website mirror.
+    const recFile = join(DEPLOY_DIR, "deployments", "preview-exploit-v2.json");
+    const rec = JSON.parse(readFileSync(recFile, "utf8"));
+    const asset = tranche === 0 ? "lovelace" : `${ex.assets[1].policyId}${ex.assets[1].assetName}`;
+    rec.txs = { ...rec.txs, [`${new Date().toISOString()} Buy ${amt} ${which} exploit cover (website builder)`]: hash };
+    rec.policies = [
+      ...(rec.policies ?? []),
+      { policyId: built.policy.policyId, midnightCommitment: built.policy.midnightCommitment, premium: built.premium.toString(), asset, coverage: built.policy.coverage.toString(), start: built.policy.start.toString(), expiry: built.policy.expiry.toString(), buyTx: hash, holder: deployer.address, builtBy: "website-builder" },
+    ];
+    writeFileSync(recFile, toJson(rec));
+    writeFileSync(join(webData, "preview-exploit-v2.json"), toJson(rec));
+    break;
+  }
   default:
-    console.log("usage: pnpm web-buy <buy|policies|oracle> …");
+    console.log("usage: pnpm web-buy <buy|policies|oracle|exploit> …");
 }

@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import { AppShell } from "@/components/AppShell";
 import { QuoteCalculator } from "@/components/cover/QuoteCalculator";
 import { LiveCover } from "@/components/cover/LiveCover";
+import { BuyExploitCover } from "@/components/cover/BuyExploitCover";
 import { ExploitPayout } from "@/components/claim/ExploitPayout";
 
 export const metadata: Metadata = {
   title: "Cover",
-  description: "Buy PlutusShield stablecoin depeg cover on Cardano Preview with a CIP-30 wallet, paying in ADA or USDC, and track your policies.",
+  description: "Buy PlutusShield stablecoin depeg and smart-contract exploit cover on Cardano Preview with a CIP-30 wallet, paying in ADA or USDC, and track your policies.",
 };
 
 export default function CoverPage() {
@@ -14,9 +15,10 @@ export default function CoverPage() {
     <AppShell
       active="cover"
       title="Cover"
-      description="Buy stablecoin depeg cover on Cardano Preview, paying in ADA or USDC from your own wallet. The premium is exactly what the validator enforces, the oracle peg check runs before you sign, and your policies show up below."
+      description="Buy stablecoin depeg or smart-contract exploit cover on Cardano Preview, paying in ADA or USDC from your own wallet. The premium is exactly what the validator enforces, the oracle peg check runs before you sign, and your policies show up below."
     >
       <LiveCover />
+      <BuyExploitCover />
       <div className="mb-10">
         <ExploitPayout compact />
       </div>

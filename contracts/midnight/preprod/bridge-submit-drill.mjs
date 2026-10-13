@@ -12,7 +12,9 @@
  *   2. POST /prove { circuit: proveCover, … } with a browser Origin header and
  *      the wallet's shielded coin/encryption keys (what Lace getShieldedAddresses
  *      gives) once as a fail-fast preflight
- *   3. sync the wallet (seed from env, never printed), then prove again
+ *   3. sync the wallet (seed from env, never printed; waitForSynced may BYPASS once
+ *      tDUST balance is already > 0 or dust stalls with highestRelevantIndex=0 — see
+ *      Midnight agent wallet-facade waitForSynced), then prove again
  *   4. deserialize the returned unsealed tx (signature, proof, pre-binding)
  *   5. balanceUnboundTransaction + finalizeRecipe   (= Lace balanceUnsealedTransaction)
  *   6. submitTransaction                             (= Lace submitTransaction)
