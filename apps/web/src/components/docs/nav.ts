@@ -2,6 +2,7 @@
 export type DocSlug =
   | "how-cover-works"
   | "pricing"
+  | "risk-tiers"
   | "underwriting-pool"
   | "settlement"
   | "privacy"
@@ -31,6 +32,13 @@ export const DOC_PAGES: DocPage[] = [
     summary: "The quote engine, the kinked utilization curve, and the integer premium floor the validator enforces.",
     tag: "Premiums",
     tone: "cardano",
+  },
+  {
+    slug: "risk-tiers",
+    title: "Risk tiers",
+    summary: "The open underwriting scorecard that sets a pool's tier: criteria, hard stops, caps, and the risk multiplier fixed at InitPool.",
+    tag: "Underwriting",
+    tone: "gold",
   },
   {
     slug: "underwriting-pool",

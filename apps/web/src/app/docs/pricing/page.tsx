@@ -88,6 +88,10 @@ m(u) = 1.25 + 1.5 × (u − 0.7) / 0.3         if u > 0.7`}</Formula>
             ["Minimum premium", "5 units of the policy's currency (5 ADA or 5 USDC)", "Per tranche: AssetTerms.min_premium = 5_000_000 base units (both 6 decimals)"],
           ]}
         />
+        <P>
+          A pool&apos;s tier is fixed at <C>InitPool</C> from an open underwriting scorecard, so buyers cannot pick
+          a cheaper tier for the same risk. See <DocLink href="/docs/risk-tiers">Risk tiers</DocLink>.
+        </P>
       </Section>
 
       <Section id="capacity" title="Capacity caps">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   CURRENCIES,
   MAX_SINGLE_POLICY_SHARE,
@@ -217,6 +218,12 @@ export function QuoteCalculator() {
           compact
           options={(["A", "B", "C"] as RiskTier[]).map((t) => ({ value: t, label: `Tier ${t}`, hint: tierCopy[t] }))}
         />
+        <p className="-mt-2 text-[11px] leading-relaxed text-text-dim">
+          Each pool fixes its tier at launch; both live Preview pools are tier B.{" "}
+          <Link href="/docs/risk-tiers/" className="text-accent-strong underline underline-offset-2 hover:text-text">
+            How tiers are set
+          </Link>
+        </p>
       </div>
 
       <div ref={resultRef} id="quote-result" className="glass-panel relative flex flex-col p-5 sm:p-8 lg:self-start">
