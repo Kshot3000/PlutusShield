@@ -162,7 +162,8 @@ card(s, 6.83, 2.4, 5.7, 3.9, "policy-cover v2", [
     [("Preprod contract  ", MUTED, False, SANS), ("5430b803…4feb8110", INK, False, MONO)],
     "Adds voteClaim: a 2-of-3 committee with per-round tallies; a reject resets the round.",
     "First drill: approve, reject, approve, then PAID at 2 of 3.",
-    "Mirrors all 3 mirrorable Cardano Preview policies."], head_color=VIOLET)
+    "Second: a holder-filed claim (claim kit), seats 1 + 3 approve, paid on Cardano.",
+    "4 Cardano Preview policies registered on v2."], head_color=VIOLET)
 text(s, 0.8, 6.4, 11.7, 0.4, "compactc 0.31.1 · both contracts full-compile with prover and verifier keys",
      size=13, color=MUTED, font=MONO)
 footer(s, n)
@@ -172,16 +173,18 @@ s = slide(); n += 1
 kicker(s, "Live on testnet"); title(s, "Every line here is backed by a transaction.")
 rows = [
     ("Depeg pool (ADA + tUSDCx)", "11 live Preview policies, buy / claim / release from a CIP-30 wallet"),
+    ("Exploit cover in the browser", "10 tADA bought with the website's own Buy builder, Buy 3c1fc629…"),
     ("First exploit claim paid", "50 tADA: Midnight claim PAID, then Cardano Settle 5509c2d9…"),
     ("First committee payout", "50 tADA co-signed by 2 of 3 assessors, Settle c35535dd…"),
+    ("Holder-filed claim paid", "Claim kit fileClaim 00989a6a…, v2 voteClaim 2 of 3, 25 tADA Settle dbf0ba7a…"),
     ("1-of-3 payout attempt", "Rejected by the validator in both local and Blockfrost evaluation"),
-    ("Depeg oracle", "45 recorded live publishes to 3 Preview feeds, latest 99.84% (Oct 12)"),
-    ("Midnight relay", "registerPolicy + proveCover on Preprod for 5 policies, readable via Blockfrost"),
+    ("Depeg oracle", "52 recorded live publishes to 3 Preview feeds, latest 99.97% (Oct 12)"),
+    ("Midnight relay", "registerPolicy + proveCover on Preprod (v1 + v2), readable via Blockfrost"),
 ]
 for i, (a, b) in enumerate(rows):
-    y = 2.35 + i * 0.72
-    text(s, 0.8, y, 4.6, 0.6, a, size=17, color=INK)
-    text(s, 5.5, y, 7.1, 0.6, b, size=15, color=MUTED)
+    y = 2.3 + i * 0.56
+    text(s, 0.8, y, 4.6, 0.5, a, size=16, color=INK)
+    text(s, 5.5, y, 7.1, 0.5, b, size=14, color=MUTED)
 footer(s, n)
 
 # 7 Product
@@ -197,16 +200,16 @@ footer(s, n)
 
 # 8 Engineering
 s = slide(); n += 1
-kicker(s, "Engineering"); title(s, "327 unit tests plus an end-to-end emulator run, all green.")
-stats = [("131", "Aiken validator tests"), ("119", "SDK: quote engine, codecs, evidence vault, claim kit, Lace, ZK fetch"),
+kicker(s, "Engineering"); title(s, "334 unit tests plus an end-to-end emulator run, all green.")
+stats = [("131", "Aiken validator tests"), ("126", "SDK: quote engine, codecs, evidence vault, claim kit, Lace, prove bridge"),
          ("60", "Compact circuit simulation, claims relay, relay plan, state decode"), ("14 + 3", "oracle relay · committee kit")]
 for i, (big, small) in enumerate(stats):
     x = 0.8 + i * 3.0
     text(s, x, 2.6, 2.8, 1.0, big, size=48, color=BLUE, font=SERIF)
     text(s, x, 3.7, 2.7, 1.2, small, size=15, color=MUTED)
 text(s, 0.8, 5.1, 11.7, 1.4, [
-    "Lucid emulator e2e: pool, buy, settle, expire, exploit 2-of-3, and every 1-of-3 combination rejected.",
-    "Next.js static site, 17 routes, redeployed to GitHub Pages on every push; checked on iPhone (WebKit) and Pixel."],
+    "Lucid emulator e2e: pool, buy, settle, expire, exploit 2-of-3, every 1-of-3 combination rejected, exploit release.",
+    "Next.js static site, 18 routes, redeployed to GitHub Pages on every push; checked on iPhone (WebKit) and Pixel."],
     size=16, color=INK)
 footer(s, n)
 
@@ -217,10 +220,10 @@ card(s, 0.8, 2.4, 5.7, 3.9, "Today", [
     "Testnet only (Cardano Preview, Midnight Preprod). Not audited.",
     "The three committee seats are run by the team.",
     "Exploit evidence in the drills is demo evidence.",
-    "Midnight retired its hosted Preprod indexer; reads now go through Blockfrost."], head_color=GOLD)
+    "Holders file claims with the claim kit; File with Lace proves locally, first finalized submit pending."], head_color=GOLD)
 card(s, 6.83, 2.4, 5.7, 3.9, "Next", [
     "Independent assessor operators (offline keygen and signed enrollment kit is in the repo).",
-    "Lace circuit-submit + ZK asset probe (verifier/zkir on Pages) for proveCover / fileClaim on /claim/evidence; Compact prove still needs midnight-js injection — claim kit files today.",
+    "First finalized File with Lace submit: the holder prove bridge already proves proveCover / fileClaim in about 1 s; Lace balances and submits.",
     "Security audit, then a capped mainnet launch.",
     "Catalyst funding for claim capital."], head_color=BLUE)
 footer(s, n)

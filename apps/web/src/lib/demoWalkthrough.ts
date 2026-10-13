@@ -49,9 +49,9 @@ export const MIDNIGHT_V2_CONTRACT = "5430b803b6b3df6e6ee1d498bb02e2f2d06cb46661e
 
 /** Latest oracle publish recorded in preview.json at the time of this build. */
 export const LATEST_ORACLE = {
-  hash: "b2e0fbe6efef3a5fdad0b135f6968172ff509e0ddcf7c61f6205de4b5ab81b29",
-  pegBps: 9977,
-  at: "Oct 12, 2026 · 14:11 UTC",
+  hash: "6d0ae558a211d37445ba6215407f83faf3163d7ebb944f99efd0cbe3b3c047a4",
+  pegBps: 9997,
+  at: "Oct 12, 2026 · 23:51 UTC",
 };
 
 export const REPO = "https://github.com/Kshot3000/PlutusShield";
@@ -128,11 +128,12 @@ export const DEMO_BEATS: DemoBeat[] = [
     route: "/cover",
     title: "Buy cover on Cardano",
     lede:
-      "The cover desk runs on Cardano Preview. Pick stablecoin depeg cover, pay the premium in ADA or test USDC, and sign with your own wallet. The validator only sells while the oracle feeds are fresh and the peg holds: if the feeds go stale for two hours or the peg breaks, sales close on their own.",
+      "The cover desk runs on Cardano Preview. Pick stablecoin depeg cover, pay the premium in ADA or test USDC, and sign with your own wallet. The validator only sells while the oracle feeds are fresh and the peg holds: if the feeds go stale for two hours or the peg breaks, sales close on their own. Smart-contract exploit cover is bought the same way, from the same wallet, on the 2-of-3 committee pool.",
     steps: [
       "Connect a CIP-30 wallet (Lace or Eternl) on Preview with a little tADA.",
       "Choose depeg cover, set an amount, pick ADA or tUSDCx for the premium, and buy.",
       "Open the Buy tx: the policy datum holds a hash commitment, not your terms.",
+      "Optional: switch to exploit cover (/cover#buy-exploit). The browser makes the policy's Midnight key and saves it for claims; the policy shows up in My policies labelled Exploit (v2 committee).",
       "No wallet handy? Skip the buy and look at a live policy on the app dashboard.",
     ],
     proves: "Premium, pool accounting and the sale circuit-breaker are enforced by the validator, not by the website.",
@@ -147,6 +148,13 @@ export const DEMO_BEATS: DemoBeat[] = [
         label: "Buy · 50 tADA depeg cover, 14 days",
         hash: "7c3365bb519dfdaca6e12a371b35e0c1b7ffd321bec42130021e22b47c31386d",
         note: "Policy 72512fac…, the one mirrored on Midnight in the next step",
+      },
+      {
+        chain: "cardano",
+        kind: "tx",
+        label: "Browser Buy · 10 tADA exploit cover",
+        hash: "3c1fc629474f48e2798479a3529e3332f75d73be4f5ccdd41f81886c9f547fff",
+        note: "Policy 9bdef8cb… on the v2 committee pool, built with the website's own buildBuy",
       },
       {
         chain: "cardano",
@@ -188,7 +196,8 @@ export const DEMO_BEATS: DemoBeat[] = [
         note: "Zero-knowledge coverage proof",
       },
     ],
-    honest: "Today the relay and proveCover run from the operator tooling. Proving straight from a browser Midnight wallet is next.",
+    honest:
+      "These registerPolicy and proveCover txs ran from the operator relay. The holder path now exists too: File with Lace on /claim/evidence proves proveCover in the holder's own prove bridge (local proof server, about 1 s against the live v2 contract) and hands Lace the proven tx to balance and submit. The first finalized submit through that path is still pending.",
   },
   {
     id: "claim",
@@ -231,8 +240,23 @@ export const DEMO_BEATS: DemoBeat[] = [
         label: "voteClaim · seat 3 approves → PAID",
         hash: "bd62e689f13326a71d8db92f88d6aa4d7ede55952be32bbaf8440ec0482f7d74",
       },
+      {
+        chain: "midnight",
+        kind: "tx",
+        label: "fileClaim · filed by the holder (claim kit)",
+        hash: "00989a6afe372f396299c3d0807816208647d3b4907576d29ae0587e90873630",
+        note: "Exploit policy 496dced8…; the operator never held the policy key (demo evidence)",
+      },
+      {
+        chain: "midnight",
+        kind: "tx",
+        label: "voteClaim · seat 3 approves → PAID (holder claim)",
+        hash: "beb6d9f50021856fdec84b52754ecc0d44517250b2cad6da95e0de2fbf7470cf",
+        note: "Seats 1 + 3 checked the sealed bundle off-ledger and approved",
+      },
     ],
-    honest: "The page seals the bundle and shows the exact fileClaim arguments; filing from a browser Midnight wallet is next.",
+    honest:
+      "Holders file today with the passphrase-encrypted claim kit from /claim/evidence, so the policy key never leaves them. File with Lace (prove bridge + Lace balance and submit) is built and proves fileClaim locally against Preprod v2; until its first finalized submit, the claim kit is the production filer. Drill evidence is demo data, not a real incident.",
   },
   {
     id: "settle",
@@ -266,8 +290,15 @@ export const DEMO_BEATS: DemoBeat[] = [
         hash: "c35535dd089693d5b9676d5569a8d31b405726f7d02f782647d6afa67899ab38",
         note: "assessor-1 + assessor-3",
       },
+      {
+        chain: "cardano",
+        kind: "tx",
+        label: "Settle · 25 tADA, holder-filed claim",
+        hash: "dbf0ba7a963c680354fa27eaf5e877c4dd28cb6b905885b496a51f3638ba15e0",
+        note: "Policy 496dced8…, decided 2 of 3 by v2 voteClaim, then assessor-1 + assessor-3",
+      },
     ],
     honest:
-      "This payout drill (Oct 7) settled a claim approved on the v1 Midnight registry; v2 now enforces the same 2-of-3 rule on Midnight's side. Cardano can't verify Midnight on-chain, so the committee's signatures are the trust point.",
+      "The first payout (c35535dd…, Oct 7) settled a claim approved on the v1 Midnight registry. The second (dbf0ba7a…, Oct 12) settled the holder-filed claim above, decided 2 of 3 by voteClaim on v2. Cardano can't verify Midnight on-chain, so the committee's signatures are the trust point; today all three seats are team-run.",
   },
 ];

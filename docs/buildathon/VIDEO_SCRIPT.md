@@ -12,7 +12,10 @@ Links used on screen (all checked Oct 12, 2026):
 - Midnight v2 contract: https://preprod.midnightexplorer.com/contracts/0x5430b803b6b3df6e6ee1d498bb02e2f2d06cb46661e72af1e6208d864feb8110
 - Midnight v2 proveCover tx (policy 72512fac…): https://preprod.midnightexplorer.com/transactions/0x853bab79c11f0a5ea42ff46121efc60e32b74fe5ca07b18761b71a6f442c39ce
 - 2-of-3 committee payout on Cardano: https://preview.cexplorer.io/tx/c35535dd089693d5b9676d5569a8d31b405726f7d02f782647d6afa67899ab38
-- Latest oracle publish (peg 99.77%, published Oct 12 14:11 UTC; confirmed on Preview, checked Oct 12, 2026): https://preview.cexplorer.io/tx/b2e0fbe6efef3a5fdad0b135f6968172ff509e0ddcf7c61f6205de4b5ab81b29
+- Holder-filed claim on Midnight (claim kit, exploit policy 496dced8…): https://preprod.midnightexplorer.com/transactions/0x00989a6afe372f396299c3d0807816208647d3b4907576d29ae0587e90873630
+- Its 2-of-3 payout on Cardano (25 tADA, decided by v2 voteClaim): https://preview.cexplorer.io/tx/dbf0ba7a963c680354fa27eaf5e877c4dd28cb6b905885b496a51f3638ba15e0
+- Exploit cover bought from the website's own Buy builder (policy 9bdef8cb…): https://preview.cexplorer.io/tx/3c1fc629474f48e2798479a3529e3332f75d73be4f5ccdd41f81886c9f547fff
+- Latest oracle publish (peg 99.97%, published Oct 12 23:51 UTC; confirmed on Preview, checked Oct 12, 2026): https://preview.cexplorer.io/tx/6d0ae558a211d37445ba6215407f83faf3163d7ebb944f99efd0cbe3b3c047a4
 
 ---
 
@@ -30,6 +33,8 @@ Links used on screen (all checked Oct 12, 2026):
 
 *(If the wallet is slow, skip the live buy and show an existing policy on `/app`. 11 policies are live.)*
 
+*(Optional, 5 seconds: flip to exploit cover at `/cover#buy-exploit`. Same wallet, same Buy builder, the 2-of-3 committee pool instead of oracle feeds. The policy appears in My policies labelled "Exploit (v2 committee)", with a link straight to `/claim/evidence/?policy=…`.)*
+
 ## 0:55 – 1:35 · Mirrored on Midnight (`/app`)
 
 **On screen:** `/app`, the Midnight panel showing the policy mirrored on policy-cover v2. Click through to the contract on preprod.midnightexplorer.com and the proveCover tx.
@@ -40,13 +45,13 @@ Links used on screen (all checked Oct 12, 2026):
 
 **On screen:** `/claim/evidence`, press "Fill with example data", seal the bundle, show the commitment. Scroll to the committee panel: three votes, two approve, PAID.
 
-**Say:** "Exploit cover can't pay from an oracle, so claims get assessed. The evidence is encrypted right here in the browser with AES-256-GCM. Only its SHA-256 commitment goes into fileClaim on Midnight; the file goes privately to the assessors. Three committee seats vote with voteClaim. In this drill it went approve, reject, approve, and at two of three the claim is marked PAID."
+**Say:** "Exploit cover can't pay from an oracle, so claims get assessed. The evidence is encrypted right here in the browser with AES-256-GCM. Only its SHA-256 commitment goes into fileClaim on Midnight; the file goes privately to the assessors. Three committee seats vote with voteClaim. In this drill it went approve, reject, approve, and at two of three the claim is marked PAID. And this one was filed by the holder, from a passphrase-encrypted claim kit on their own machine, so our relay never held the policy key."
 
 ## 2:15 – 2:40 · Payout on Cardano
 
-**On screen:** the Settle tx c35535dd… on preview.cexplorer.io, showing two signatures.
+**On screen:** the Settle tx c35535dd… on preview.cexplorer.io, showing two signatures, then the Settle dbf0ba7a… for the holder-filed claim.
 
-**Say:** "The decision comes back to Cardano. This Settle paid 50 test ADA, and it carries two of the three assessor signatures because the exploit pool's validator requires them. We tried a one-of-three payout too: the validator rejects it, so no single key can push money out."
+**Say:** "The decision comes back to Cardano. This Settle paid 50 test ADA, and it carries two of the three assessor signatures because the exploit pool's validator requires them. We tried a one-of-three payout too: the validator rejects it, so no single key can push money out. This second Settle paid the holder-filed claim, 25 test ADA, after the v2 committee voted it through on Midnight."
 
 ## 2:40 – 3:00 · Honest status and what's next
 
