@@ -1,3 +1,4 @@
+import report from "@/data/test-report.json";
 /**
  * Single source of truth for launch status shown across the app.
  * Keep it honest: only mark something done when it is on main and tested.
@@ -16,7 +17,7 @@ export const RUNBOOK = `${REPO}/blob/main/contracts/cardano/deploy/README.md`;
 export const MILESTONES: Milestone[] = [
   {
     label: "Cardano validators",
-    detail: "131 Aiken checks covering ADA + USDC tranches, pricing, the oracle quorum, the sale circuit-breaker, expiry refunds, and the assessor-signed exploit-cover pool.",
+    detail: `${report.suites.aiken.total} Aiken checks covering ADA + USDC tranches, pricing, the oracle quorum, the sale circuit-breaker, expiry refunds, and the assessor-signed exploit-cover pool.`,
     state: "done",
   },
   {

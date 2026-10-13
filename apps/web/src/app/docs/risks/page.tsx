@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DocsLayout } from "@/components/docs/DocsLayout";
 import { C, Callout, DocLink, List, P, Section, Strong, Table } from "@/components/docs/Prose";
+import report from "@/data/test-report.json";
 
 export const metadata: Metadata = {
   title: "Risks & disclosures",
@@ -42,7 +43,7 @@ export default function RisksPage() {
             ["Buying cover", "Open on the Preview testnet: any CIP-30 wallet can buy on /cover (test value only)"],
             ["Underwriting", "Open on the Preview testnet: deposits and withdrawals on /pool (test value only)"],
             ["Real funds", "None. The pools hold testnet value only (test ADA and mock tUSDCx)"],
-            ["Tests", "Cardano: 131 Aiken checks passing. Midnight: 60 simulation tests passing, full ZK compile OK"],
+            ["Tests", `Cardano: ${report.suites.aiken.pass} Aiken checks and a ${report.suites.emulator.total}-step emulator run passing. Midnight: ${report.suites.midnight.pass} simulation tests passing, full ZK compile OK. Off-chain: ${report.suites.sdk.pass + report.suites.relay.pass + report.suites.committee.pass} SDK, oracle and committee tests passing`],
           ]}
         />
         <P>

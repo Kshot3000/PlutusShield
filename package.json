@@ -11,6 +11,8 @@
     "preview": "pnpm --filter @plutusshield/web preview",
     "lint": "pnpm --filter @plutusshield/web lint",
     "test": "pnpm --filter @plutusshield/sdk test && pnpm --filter @plutusshield/cardano-contracts test && pnpm --filter @plutusshield/cardano-deploy test && pnpm --filter @plutusshield/midnight-contracts test && pnpm --filter @plutusshield/oracle-relay test && pnpm --filter @plutusshield/committee test",
+    "test:report": "node scripts/test-report.mjs",
+    "check:counts": "node scripts/test-report.mjs --check",
     "test:sdk": "pnpm --filter @plutusshield/sdk test",
     "test:cardano": "pnpm --filter @plutusshield/cardano-contracts test",
     "test:deploy": "pnpm --filter @plutusshield/cardano-deploy test",

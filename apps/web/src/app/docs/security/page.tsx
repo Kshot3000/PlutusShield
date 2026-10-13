@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { DocsLayout } from "@/components/docs/DocsLayout";
 import { src } from "@/components/docs/nav";
 import { C, Callout, DocLink, List, P, Section, Strong, Table } from "@/components/docs/Prose";
+import report from "@/data/test-report.json";
+
+const t = report.suites;
+const recorded = new Date(report.recordedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 
 export const metadata: Metadata = {
   title: "Security & audit scope",
@@ -59,15 +63,15 @@ export default function SecurityPage() {
           </p>
         </Callout>
         <Table
-          caption="Automated checks on main"
+          caption={`Automated checks on main (recorded ${recorded} at commit ${report.commit} by pnpm test:report)`}
           head={["Suite", "Command", "Result"]}
           rows={[
-            ["Cardano validators (Aiken)", <C key="c">pnpm test:cardano</C>, "131 checks, 0 errors, 0 warnings"],
-            ["Cardano end-to-end (Lucid emulator)", <C key="c">pnpm test:deploy</C>, "Full depeg + exploit-cover flow, including refused Buys and refused Settles"],
-            ["Midnight circuits (Compact simulator)", <C key="c">pnpm test:midnight</C>, "60 tests (v1 + v2 registry, claims relay, holder claim kits and the Settle gate, relay plan, ledger decoding)"],
-            ["SDK (quote, pool ledger, codecs, evidence, claim kit, committee)", <C key="c">pnpm test:sdk</C>, "97 tests"],
-            ["Oracle relay", <C key="c">pnpm test:relay</C>, "14 tests"],
-            ["Committee enrollment kit", <C key="c">pnpm --filter @plutusshield/committee test</C>, "3 tests"],
+            ["Cardano validators (Aiken)", <C key="c">pnpm test:cardano</C>, `${t.aiken.pass} of ${t.aiken.total} checks passing`],
+            ["Cardano end-to-end (Lucid emulator)", <C key="c">pnpm test:deploy</C>, `Full depeg + exploit-cover flow: ${t.emulator.total} steps, ${t.emulator.refused} of them refused Buys, Settles, Expires and bad committees`],
+            ["Midnight circuits (Compact simulator)", <C key="c">pnpm test:midnight</C>, `${t.midnight.pass} of ${t.midnight.total} tests (v1 + v2 registry, claims relay, holder claim kits and the Settle gate, relay plan, ledger decoding)`],
+            ["SDK (quote, pool ledger, codecs, evidence, claim kit, committee)", <C key="c">pnpm test:sdk</C>, `${t.sdk.pass} of ${t.sdk.total} tests`],
+            ["Oracle relay", <C key="c">pnpm test:relay</C>, `${t.relay.pass} of ${t.relay.total} tests`],
+            ["Committee enrollment kit", <C key="c">pnpm --filter @plutusshield/committee test</C>, `${t.committee.pass} of ${t.committee.total} tests`],
           ]}
         />
         <P>

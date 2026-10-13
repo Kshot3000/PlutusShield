@@ -1,0 +1,38 @@
+{
+  "recordedAt": "2026-10-13T03:15:25.947Z",
+  "commit": "8144b01",
+  "total": 334,
+  "suites": {
+    "sdk": {
+      "total": 126,
+      "pass": 126,
+      "fail": 0
+    },
+    "aiken": {
+      "total": 131,
+      "pass": 131,
+      "fail": 0
+    },
+    "emulator": {
+      "total": 36,
+      "pass": 36,
+      "fail": 0,
+      "refused": 12
+    },
+    "midnight": {
+      "total": 60,
+      "pass": 60,
+      "fail": 0
+    },
+    "relay": {
+      "total": 14,
+      "pass": 14,
+      "fail": 0
+    },
+    "committee": {
+      "total": 3,
+      "pass": 3,
+      "fail": 0
+    }
+  }
+}
