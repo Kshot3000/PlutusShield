@@ -35,6 +35,7 @@ Testnet only (Cardano Preview + Midnight Preprod). Not audited.
 | [/claims](https://kshot3000.github.io/PlutusShield/claims/) | Public claims register (approved, denied, split votes, refused 1-of-3) |
 | [/status](https://kshot3000.github.io/PlutusShield/status/) | Preview + Preprod systems honesty |
 | [/policy](https://kshot3000.github.io/PlutusShield/policy/) | One policy, both chains, one timeline |
+| [/docs/api](https://kshot3000.github.io/PlutusShield/docs/api/) | Open data API: products, claims, book and oracle as versioned JSON (`/api/v1/*.json`) |
 
 ### Submission kit
 

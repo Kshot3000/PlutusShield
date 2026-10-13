@@ -28,6 +28,7 @@ const columns = [
       { href: "/docs/risks", label: "Risks & disclosures" },
       { href: "/docs/security", label: "Security & audit scope" },
       { href: "/docs/faq", label: "FAQ" },
+      { href: "/docs/api", label: "Open data API" },
       {
         href: "https://github.com/Kshot3000/PlutusShield/blob/main/docs/ARCHITECTURE.md",
         label: "Architecture",

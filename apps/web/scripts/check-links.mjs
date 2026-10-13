@@ -8,6 +8,9 @@
  *    the site is built from. Member keys and evidence commitments are 64-hex
  *    too, but the explorer 404s on them, so they must render as copy-only.
  *
+ * 3. Every open-data feed (out/api/v1/*.json) parses, carries the v1
+ *    envelope for its own dataset, and shares one build time with the rest.
+ *
  *   node scripts/check-links.mjs [outDir]
  */
 import fs from 'node:fs';
@@ -59,10 +62,26 @@ for (const page of pages) {
   }
 }
 
+const API = path.join(OUT, 'api', 'v1');
+const DATASETS = ['index', 'products', 'claims', 'book', 'oracle'];
+const builtAt = new Set();
+for (const d of DATASETS) {
+  const f = path.join(API, `${d}.json`);
+  if (!fs.existsSync(f)) { problems.push(`api/v1/${d}.json: missing`); continue; }
+  let j;
+  try { j = JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { problems.push(`api/v1/${d}.json: not JSON (${e.message})`); continue; }
+  if (j.schema !== 'plutusshield.open-data/v1') problems.push(`api/v1/${d}.json: schema ${j.schema}`);
+  if (j.dataset !== d) problems.push(`api/v1/${d}.json: dataset ${j.dataset}`);
+  if (j.testnetOnly !== true || j.audited !== false) problems.push(`api/v1/${d}.json: missing testnet / not-audited flags`);
+  if (j.data == null) problems.push(`api/v1/${d}.json: no data`);
+  builtAt.add(j.generatedAt);
+}
+if (builtAt.size > 1) problems.push(`api/v1: feeds disagree on generatedAt (${[...builtAt].join(', ')})`);
+
 const uniq = [...new Set(problems)];
 if (uniq.length) {
   console.error(`check-links: ${uniq.length} problem(s) in ${pages.length} pages`);
   for (const p of uniq) console.error(`  ${p}`);
   process.exit(1);
 }
-console.log(`check-links: ${pages.length} pages ok, ${txHashes.size} known Midnight tx hashes`);
+console.log(`check-links: ${pages.length} pages ok, ${txHashes.size} known Midnight tx hashes, ${DATASETS.length} open-data feeds ok`);

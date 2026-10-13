@@ -19,7 +19,8 @@
     "./lace": "./src/lace.ts",
     "./laceCircuits": "./src/laceCircuits.ts",
     "./fetchZkConfig": "./src/fetchZkConfig.ts",
-    "./proveBridge": "./src/proveBridge.ts"
+    "./proveBridge": "./src/proveBridge.ts",
+    "./openData": "./src/openData.ts"
   },
   "scripts": {
     "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts"

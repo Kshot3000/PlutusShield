@@ -10,3 +10,4 @@ export * from "./fetchZkConfig.ts";
 export * from "./proveBridge.ts";
 export * from "./riskTier.ts";
 export * from "./underwritingBook.ts";
+export * from "./openData.ts";

@@ -8,7 +8,8 @@ export type DocSlug =
   | "privacy"
   | "risks"
   | "security"
-  | "faq";
+  | "faq"
+  | "api";
 
 export interface DocPage {
   slug: DocSlug;
@@ -81,6 +82,13 @@ export const DOC_PAGES: DocPage[] = [
     summary: "Short answers on what you can cover, paying in ADA or USDC, when cover starts, how claims pay, privacy, and underwriting.",
     tag: "Answers",
     tone: "midnight",
+  },
+  {
+    slug: "api",
+    title: "Open data API",
+    summary: "Read-only JSON feeds of the cover products, claims register, underwriting book and oracle publishes, rebuilt on every deploy. No key, no wallet.",
+    tag: "Integrate",
+    tone: "cardano",
   },
 ];
 

@@ -1,11 +1,11 @@
 {
-  "recordedAt": "2026-10-13T18:29:16.848Z",
-  "commit": "2d53704",
-  "total": 354,
+  "recordedAt": "2026-10-13T19:21:05.515Z",
+  "commit": "4d12a5a",
+  "total": 360,
   "suites": {
     "sdk": {
-      "total": 146,
-      "pass": 146,
+      "total": 152,
+      "pass": 152,
       "fail": 0
     },
     "aiken": {
