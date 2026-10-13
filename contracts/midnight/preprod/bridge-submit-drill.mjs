@@ -17,7 +17,10 @@
  *      Midnight agent wallet-facade waitForSynced), then prove again
  *   4. deserialize the returned unsealed tx (signature, proof, pre-binding)
  *   5. balanceUnboundTransaction + finalizeRecipe   (= Lace balanceUnsealedTransaction)
- *   6. submitTransaction                             (= Lace submitTransaction)
+ *   6. submit: by default a watched submit over the node WebSocket that logs every
+ *      pool status (Ready / Future / Broadcast / InBlock / Invalid …) and the node's
+ *      own rejection reason; PLUTUSSHIELD_DRILL_SUBMIT_MODE=wallet uses the facade's
+ *      submitTransaction (= Lace submitTransaction), which only reports Finalized
  *   7. watchForTxData: success only on a finalized SucceedEntirely tx
  *
  * proveCover changes no claim state, so the drill is safe to repeat. Public
@@ -34,6 +37,7 @@ import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { Transaction, CostModel } from '@midnight-ntwrk/ledger-v8';
 import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
+import { watchedSubmit, isWatchedSuccess } from './node-watch-submit.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const env = (k, d) => process.env[k] ?? d;
@@ -61,6 +65,18 @@ async function nodeUrl() {
   } catch { return null; }
 }
 const hostOf = (u) => { try { return new URL(u).host; } catch { return '(unknown)'; } };
+
+/**
+ * The Midnight-hosted Preprod RPC was retired on 9 Oct 2026 but still answers on an old
+ * node build (1.0.x). The 13 Oct 13:57 UTC drill submit went there (the Blockfrost
+ * project id was missing when the endpoints resolved) and never landed. Never submit
+ * there: fail before syncing or spending a proof.
+ */
+function assertLiveNode(url) {
+  if (/(^|\.)rpc\.preprod\.midnight\.network$/.test(hostOf(url)) && !process.env.PLUTUSSHIELD_ALLOW_RETIRED_NODE) {
+    throw new Error('submit node resolved to the retired rpc.preprod.midnight.network; set BLOCKFROST_MIDNIGHT_PREPROD_ID (or MIDNIGHT_NODE_URL) before the wallet facade loads');
+  }
+}
 
 /** One JSON-RPC call to the node over HTTP; never throws, returns { ok, result | error }. */
 async function nodeRpc(url, method, params = []) {
@@ -174,6 +190,7 @@ async function main() {
   setNetworkId('preprod');
   const key = JSON.parse(fs.readFileSync(KEY_FILE, 'utf8'));
   const W = await import(pathToFileURL(FACADE).href);
+  assertLiveNode(await nodeUrl());
   log(`drill: proveCover ${key.policyId.slice(0, 16)}… via bridge :${PORT}, wallet in Lace's seat${DRY ? ' (dry run, no submit)' : ''}`);
 
   log('building wallet (seed from env, never printed)…');
@@ -232,6 +249,7 @@ async function main() {
     log(`wallet proving server (fee ZK): ${proofServer}`);
     const NODE = await nodeUrl();
     log(`submit node: ${hostOf(NODE)} (override with MIDNIGHT_NODE_URL)`);
+    assertLiveNode(NODE);
     try {
       const h = await fetch(`${proofServer.replace(/\/$/, '')}/health`);
       log(`proof server /health: ${h.status} ${redact((await h.text()).slice(0, 120))}`);
@@ -340,17 +358,32 @@ async function main() {
     // stalled submit can be checked against the node pool or resent elsewhere.
     const TX_OUT = env('PLUTUSSHIELD_DRILL_TX_OUT', '');
     if (TX_OUT) { fs.writeFileSync(TX_OUT, balancedHex + '\n'); log(`balanced tx hex -> ${TX_OUT}`); }
+    const MODE = env('PLUTUSSHIELD_DRILL_SUBMIT_MODE', 'watch');
     let txId;
+    let watch = null;
     try {
-      txId = String(await Promise.race([
-        provider.submitTx(balanced),
-        new Promise((_, reject) => {
-          submitTimer = setTimeout(
-            () => reject(new Error(`submitTransaction did not return within ${Math.round(SUBMIT_MS / 1000)} s; not claiming success (check the indexer for ${balancedIds[0] ?? 'the tx ids above'})`)),
-            SUBMIT_MS,
-          );
-        }),
-      ]).finally(() => clearTimeout(submitTimer)));
+      if (MODE === 'watch') {
+        // Same extrinsic the wallet sends (midnight.sendMnTransaction), but every
+        // pool status is logged, so a stall says where it stalled.
+        if (!NODE) throw new Error('watched submit: no node URL resolved');
+        watch = await watchedSubmit({ nodeWsUrl: NODE.replace(/^http/, 'ws'), txHex: balancedHex, timeoutMs: SUBMIT_MS, log });
+        if (!isWatchedSuccess(watch)) {
+          throw new Error(`watched submit ended ${watch.outcome}${watch.error ? `: ${watch.error}` : ''} (last status ${watch.statuses.at(-1)?.status ?? 'none'}); not claiming success`);
+        }
+        // The facade returns tx.identifiers().at(-1); use the same id for the indexer.
+        txId = balancedIds.at(-1);
+        log(`watched submit: ${watch.outcome} in ${watch.blockHash} after ${Math.round(watch.elapsedMs / 1000)} s`);
+      } else {
+        txId = String(await Promise.race([
+          provider.submitTx(balanced),
+          new Promise((_, reject) => {
+            submitTimer = setTimeout(
+              () => reject(new Error(`submitTransaction did not return within ${Math.round(SUBMIT_MS / 1000)} s; not claiming success (check the indexer for ${balancedIds[0] ?? 'the tx ids above'})`)),
+              SUBMIT_MS,
+            );
+          }),
+        ]).finally(() => clearTimeout(submitTimer)));
+      }
     } catch (e) {
       const probe = await probeNodeAfterStall(NODE, balancedHex);
       if (RECORD) {
@@ -359,6 +392,8 @@ async function main() {
           at: new Date().toISOString(), circuit: 'proveCover', policyId: key.policyId,
           unsealedBytes: proved.bytes, balancedBytes, callIdentifier: balancedIds[0] ?? null,
           error: redact(e?.message ?? e).slice(0, 300), probe,
+          submitMode: MODE,
+          ...(watch ? { extrinsicHash: watch.extrinsicHash, outcome: watch.outcome, statuses: watch.statuses } : {}),
           _note: 'Not a finalized tx. Public data only.',
         }];
         fs.writeFileSync(RECORD, JSON.stringify(prev, null, 2) + '\n');
@@ -387,6 +422,8 @@ async function main() {
       provedMs: proved.provedMs,
       balancedBytes,
       node: hostOf(NODE),
+      submitMode: MODE,
+      ...(watch ? { extrinsicHash: watch.extrinsicHash, statuses: watch.statuses } : {}),
       txId,
       txHash: f.txHash ? String(f.txHash) : null,
       blockHeight: f.blockHeight,

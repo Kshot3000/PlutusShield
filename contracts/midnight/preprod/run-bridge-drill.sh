@@ -6,11 +6,13 @@
 #   ./run-bridge-drill.sh --key <policy-key.json> [--dry-run]
 # MIDNIGHT_NODE_URL picks the submit node; on a stalled submit the drill probes that
 # node (health, best block, pending pool) and logs a stall row in the public record.
+# Submit is a watched node submit that logs every pool status (default);
+# PLUTUSSHIELD_DRILL_SUBMIT_MODE=wallet uses the facade submitTransaction instead.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 H=${MIDNIGHT_AGENT_DIR:-/workspace/Midnight-GrokBot-Agent}; R=${MIDNIGHT_RUNTIME_DIR:-$H/.plutusshield-run}
 S="${PLUTUSSHIELD_SECRETS:-/workspace/PlutusShield-secrets}"
-cp "$HERE/prove-bridge.mjs" "$HERE/bridge-submit-drill.mjs" "$R/"
+cp "$HERE/prove-bridge.mjs" "$HERE/bridge-submit-drill.mjs" "$HERE/node-watch-submit.mjs" "$R/"
 cd "$R"
 exec 9>"$R/.wallet.lock"
 flock -w 3600 9 || { echo "wallet lock wait timed out; nothing submitted" >&2; exit 1; }
