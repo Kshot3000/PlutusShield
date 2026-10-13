@@ -101,6 +101,7 @@ export const PRODUCTS: Record<ProductId, Product> = {
       { href: "/docs/settlement#parametric", label: "Parametric settlement" },
       { href: "/docs/settlement#sale-guard", label: "Sale guard" },
       { href: "/book", label: "Underwriting book" },
+      { href: "/docs/terms#depeg", label: "Cover wording" },
     ],
   },
   exploit: {
@@ -133,6 +134,7 @@ export const PRODUCTS: Record<ProductId, Product> = {
       { href: "/docs/settlement#assessed", label: "Assessed settlement" },
       { href: "/claims", label: "Claims register" },
       { href: "/assessors", label: "Assessors" },
+      { href: "/docs/terms#exploit", label: "Cover wording" },
     ],
   },
   sla: {

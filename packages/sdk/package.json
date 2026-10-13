@@ -23,7 +23,8 @@
     "./openData": "./src/openData.ts",
     "./coverPlan": "./src/coverPlan.ts",
     "./embed": "./src/embed.ts",
-    "./calendar": "./src/calendar.ts"
+    "./calendar": "./src/calendar.ts",
+    "./wording": "./src/wording.ts"
   },
   "scripts": {
     "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts"

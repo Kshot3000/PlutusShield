@@ -9,6 +9,7 @@ export type DocSlug =
   | "risks"
   | "security"
   | "faq"
+  | "terms"
   | "api"
   | "embed";
 
@@ -76,6 +77,13 @@ export const DOC_PAGES: DocPage[] = [
     summary: "The audit scope, every invariant mapped to the tests that check it, who holds which keys today, known gaps, and private reporting.",
     tag: "Audit",
     tone: "accent",
+  },
+  {
+    slug: "terms",
+    title: "Cover wording",
+    summary: "The plain-language terms of each live product, read from the deployment parameters, with every clause tied to the check that enforces it.",
+    tag: "Terms",
+    tone: "gold",
   },
   {
     slug: "faq",
