@@ -66,7 +66,7 @@ for (const page of pages) {
 }
 
 const API = path.join(OUT, 'api', 'v1');
-const DATASETS = ['index', 'products', 'claims', 'book', 'oracle'];
+const DATASETS = ['index', 'products', 'claims', 'book', 'oracle', 'plan'];
 const builtAt = new Set();
 for (const d of DATASETS) {
   const f = path.join(API, `${d}.json`);

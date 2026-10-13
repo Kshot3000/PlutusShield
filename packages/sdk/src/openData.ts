@@ -14,7 +14,7 @@
 export const OPEN_DATA_SCHEMA = "plutusshield.open-data/v1" as const;
 export const OPEN_DATA_VERSION = "v1" as const;
 
-export type OpenDataset = "index" | "products" | "claims" | "book" | "oracle";
+export type OpenDataset = "index" | "products" | "claims" | "book" | "oracle" | "plan";
 
 export interface OpenDataEndpoint {
   dataset: OpenDataset;
@@ -65,6 +65,14 @@ export const OPEN_DATA_ENDPOINTS: readonly OpenDataEndpoint[] = [
     description:
       "The USDM peg readings published to the Preview oracle feeds, newest first, with each transaction and the depeg trigger they are judged against.",
     page: "oracle",
+  },
+  {
+    dataset: "plan",
+    path: "api/v1/plan.json",
+    title: "Cover plan example",
+    description:
+      "How to price a portfolio with planCover() and share it as a /plan deep link (encodePlanShare / decodePlanShare), plus a sample planned portfolio priced at build time against the live Preview tranche snapshot.",
+    page: "plan",
   },
 ];
 

@@ -2,7 +2,8 @@
  * Builds the public open-data feeds served at /api/v1/*.json (see
  * packages/sdk/src/openData.ts for the envelope and the endpoint list). The
  * payloads are the exact objects /products, /claims, /book and /oracle render
- * from, plus explorer URLs, so the JSON can never drift from the pages.
+ * from, plus explorer URLs, so the JSON can never drift from the pages. The
+ * plan feed is a static example of planCover + shareable /plan deep links.
  */
 import {
   OPEN_DATA_ENDPOINTS,
@@ -10,8 +11,12 @@ import {
   openDataEnvelope,
   openDataJson,
   openDataUrl,
+  planCover,
+  planShareQuery,
   type OpenDataset,
+  type PlanShareState,
 } from "@plutusshield/sdk";
+import { PLANNER_POOLS, PLANNER_SNAPSHOT_AT } from "@/lib/coverPlanner";
 import oracleHistory from "@/data/preview-oracle-history.json";
 import depegDeployment from "@/data/preview-deployment.json";
 import { CLAIMS_REGISTER } from "@/lib/claimsRegister";
@@ -118,6 +123,51 @@ const oracle = () => {
   };
 };
 
+
+const SAMPLE_SHARE: PlanShareState = {
+  currency: "ADA",
+  days: 90,
+  exposures: [
+    { label: "USDM in a DEX pool", product: "depeg", amount: 250, protectPct: 100 },
+    { label: "DEX LP position", product: "exploit", amount: 300, protectPct: 80 },
+    { label: "Lending deposit", product: "exploit", amount: 200, protectPct: 50 },
+  ],
+};
+
+const plan = () => {
+  const pools = PLANNER_POOLS[SAMPLE_SHARE.currency];
+  const shareQuery = planShareQuery(SAMPLE_SHARE);
+  const result = planCover({
+    exposures: SAMPLE_SHARE.exposures.map((e, i) => ({
+      id: `ex${i}`,
+      label: e.label,
+      product: e.product,
+      amount: e.amount,
+      protectShare: e.protectPct / 100,
+    })),
+    days: SAMPLE_SHARE.days,
+    riskTier: "B",
+    pools: { depeg: pools.depeg, exploit: pools.exploit, sla: null },
+  });
+  return {
+    howTo: {
+      sdk: 'import { planCover, encodePlanShare, decodePlanShare, planShareQuery } from "@plutusshield/sdk"',
+      shareParams: "c (ADA|USDC), d (term days), x (label|product|amount|protectPct) one per exposure",
+      planPage: `${SITE_ROOT}/plan/`,
+      exampleDeepLink: `${SITE_ROOT}/plan/?${shareQuery}`,
+    },
+    example: {
+      shareQuery,
+      input: SAMPLE_SHARE,
+      riskTier: "B",
+      pools: { depeg: pools.depeg, exploit: pools.exploit },
+      poolSnapshotAt: PLANNER_SNAPSHOT_AT,
+      plan: result,
+    },
+    note: "The example plan is priced at site build time against the same Preview tranche snapshot /plan uses. Re-run planCover yourself for a fresh quote; this file is a static illustration, not an offer. Testnet only, not audited.",
+  };
+};
+
 const index = () => ({
   version: OPEN_DATA_VERSION,
   docs: `${SITE_ROOT}/docs/api/`,
@@ -125,7 +175,7 @@ const index = () => ({
   datasets: OPEN_DATA_ENDPOINTS.map((e) => ({ ...e, url: openDataUrl(SITE_ROOT, e.dataset), page: e.page ? `${SITE_ROOT}/${e.page}/` : null })),
 });
 
-const BUILDERS: Record<OpenDataset, () => unknown> = { index, products, claims, book, oracle };
+const BUILDERS: Record<OpenDataset, () => unknown> = { index, products, claims, book, oracle, plan };
 
 export const openDataPayload = (dataset: OpenDataset) =>
   openDataEnvelope(dataset, BUILDERS[dataset](), { generatedAt: GENERATED_AT, siteRoot: SITE_ROOT });

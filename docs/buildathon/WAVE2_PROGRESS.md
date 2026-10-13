@@ -35,7 +35,8 @@ Testnet only (Cardano Preview + Midnight Preprod). Not audited.
 | [/claims](https://kshot3000.github.io/PlutusShield/claims/) | Public claims register (approved, denied, split votes, refused 1-of-3) |
 | [/status](https://kshot3000.github.io/PlutusShield/status/) | Preview + Preprod systems honesty |
 | [/policy](https://kshot3000.github.io/PlutusShield/policy/) | One policy, both chains, one timeline |
-| [/docs/api](https://kshot3000.github.io/PlutusShield/docs/api/) | Open data API: products, claims, book and oracle as versioned JSON (`/api/v1/*.json`) |
+| [/plan](https://kshot3000.github.io/PlutusShield/plan/) | Portfolio cover planner: price several exposures against live Preview tranches; deep-link any portfolio via URL (`encodePlanShare`) |
+| [/docs/api](https://kshot3000.github.io/PlutusShield/docs/api/) | Open data API: products, claims, book, oracle and a sample cover plan as versioned JSON (`/api/v1/*.json`) |
 | [/feed.xml](https://kshot3000.github.io/PlutusShield/feed.xml) | Atom activity feed: every claim decision, refused Settle and the newest oracle publishes, for feed readers and Discord/Telegram bots |
 
 ### Submission kit

@@ -1,6 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { MAX_SINGLE_POLICY_SHARE, MAX_UTILIZATION, planCover, quote } from "../src/index.ts";
+import {
+  MAX_SINGLE_POLICY_SHARE,
+  MAX_UTILIZATION,
+  PLAN_SHARE_MAX_EXPOSURES,
+  decodePlanShare,
+  encodePlanShare,
+  planCover,
+  planShareQuery,
+  quote,
+} from "../src/index.ts";
 
 const pool = { capital: 10_000, activeCover: 0 };
 
@@ -130,4 +139,69 @@ test("whole-plan errors: non-integer term and duplicate ids", () => {
   const none = planCover({ exposures: [], days: 30, riskTier: "B", pools: {} });
   assert.equal(none.totals.coverageRatio, 1);
   assert.equal(none.totals.effectiveAnnualRate, 0);
+});
+
+test("encodePlanShare ↔ decodePlanShare round-trips currency, term and exposures", () => {
+  const state = {
+    currency: "USDC" as const,
+    days: 180,
+    exposures: [
+      { label: "USDM in wallet", product: "depeg" as const, amount: 400, protectPct: 100 },
+      { label: "DEX LP|v2", product: "exploit" as const, amount: 300.5, protectPct: 80 },
+      { label: "Uptime SLA", product: "sla" as const, amount: 50, protectPct: 25 },
+    ],
+  };
+  const q = planShareQuery(state);
+  assert.match(q, /^c=USDC&d=180&x=/);
+  const back = decodePlanShare(q);
+  assert.equal(back.ok, true);
+  if (!back.ok) return;
+  assert.deepEqual(back.state, state);
+  assert.deepEqual(decodePlanShare(`?${q}`), back);
+  assert.deepEqual(decodePlanShare(encodePlanShare(state)), back);
+});
+
+test("decodePlanShare fills ADA/90 defaults when c and d are omitted", () => {
+  const r = decodePlanShare("x=Treasury%20USDM%7Cdepeg%7C500%7C100");
+  assert.equal(r.ok, true);
+  if (!r.ok) return;
+  assert.equal(r.state.currency, "ADA");
+  assert.equal(r.state.days, 90);
+  assert.deepEqual(r.state.exposures, [{ label: "Treasury USDM", product: "depeg", amount: 500, protectPct: 100 }]);
+});
+
+test("decodePlanShare refuses bad currency, days, product, amount, share and overlong lists", () => {
+  assert.match(decodePlanShare("c=ETH&d=90").reason ?? "", /ADA or USDC/);
+  assert.match(decodePlanShare("c=ADA&d=1.5").reason ?? "", /positive integer/);
+  assert.match(decodePlanShare("c=ADA&d=0").reason ?? "", /positive integer/);
+  assert.match(decodePlanShare("x=a|nope|1|100").reason ?? "", /unknown product/);
+  assert.match(decodePlanShare("x=a|depeg|-1|100").reason ?? "", /positive number/);
+  assert.match(decodePlanShare("x=a|depeg|10|0").reason ?? "", /1–100/);
+  assert.match(decodePlanShare("x=a|depeg|10").reason ?? "", /label\|product\|amount\|protectPct/);
+  // label may contain "|"; splitting from the right still round-trips
+  const pipe = decodePlanShare(planShareQuery({ currency: "ADA", days: 30, exposures: [{ label: "a|b|c", product: "depeg", amount: 10, protectPct: 100 }] }));
+  assert.equal(pipe.ok && pipe.state.exposures[0].label, "a|b|c");
+  const tooMany = Array.from({ length: PLAN_SHARE_MAX_EXPOSURES + 1 }, (_, i) => `x=e${i}|depeg|1|100`).join("&");
+  assert.match(decodePlanShare(tooMany).reason ?? "", /at most/);
+});
+
+test("encodePlanShare rejects invalid state before it reaches the URL", () => {
+  assert.throws(
+    () => encodePlanShare({ currency: "ADA", days: 90, exposures: [{ label: "x", product: "depeg", amount: 0, protectPct: 100 }] }),
+    /positive/,
+  );
+  assert.throws(
+    () =>
+      encodePlanShare({
+        currency: "ADA",
+        days: 90,
+        exposures: Array.from({ length: PLAN_SHARE_MAX_EXPOSURES + 1 }, () => ({
+          label: "x",
+          product: "depeg" as const,
+          amount: 1,
+          protectPct: 100,
+        })),
+      }),
+    /at most/,
+  );
 });

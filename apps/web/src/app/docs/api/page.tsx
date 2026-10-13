@@ -8,7 +8,7 @@ import { FEED_ORACLE_LIMIT, activityEntries } from "@/lib/activityFeed";
 export const metadata: Metadata = {
   title: "Open data API",
   description:
-    "PlutusShield publishes read-only JSON feeds of its cover products, claims register, underwriting book and oracle publishes on Cardano Preview and Midnight Preprod. No API key, no wallet, rebuilt on every deploy.",
+    "PlutusShield publishes read-only JSON feeds of its cover products, claims register, underwriting book, oracle publishes and a sample cover plan on Cardano Preview and Midnight Preprod. No API key, no wallet, rebuilt on every deploy.",
 };
 
 const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -25,6 +25,7 @@ const products = openDataPayload("products").data as { products: { id: string }[
 const claims = openDataPayload("claims").data as { claims: unknown[] };
 const book = openDataPayload("book").data as { pools: unknown[] };
 const oracle = openDataPayload("oracle").data as { publishes: unknown[] };
+const planEx = openDataPayload("plan").data as { example: { plan: { policies: unknown[] } } };
 
 const COUNTS: Record<string, string> = {
   index: `${OPEN_DATA_ENDPOINTS.length} datasets`,
@@ -32,6 +33,7 @@ const COUNTS: Record<string, string> = {
   claims: `${claims.claims.length} decided claims`,
   book: `${book.pools.length} pools`,
   oracle: `${oracle.publishes.length} publishes`,
+  plan: `${planEx.example.plan.policies.length} sample policies`,
 };
 
 const feedEntries = activityEntries();
@@ -44,16 +46,17 @@ export default function ApiDocsPage() {
     <DocsLayout
       slug="api"
       title="Open data API"
-      description="Everything the products, claims, book and oracle pages show is also published as plain JSON, so dashboards, aggregators and partner protocols can read PlutusShield without a wallet, a key, or our UI."
+      description="Everything the products, claims, book and oracle pages show is also published as plain JSON, plus a sample portfolio cover plan with shareable /plan deep-link params, so dashboards, aggregators and partner protocols can read PlutusShield without a wallet, a key, or our UI."
       toc={[
         { id: "datasets", label: "Datasets" },
         { id: "envelope", label: "The envelope" },
         { id: "read", label: "Reading it" },
+        { id: "plan", label: "Cover plan" },
         { id: "feed", label: "Activity feed" },
         { id: "fields", label: "Field notes" },
         { id: "limits", label: "Limits" },
       ]}
-      sourcePaths={["packages/sdk/src/openData.ts", "packages/sdk/src/atom.ts", "apps/web/src/lib/activityFeed.ts", "packages/sdk/test/openData.test.ts", "apps/web/src/lib/openData.ts", "apps/web/src/app/api/v1"]}
+      sourcePaths={["packages/sdk/src/openData.ts", "packages/sdk/src/coverPlan.ts", "packages/sdk/src/atom.ts", "apps/web/src/lib/activityFeed.ts", "packages/sdk/test/openData.test.ts", "packages/sdk/test/coverPlan.test.ts", "apps/web/src/lib/openData.ts", "apps/web/src/app/api/v1"]}
     >
       <Section id="datasets" title="Datasets">
         <P>
@@ -81,7 +84,7 @@ export default function ApiDocsPage() {
         </P>
         <Formula label={OPEN_DATA_SCHEMA}>{`{
   "schema": "${OPEN_DATA_SCHEMA}",
-  "dataset": "claims",                      // index | products | claims | book | oracle
+  "dataset": "claims",                      // index | products | claims | book | oracle | plan
   "generatedAt": "${GENERATED_AT}",   // one build time for all files
   "networks": { "cardano": "preview", "midnight": "preprod" },
   "testnetOnly": true,
@@ -106,6 +109,17 @@ const claims = await fetchOpenData("${SITE_ROOT}", "claims");
 console.log(claims.data.stats.paidLovelace);   // "125000000" style base-unit string`}</Formula>
       </Section>
 
+
+      <Section id="plan" title="Cover plan">
+        <P>
+          <JsonLink path="api/v1/plan.json" /> shows how to price a portfolio with <C>planCover()</C> and share it as a{" "}
+          <DocLink href="/plan">/plan</DocLink> deep link (<C>encodePlanShare</C> / <C>decodePlanShare</C>: query params{" "}
+          <C>c</C>, <C>d</C>, and one <C>x=label|product|amount|protectPct</C> per exposure). The <C>example</C> object is
+          the same LP + lender preset the planner opens with, priced at build time against the live Preview tranche
+          snapshot — a static illustration, not a live quote.
+        </P>
+        <Formula label="deep link">{`open ${SITE_ROOT}/plan/?$(curl -s ${SITE_ROOT}/api/v1/plan.json | jq -r '.data.example.shareQuery')`}</Formula>
+      </Section>
       <Section id="feed" title="Activity feed">
         <P>
           To follow PlutusShield instead of polling it, subscribe to the Atom feed at <JsonLink path="feed.xml" /> in

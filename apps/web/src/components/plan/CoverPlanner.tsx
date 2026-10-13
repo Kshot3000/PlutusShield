@@ -1,15 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   MAX_SINGLE_POLICY_SHARE,
   MAX_UTILIZATION,
   MIN_PREMIUM,
   PRODUCTS,
+  decodePlanShare,
   planCover,
+  planShareQuery,
   type Exposure,
   type ExposureStatus,
+  type PlanCurrency,
   type ProductId,
 } from "@plutusshield/sdk";
 import { Badge } from "@/components/ui/Badge";
@@ -70,12 +73,64 @@ const statusView: Record<ExposureStatus, { label: string; variant: "gold" | "acc
 const fieldCls =
   "h-10 w-full rounded-lg border border-border-strong bg-bg-muted px-3 text-[13.5px] text-text outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/30";
 
+const rowsFromShare = (exposures: { label: string; product: ProductId; amount: number; protectPct: number }[]): Row[] =>
+  withIds(
+    exposures.map((e) => ({
+      label: e.label,
+      product: e.product,
+      amount: String(e.amount),
+      protectPct: e.protectPct,
+    })),
+  );
+
 export function CoverPlanner() {
   const [currency, setCurrency] = useState<PlannerCurrency>("ADA");
   const [days, setDays] = useState(90);
   const [rows, setRows] = useState<Row[]>(() => withIds(PRESETS[1].rows));
+  const [shareNote, setShareNote] = useState<string | null>(null);
+  const [urlReady, setUrlReady] = useState(false);
+  const skipWrite = useRef(false);
   const pools = PLANNER_POOLS[currency];
   const unit = currency === "ADA" ? "tADA" : "tUSDCx";
+
+  // Restore a deep-linked portfolio once on the client (static export has no SSR search params).
+  useEffect(() => {
+    const decoded = decodePlanShare(window.location.search);
+    if (decoded.ok && (decoded.state.exposures.length > 0 || decoded.state.currency !== "ADA" || decoded.state.days !== 90)) {
+      skipWrite.current = true;
+      setCurrency(decoded.state.currency);
+      setDays(decoded.state.days);
+      if (decoded.state.exposures.length > 0) setRows(rowsFromShare(decoded.state.exposures));
+    } else if (!decoded.ok && window.location.search.length > 1) {
+      setShareNote(`Could not read the shared plan: ${decoded.reason}`);
+    }
+    setUrlReady(true);
+  }, []);
+
+  // Keep the address bar in sync so the current plan is always shareable.
+  useEffect(() => {
+    if (!urlReady) return;
+    if (skipWrite.current) {
+      skipWrite.current = false;
+      return;
+    }
+    const exposures = rows
+      .map((r) => ({
+        label: r.label.trim() || "Unnamed exposure",
+        product: r.product,
+        amount: Number(r.amount.replace(/,/g, "")) || 0,
+        protectPct: r.protectPct,
+      }))
+      .filter((e) => e.amount > 0);
+    try {
+      const q = planShareQuery({ currency: currency as PlanCurrency, days, exposures });
+      const next = `${window.location.pathname}${q ? `?${q}` : ""}${window.location.hash}`;
+      const cur = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      if (next !== cur) window.history.replaceState(null, "", next);
+    } catch {
+      /* incomplete inputs (e.g. amount still 0 while typing) stay off the URL */
+    }
+  }, [urlReady, currency, days, rows]);
 
   const plan = useMemo(() => {
     const exposures: Exposure[] = rows.map((r) => ({
@@ -91,15 +146,39 @@ export function CoverPlanner() {
   const update = (id: string, patch: Partial<Row>) => setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   const t = plan.totals;
 
+  const copyShareLink = async () => {
+    const exposures = rows
+      .map((r) => ({
+        label: r.label.trim() || "Unnamed exposure",
+        product: r.product,
+        amount: Number(r.amount.replace(/,/g, "")) || 0,
+        protectPct: r.protectPct,
+      }))
+      .filter((e) => e.amount > 0);
+    if (exposures.length === 0) {
+      setShareNote("Add at least one exposure with a positive amount before sharing.");
+      return;
+    }
+    try {
+      const q = planShareQuery({ currency: currency as PlanCurrency, days, exposures });
+      const url = `${window.location.origin}${window.location.pathname}?${q}`;
+      await navigator.clipboard.writeText(url);
+      setShareNote("Share link copied — anyone opening it sees this portfolio on /plan.");
+    } catch (e) {
+      setShareNote(e instanceof Error ? e.message : "Could not build a share link");
+    }
+  };
+
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
       <section className="card-surface p-5 sm:p-7" aria-labelledby="plan-inputs">
         <h2 id="plan-inputs" className="font-display text-xl text-text">Your exposures</h2>
         <p className="mt-1 text-[13px] leading-relaxed text-text-muted">
-          List what you hold at risk. Amounts are in the currency you would pay the premium in and be paid out in.
+          List what you hold at risk. Amounts are in the currency you would pay the premium in and be paid out in. The
+          address bar stays in sync, so you can copy a deep link to this exact portfolio.
         </p>
 
-        <div className="mt-4 flex flex-wrap gap-1.5" role="group" aria-label="Example portfolios">
+        <div className="mt-4 flex flex-wrap items-center gap-1.5" role="group" aria-label="Example portfolios">
           {PRESETS.map((p) => (
             <button
               key={p.id}
@@ -110,7 +189,19 @@ export function CoverPlanner() {
               {p.label}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => void copyShareLink()}
+            className="rounded-full border border-accent/40 bg-[var(--accent-glow)] px-3 py-1 font-mono text-[11px] text-text transition-colors hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            Copy share link
+          </button>
         </div>
+        {shareNote && (
+          <p className="mt-2 text-[12.5px] leading-relaxed text-text-muted" role="status">
+            {shareNote}
+          </p>
+        )}
 
         <div className="mt-5 grid gap-5 sm:grid-cols-2">
           <ChoiceGroup
@@ -217,6 +308,7 @@ export function CoverPlanner() {
           <Badge variant="gold">Live Preview tranches</Badge>
           <Badge>Tier B</Badge>
           <Badge>Model, not an offer</Badge>
+          <Badge>Shareable URL</Badge>
         </div>
         <h2 id="plan-result" className="mt-4 font-display text-xl text-text">Your cover plan</h2>
         {!plan.ok ? (
@@ -293,7 +385,8 @@ export function CoverPlanner() {
           {PLANNER_SNAPSHOT_AT ? ` (pool snapshot ${new Date(PLANNER_SNAPSHOT_AT).toISOString().slice(0, 16).replace("T", " ")} UTC)` : ""}
           . One policy can take at most {MAX_SINGLE_POLICY_SHARE * 100}% of a tranche&apos;s capital and nothing is planned past{" "}
           {MAX_UTILIZATION * 100}% utilization, so larger exposures split into several policies and each one prices higher than the
-          last. Your wallet buys each policy separately on /cover, where the validator&apos;s exact premium applies. Testnet only, not
+          last. Your wallet buys each policy separately on /cover, where the validator&apos;s exact premium applies. Share the URL
+          (or <code className="font-mono text-[11px]">/api/v1/plan.json</code>) to hand someone the same inputs. Testnet only, not
           audited.
         </p>
       </section>
