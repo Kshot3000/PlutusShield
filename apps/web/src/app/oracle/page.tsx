@@ -45,6 +45,7 @@ const related = [
   { href: "/cover", eyebrow: "Uses this oracle", title: "Buy cover", body: "The Buy runs the same sale check in your browser before it asks you to sign." },
   { href: "/claim", eyebrow: "Depeg claims", title: "Claim checker", body: "Quorum, TWAP trigger and claim window against the live feeds." },
   { href: "/docs/risks", eyebrow: "Trust model", title: "Oracle risks", body: "What a dishonest or offline feed can and can't do." },
+  { href: "/status", eyebrow: "Every system", title: "Status", body: "Sales, both pools and the Midnight registry, read live on one page." },
 ];
 
 export default function OraclePage() {
@@ -94,7 +95,7 @@ export default function OraclePage() {
         </p>
       </section>
 
-      <section className="mt-6 grid gap-3 md:grid-cols-3" aria-label="Related">
+      <section className="mt-6 grid gap-3 md:grid-cols-2 lg:grid-cols-4" aria-label="Related">
         {related.map((r) => (
           <Link key={r.href} href={r.href} className="card-surface block p-5 transition-colors hover:border-[var(--border-accent)]">
             <p className="font-mono-label text-[9.5px] text-text-dim">{r.eyebrow}</p>

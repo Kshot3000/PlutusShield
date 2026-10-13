@@ -10,6 +10,7 @@ const columns = [
       { href: "/pool", label: "Underwrite" },
       { href: "/claim", label: "Claim checker" },
       { href: "/oracle", label: "Live oracle" },
+      { href: "/status", label: "System status" },
       { href: "/assessors", label: "Assessors" },
       { href: "/app", label: "App" },
       { href: "/demo", label: "Guided demo" },

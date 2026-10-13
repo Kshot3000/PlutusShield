@@ -134,6 +134,9 @@ export default function AppPage() {
             <Button href={RUNBOOK} external variant="secondary" size="sm">
               Preview runbook <span aria-hidden="true">↗</span>
             </Button>
+            <Button href="/status" variant="ghost" size="sm">
+              Live status
+            </Button>
             <Button href="/docs/risks" variant="ghost" size="sm">
               Risks &amp; disclosures
             </Button>

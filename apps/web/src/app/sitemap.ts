@@ -9,7 +9,7 @@ const siteUrl =
     ? `https://kshot3000.github.io${process.env.NEXT_PUBLIC_BASE_PATH}`
     : "http://localhost:3000");
 
-const ROUTES = ["", "app", "cover", "pool", "claim", "claim/evidence", "policy", "oracle", "assessors", "demo", "docs"];
+const ROUTES = ["", "app", "cover", "pool", "claim", "claim/evidence", "policy", "oracle", "status", "assessors", "demo", "docs"];
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const paths = [...ROUTES, ...DOC_PAGES.map((p) => `docs/${p.slug}`)];

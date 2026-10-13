@@ -66,7 +66,8 @@ export default function DocsPage() {
         <p className="text-[15px] leading-[1.75] text-text-muted">
           Exploit claimants can already seal evidence in the{" "}
           <DocLink href="/claim/evidence">evidence vault</DocLink>; the trust model is in{" "}
-          <DocLink href="/docs/privacy#evidence-vault">Privacy on Midnight</DocLink>.
+          <DocLink href="/docs/privacy#evidence-vault">Privacy on Midnight</DocLink>. For whether each system is
+          healthy right now, read live from both chains, see <DocLink href="/status">Status</DocLink>.
         </p>
         <Callout tone="warn" title="Preview software">
           <p>
