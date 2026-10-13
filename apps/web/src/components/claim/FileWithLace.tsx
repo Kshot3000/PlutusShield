@@ -143,6 +143,7 @@ export function FileWithLace({
   }, [connected, policyKey, sealed.commitment, wallet]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- refresh() probes async wallet/prover state; its setState calls land after awaits
     void refresh();
   }, [refresh]);
 

@@ -98,6 +98,7 @@ export function CoverPlanner() {
     const decoded = decodePlanShare(window.location.search);
     if (decoded.ok && (decoded.state.exposures.length > 0 || decoded.state.currency !== "ADA" || decoded.state.days !== 90)) {
       skipWrite.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time hydration from the URL
       setCurrency(decoded.state.currency);
       setDays(decoded.state.days);
       if (decoded.state.exposures.length > 0) setRows(rowsFromShare(decoded.state.exposures));
