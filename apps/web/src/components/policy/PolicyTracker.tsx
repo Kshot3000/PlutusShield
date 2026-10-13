@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/Button";
 import { MidnightHash } from "@/components/midnight/MidnightHash";
 import { PolicyCalendar } from "@/components/policy/PolicyCalendar";
 import { PolicyCertificate } from "@/components/policy/PolicyCertificate";
+import { PolicyReceipt } from "@/components/policy/PolicyReceipt";
 import { BLOCKFROST_ID, BLOCKFROST_URL } from "@/lib/chainRead";
 import { PREVIEW, explorerTx } from "@/lib/preview";
 import { shortHash } from "@/lib/midnightPreprod";
@@ -348,6 +349,15 @@ export function PolicyTracker() {
             ? "USDM peg below 95.00% for 24 hours, attested by at least 2 of 3 allowlisted oracle feeds"
             : `Approved Midnight claim + ${EXPLOIT_COMMITTEE.threshold}-of-${EXPLOIT_COMMITTEE.seats} Settle on Cardano`
         }
+      />
+      <PolicyReceipt
+        policy={policy}
+        coverage={policy.coverage ? fmtAmt(policy.coverage, policy.ticker) : null}
+        premium={policy.premium ? fmtAmt(policy.premium, policy.ticker) : null}
+        pool={policy.product === "depeg" ? PREVIEW.poolAddress : EXPLOIT.address}
+        buyExplorerUrl={policy.buyTx ? explorerTx(policy.buyTx) : null}
+        premiumAsset={policy.ticker}
+        boughtAtMs={live?.buyAt ?? policy.boughtAt}
       />
     </>
   );

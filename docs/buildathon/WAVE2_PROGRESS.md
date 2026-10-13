@@ -34,7 +34,7 @@ Testnet only (Cardano Preview + Midnight Preprod). Not audited.
 | [/book](https://kshot3000.github.io/PlutusShield/book/) | Open underwriting book: live Preview pools, tier B scorecard, capital |
 | [/claims](https://kshot3000.github.io/PlutusShield/claims/) | Public claims register (approved, denied, split votes, refused 1-of-3) |
 | [/status](https://kshot3000.github.io/PlutusShield/status/) | Preview + Preprod systems honesty |
-| [/policy](https://kshot3000.github.io/PlutusShield/policy/) | One policy, both chains, one timeline, plus an .ics / Google Calendar export of its deadlines and a downloadable / printable Certificate of Cover built in the browser (`packages/sdk/src/calendar.ts`, `packages/sdk/src/certificate.ts`) |
+| [/policy](https://kshot3000.github.io/PlutusShield/policy/) | One policy, both chains, one timeline, plus an .ics / Google Calendar export of its deadlines, a downloadable / printable Certificate of Cover, and a Premium receipt of the Cardano Preview Buy payment built in the browser (`packages/sdk/src/calendar.ts`, `packages/sdk/src/certificate.ts`, `packages/sdk/src/receipt.ts`) |
 | [/docs/terms](https://kshot3000.github.io/PlutusShield/docs/terms/) | Cover wording: each live product's terms generated from the deployment params, every clause tagged with who enforces it and the check in the source (`packages/sdk/src/wording.ts`) |
 | [/plan](https://kshot3000.github.io/PlutusShield/plan/) | Portfolio cover planner: price several exposures against live Preview tranches; deep-link any portfolio via URL (`encodePlanShare`) |
 | [/docs/api](https://kshot3000.github.io/PlutusShield/docs/api/) | Open data API: products, claims, book, oracle and a sample cover plan as versioned JSON (`/api/v1/*.json`) |

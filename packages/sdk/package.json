@@ -25,7 +25,8 @@
     "./embed": "./src/embed.ts",
     "./calendar": "./src/calendar.ts",
     "./wording": "./src/wording.ts",
-    "./certificate": "./src/certificate.ts"
+    "./certificate": "./src/certificate.ts",
+    "./receipt": "./src/receipt.ts"
   },
   "scripts": {
     "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts"
