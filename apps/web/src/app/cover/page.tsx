@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { QuoteCalculator } from "@/components/cover/QuoteCalculator";
 import { LiveCover } from "@/components/cover/LiveCover";
@@ -20,10 +21,15 @@ export default function CoverPage() {
       <div className="mb-10">
         <ExploitPayout compact />
       </div>
-      <section aria-labelledby="model-title">
+      <section id="quote" aria-labelledby="model-title" className="scroll-mt-24">
         <h2 id="model-title" className="font-display text-2xl text-text sm:text-3xl">Model any cover</h2>
         <p className="mb-6 mt-2 max-w-2xl text-sm leading-relaxed text-text-muted">
           Price exploit and SLA cover too, or try other risk tiers and pool sizes. This calculator uses example tranches, not the live pool.
+          SLA cover is priced here but not for sale yet; see{" "}
+          <Link href="/products" className="text-text underline underline-offset-4 hover:text-cardano">
+            all cover products
+          </Link>
+          .
         </p>
         <QuoteCalculator />
       </section>

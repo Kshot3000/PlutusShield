@@ -164,7 +164,7 @@ export function BuyCover({ chain }: { chain: CoverChain }) {
   const termChips = [14, 30, 90, 180, 365].filter((d) => d >= MIN_DAYS && d <= MAX_DAYS);
 
   return (
-    <section aria-labelledby="buy-title" className="glass-panel relative p-5 sm:p-8">
+    <section id="buy-depeg" aria-labelledby="buy-title" className="glass-panel relative scroll-mt-24 p-5 sm:p-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-2">

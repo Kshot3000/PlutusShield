@@ -4,7 +4,7 @@
 - [`VIDEO_SCRIPT.md`](./VIDEO_SCRIPT.md): the 3-minute demo script with timings, narration and the links to open on camera.
 - [`WAVE2_PROGRESS.md`](./WAVE2_PROGRESS.md): paste-ready description of Wave 2 progress for the AKINDO submission form.
 - Live guided demo: [kshot3000.github.io/PlutusShield/demo](https://kshot3000.github.io/PlutusShield/demo/) walks the same five beats as the script on the site, with a CTA into each page (`/cover`, `/app`, `/claim/evidence`) and the Cardano Preview and Midnight Preprod transactions behind every step. Handy for judges who want to click through rather than watch.
-- Extra judge surfaces (public, no wallet required): [underwriting book](https://kshot3000.github.io/PlutusShield/book/), [claims register](https://kshot3000.github.io/PlutusShield/claims/), [systems status](https://kshot3000.github.io/PlutusShield/status/), [assessors](https://kshot3000.github.io/PlutusShield/assessors/).
+- Extra judge surfaces (public, no wallet required): [cover products](https://kshot3000.github.io/PlutusShield/products/), [underwriting book](https://kshot3000.github.io/PlutusShield/book/), [claims register](https://kshot3000.github.io/PlutusShield/claims/), [systems status](https://kshot3000.github.io/PlutusShield/status/), [assessors](https://kshot3000.github.io/PlutusShield/assessors/).
 - Contract addresses, transactions and how to run everything: the Buildathon section of the [root README](../../README.md).
 - **License (Buildathon):** Midnight-related code under [`contracts/midnight/`](../../contracts/midnight/) is [Apache-2.0](../../contracts/midnight/LICENSE). The rest of the monorepo stays [MIT](../../LICENSE). See the root [License](../../README.md#license) section.
 

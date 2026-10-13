@@ -30,6 +30,7 @@ Testnet only (Cardano Preview + Midnight Preprod). Not audited.
 | [/demo](https://kshot3000.github.io/PlutusShield/demo/) | Guided 5-beat walkthrough with every Cardano + Midnight receipt |
 | [/cover](https://kshot3000.github.io/PlutusShield/cover/) | Buy depeg or exploit cover; My policies across both pools |
 | [/claim/evidence](https://kshot3000.github.io/PlutusShield/claim/evidence/) | Seal evidence, File with Lace / claim kit, live committee |
+| [/products](https://kshot3000.github.io/PlutusShield/products/) | Cover catalog: depeg + exploit live (ADA/USDC), SLA priced not buyable |
 | [/book](https://kshot3000.github.io/PlutusShield/book/) | Open underwriting book: live Preview pools, tier B scorecard, capital |
 | [/claims](https://kshot3000.github.io/PlutusShield/claims/) | Public claims register (approved, denied, split votes, refused 1-of-3) |
 | [/status](https://kshot3000.github.io/PlutusShield/status/) | Preview + Preprod systems honesty |

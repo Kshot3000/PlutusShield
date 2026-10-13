@@ -159,6 +159,9 @@ export default function DemoPage() {
           <Button href="/claim/evidence" variant="secondary" className="w-full sm:w-auto">
             Seal evidence
           </Button>
+          <Button href="/products" variant="secondary" className="w-full sm:w-auto">
+            Cover products
+          </Button>
           <Button href="/book" variant="secondary" className="w-full sm:w-auto">
             Underwriting book
           </Button>

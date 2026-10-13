@@ -222,7 +222,9 @@ PoolAction = Deposit { tranche } | Withdraw { tranche, shares } | Buy | Settle |
       <Section id="products" title="Products">
         <P>
           The quote engine prices three product lines. One deployment of <C>cover</C> serves one product with one
-          trigger, and can accept several currencies (ADA and USDC by default).
+          trigger, and can accept several currencies (ADA and USDC by default). The{" "}
+          <DocLink href="/products">cover products catalog</DocLink> shows each line&apos;s status, premium currencies,
+          claim model and deployed parameters.
         </P>
         <Table
           caption="Product lines"
