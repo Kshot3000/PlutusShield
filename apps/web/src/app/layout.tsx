@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Instrument_Sans, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { NotInEmbed } from "@/components/NotInEmbed";
 import { WalletProvider } from "@/lib/wallet";
 import { MidnightWalletProvider } from "@/lib/midnightWallet";
 import "./globals.css";
@@ -73,7 +74,9 @@ export default function RootLayout({
       className={`${instrumentSans.variable} ${instrumentSerif.variable} ${jetbrains.variable} h-full antialiased`}
     >
       <body className="relative flex min-h-full flex-col bg-bg text-text">
-        <div className="noise pointer-events-none fixed inset-0 z-[60]" aria-hidden="true" />
+        <NotInEmbed>
+          <div className="noise pointer-events-none fixed inset-0 z-[60]" aria-hidden="true" />
+        </NotInEmbed>
         <a
           href="#main"
           className="sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:m-0 focus:inline-flex focus:h-auto focus:w-auto focus:overflow-visible focus:rounded-lg focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:text-[var(--text-inverse)] focus:[clip:auto]"
@@ -82,11 +85,15 @@ export default function RootLayout({
         </a>
         <WalletProvider>
           <MidnightWalletProvider>
-            <Header />
+            <NotInEmbed>
+              <Header />
+            </NotInEmbed>
             <main id="main" className="flex flex-1 flex-col">
               {children}
             </main>
-            <Footer />
+            <NotInEmbed>
+              <Footer />
+            </NotInEmbed>
           </MidnightWalletProvider>
         </WalletProvider>
       </body>

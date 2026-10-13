@@ -9,7 +9,8 @@ export type DocSlug =
   | "risks"
   | "security"
   | "faq"
-  | "api";
+  | "api"
+  | "embed";
 
 export interface DocPage {
   slug: DocSlug;
@@ -89,6 +90,13 @@ export const DOC_PAGES: DocPage[] = [
     summary: "Read-only JSON feeds of the cover products, claims register, underwriting book and oracle publishes, rebuilt on every deploy. No key, no wallet.",
     tag: "Integrate",
     tone: "cardano",
+  },
+  {
+    slug: "embed",
+    title: "Embed a cover quote",
+    summary: "Put a live PlutusShield depeg or exploit cover quote inside your own dApp with one iframe. No wallet in the widget, no key, testnet only.",
+    tag: "Partners",
+    tone: "midnight",
   },
 ];
 

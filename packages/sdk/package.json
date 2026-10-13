@@ -21,7 +21,8 @@
     "./fetchZkConfig": "./src/fetchZkConfig.ts",
     "./proveBridge": "./src/proveBridge.ts",
     "./openData": "./src/openData.ts",
-    "./coverPlan": "./src/coverPlan.ts"
+    "./coverPlan": "./src/coverPlan.ts",
+    "./embed": "./src/embed.ts"
   },
   "scripts": {
     "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts"

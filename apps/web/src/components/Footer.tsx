@@ -30,6 +30,7 @@ const columns = [
       { href: "/docs/security", label: "Security & audit scope" },
       { href: "/docs/faq", label: "FAQ" },
       { href: "/docs/api", label: "Open data API" },
+      { href: "/docs/embed", label: "Embed a quote" },
       { href: "/feed.xml", label: "Activity feed (Atom)" },
       {
         href: "https://github.com/Kshot3000/PlutusShield/blob/main/docs/ARCHITECTURE.md",
