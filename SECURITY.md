@@ -35,7 +35,7 @@ pnpm install && pnpm test
 ```
 
 <!-- test-counts -->
-On main today that runs 131 Aiken checks, the Lucid-emulator end-to-end flow (36 steps, 12 of them checks that a bad transaction or setup is refused), 60 Midnight simulation tests, 159 SDK tests, 14 oracle-relay tests and 3 committee-kit tests.
+On main today that runs 131 Aiken checks, the Lucid-emulator end-to-end flow (36 steps, 12 of them checks that a bad transaction or setup is refused), 60 Midnight simulation tests, 167 SDK tests, 14 oracle-relay tests and 3 committee-kit tests.
 <!-- /test-counts -->
 
 That sentence, and every test count on the site, comes from `apps/web/src/data/test-report.json`, written by `pnpm test:report` from each suite's own summary after a fully green run. `pnpm check:counts` (also the first step of the web build) fails if this file or the README quotes a count that differs from the report.
