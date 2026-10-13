@@ -16,11 +16,12 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { MidnightHash } from "@/components/midnight/MidnightHash";
 import { PolicyCalendar } from "@/components/policy/PolicyCalendar";
+import { PolicyCertificate } from "@/components/policy/PolicyCertificate";
 import { BLOCKFROST_ID, BLOCKFROST_URL } from "@/lib/chainRead";
 import { PREVIEW, explorerTx } from "@/lib/preview";
 import { shortHash } from "@/lib/midnightPreprod";
 import { COVER, useCoverChain } from "@/lib/useCoverChain";
-import { EXPLOIT, useExploitCoverChain } from "@/lib/useExploitCoverChain";
+import { EXPLOIT, EXPLOIT_COMMITTEE, useExploitCoverChain } from "@/lib/useExploitCoverChain";
 import { useMidnightActivity } from "@/lib/useMidnightActivity";
 import { useMidnightV2Activity } from "@/lib/useMidnightV2Activity";
 import { useNow } from "@/lib/useNow";
@@ -335,6 +336,19 @@ export function PolicyTracker() {
       </section>
 
       <PolicyCalendar policy={policy} claimGraceMs={grace} coverage={policy.coverage ? fmtAmt(policy.coverage, policy.ticker) : null} />
+      <PolicyCertificate
+        policy={policy}
+        claimGraceMs={grace}
+        coverage={policy.coverage ? fmtAmt(policy.coverage, policy.ticker) : null}
+        premium={policy.premium ? fmtAmt(policy.premium, policy.ticker) : null}
+        pool={policy.product === "depeg" ? PREVIEW.poolAddress : EXPLOIT.address}
+        waitingPeriodMs={Number((policy.product === "depeg" ? COVER : EXPLOIT).params.saleGuard.waitingPeriodMs)}
+        trigger={
+          policy.product === "depeg"
+            ? "USDM peg below 95.00% for 24 hours, attested by at least 2 of 3 allowlisted oracle feeds"
+            : `Approved Midnight claim + ${EXPLOIT_COMMITTEE.threshold}-of-${EXPLOIT_COMMITTEE.seats} Settle on Cardano`
+        }
+      />
     </>
   );
 }

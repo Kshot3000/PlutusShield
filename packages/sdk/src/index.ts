@@ -16,3 +16,4 @@ export * from "./coverPlan.ts";
 export * from "./embed.ts";
 export * from "./calendar.ts";
 export * from "./wording.ts";
+export * from "./certificate.ts";

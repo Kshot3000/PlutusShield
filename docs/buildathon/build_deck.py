@@ -200,8 +200,8 @@ footer(s, n)
 
 # 8 Engineering
 s = slide(); n += 1
-kicker(s, "Engineering"); title(s, "401 unit tests plus an end-to-end emulator run, all green.")
-stats = [("131", "Aiken validator tests"), ("193", "SDK: quote engine, cover wording, cover planner + shareable plans, embeddable quote widget, policy deadline calendar, risk tiers, underwriting book, open data, Atom feed, codecs, evidence vault, claim kit, Lace, prove bridge"),
+kicker(s, "Engineering"); title(s, "409 unit tests plus an end-to-end emulator run, all green.")
+stats = [("131", "Aiken validator tests"), ("201", "SDK: quote engine, cover wording, coverage certificate, cover planner + shareable plans, embeddable quote widget, policy deadline calendar, risk tiers, underwriting book, open data, Atom feed, codecs, evidence vault, claim kit, Lace, prove bridge"),
          ("60", "Compact circuit simulation, claims relay, relay plan, state decode"), ("14 + 3", "oracle relay · committee kit")]
 for i, (big, small) in enumerate(stats):
     x = 0.8 + i * 3.0
