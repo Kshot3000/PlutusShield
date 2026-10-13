@@ -6,7 +6,8 @@ export type DocSlug =
   | "settlement"
   | "privacy"
   | "risks"
-  | "security";
+  | "security"
+  | "faq";
 
 export interface DocPage {
   slug: DocSlug;
@@ -65,6 +66,13 @@ export const DOC_PAGES: DocPage[] = [
     summary: "The audit scope, every invariant mapped to the tests that check it, who holds which keys today, known gaps, and private reporting.",
     tag: "Audit",
     tone: "accent",
+  },
+  {
+    slug: "faq",
+    title: "FAQ",
+    summary: "Short answers on what you can cover, paying in ADA or USDC, when cover starts, how claims pay, privacy, and underwriting.",
+    tag: "Answers",
+    tone: "midnight",
   },
 ];
 
