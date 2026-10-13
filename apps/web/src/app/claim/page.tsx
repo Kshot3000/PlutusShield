@@ -23,6 +23,11 @@ const notes = [
     body: "Exploit cover goes through the Midnight registry instead. fileClaim posts only a commitment to the evidence, keyed by the same policy id, and the assessor committee records the outcome by voteClaim (2-of-3).",
     link: { href: "/claim/evidence", label: "Seal exploit evidence" },
   },
+  {
+    title: "Every decision, on the record",
+    body: "The claims register lists every claim decided so far, approved or denied, with each Midnight vote and Cardano payout linked to its transaction.",
+    link: { href: "/claims", label: "Open the claims register" },
+  },
 ];
 
 export default function ClaimPage() {
@@ -33,7 +38,7 @@ export default function ClaimPage() {
       description="See exactly when a depeg policy pays out. Move through an example market, knock feeds offline, and watch the same checks the Cardano validator runs decide the claim."
     >
       <ClaimChecker />
-      <div className="mt-10 grid gap-4 md:grid-cols-3">
+      <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {notes.map((n) => (
           <div key={n.title} className="glass-panel relative rounded-[1.4rem] p-6">
             <p className="text-sm font-semibold text-text">{n.title}</p>
