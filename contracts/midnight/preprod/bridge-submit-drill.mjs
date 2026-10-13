@@ -52,6 +52,55 @@ const redact = (s) => String(s).replace(/(project_id=)[^&\s"]+/g, '$1…').repla
 const log = (...a) => console.log(new Date().toISOString(), '[bridge-drill]', ...a.map(redact));
 const hex = (u) => Buffer.from(u).toString('hex');
 
+/** Node JSON-RPC base the wallet submits through (same resolution as the facade). */
+async function nodeUrl() {
+  if (process.env.MIDNIGHT_NODE_URL?.trim()) return process.env.MIDNIGHT_NODE_URL.trim();
+  try {
+    const cfg = await import(pathToFileURL(path.join(path.dirname(env('MIDNIGHT_WALLET_FACADE', '')), 'preprod-config.mjs')).href);
+    return cfg.PREPROD?.node ?? null;
+  } catch { return null; }
+}
+const hostOf = (u) => { try { return new URL(u).host; } catch { return '(unknown)'; } };
+
+/** One JSON-RPC call to the node over HTTP; never throws, returns { ok, result | error }. */
+async function nodeRpc(url, method, params = []) {
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: 1, jsonrpc: '2.0', method, params }),
+      signal: AbortSignal.timeout(20_000),
+    });
+    const j = await r.json();
+    return j.error ? { ok: false, error: redact(JSON.stringify(j.error)).slice(0, 300) } : { ok: true, result: j.result };
+  } catch (e) {
+    return { ok: false, error: redact(e?.message ?? e) };
+  }
+}
+
+/**
+ * After a stalled submit: is the node healthy, and is our tx sitting in its pool?
+ * author_pendingExtrinsics returns SCALE-encoded extrinsics; the Midnight tx bytes
+ * are embedded, so a hex substring match on a slice of the balanced tx is enough.
+ */
+async function probeNodeAfterStall(url, balancedHex) {
+  if (!url) { log('node probe: no node URL resolved'); return null; }
+  const health = await nodeRpc(url, 'system_health');
+  const head = await nodeRpc(url, 'chain_getHeader');
+  const pool = await nodeRpc(url, 'author_pendingExtrinsics');
+  const probe = balancedHex.slice(200, 264);
+  const inPool = pool.ok && Array.isArray(pool.result) ? pool.result.some((x) => String(x).includes(probe)) : null;
+  const out = {
+    node: hostOf(url),
+    health: health.ok ? health.result : health.error,
+    bestBlock: head.ok && head.result?.number ? parseInt(head.result.number, 16) : head.error ?? null,
+    pendingExtrinsics: pool.ok && Array.isArray(pool.result) ? pool.result.length : pool.error,
+    ourTxInPool: inPool,
+  };
+  log(`node probe after stalled submit: ${JSON.stringify(out)}`);
+  return out;
+}
+
 /** Walk Error / Effect TaggedError cause chains without printing seeds or keys. */
 function dumpErr(e) {
   const rows = [];
@@ -181,6 +230,8 @@ async function main() {
 
     const proofServer = process.env.MIDNIGHT_PROOF_SERVER_URL || process.env.MIDNIGHT_PROOF_SERVER || 'http://127.0.0.1:6300';
     log(`wallet proving server (fee ZK): ${proofServer}`);
+    const NODE = await nodeUrl();
+    log(`submit node: ${hostOf(NODE)} (override with MIDNIGHT_NODE_URL)`);
     try {
       const h = await fetch(`${proofServer.replace(/\/$/, '')}/health`);
       log(`proof server /health: ${h.status} ${redact((await h.text()).slice(0, 120))}`);
@@ -284,15 +335,36 @@ async function main() {
     try { balancedIds = (balanced.identifiers?.() ?? []).map(String); } catch {}
     log(`submitting; balanced tx ids ${balancedIds.slice(0, 4).join(', ') || '(none)'}; timeout ${Math.round(SUBMIT_MS / 1000)} s`);
     let submitTimer;
-    const txId = String(await Promise.race([
-      provider.submitTx(balanced),
-      new Promise((_, reject) => {
-        submitTimer = setTimeout(
-          () => reject(new Error(`submitTransaction did not return within ${Math.round(SUBMIT_MS / 1000)} s; not claiming success (check the indexer for ${balancedIds[0] ?? 'the tx ids above'})`)),
-          SUBMIT_MS,
-        );
-      }),
-    ]).finally(() => clearTimeout(submitTimer)));
+    const balancedHex = hex(balanced.serialize());
+    // The balanced tx is public chain data (proofs + binding, no keys); keep it so a
+    // stalled submit can be checked against the node pool or resent elsewhere.
+    const TX_OUT = env('PLUTUSSHIELD_DRILL_TX_OUT', '');
+    if (TX_OUT) { fs.writeFileSync(TX_OUT, balancedHex + '\n'); log(`balanced tx hex -> ${TX_OUT}`); }
+    let txId;
+    try {
+      txId = String(await Promise.race([
+        provider.submitTx(balanced),
+        new Promise((_, reject) => {
+          submitTimer = setTimeout(
+            () => reject(new Error(`submitTransaction did not return within ${Math.round(SUBMIT_MS / 1000)} s; not claiming success (check the indexer for ${balancedIds[0] ?? 'the tx ids above'})`)),
+            SUBMIT_MS,
+          );
+        }),
+      ]).finally(() => clearTimeout(submitTimer)));
+    } catch (e) {
+      const probe = await probeNodeAfterStall(NODE, balancedHex);
+      if (RECORD) {
+        const prev = fs.existsSync(RECORD) ? JSON.parse(fs.readFileSync(RECORD, 'utf8')) : { runs: [] };
+        prev.stalls = [...(prev.stalls ?? []), {
+          at: new Date().toISOString(), circuit: 'proveCover', policyId: key.policyId,
+          unsealedBytes: proved.bytes, balancedBytes, callIdentifier: balancedIds[0] ?? null,
+          error: redact(e?.message ?? e).slice(0, 300), probe,
+          _note: 'Not a finalized tx. Public data only.',
+        }];
+        fs.writeFileSync(RECORD, JSON.stringify(prev, null, 2) + '\n');
+      }
+      throw e;
+    }
     log(`submitted txId ${txId}; waiting for finalized tx data…`);
     const bfq = `?project_id=${encodeURIComponent(env('BLOCKFROST_MIDNIGHT_PREPROD_ID', '').trim())}`;
     const pdp = indexerPublicDataProvider(
@@ -314,6 +386,7 @@ async function main() {
       unsealedBytes: proved.bytes,
       provedMs: proved.provedMs,
       balancedBytes,
+      node: hostOf(NODE),
       txId,
       txHash: f.txHash ? String(f.txHash) : null,
       blockHeight: f.blockHeight,
