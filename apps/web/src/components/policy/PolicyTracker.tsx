@@ -19,6 +19,7 @@ import { BLOCKFROST_ID, BLOCKFROST_URL } from "@/lib/chainRead";
 import { PREVIEW, explorerTx } from "@/lib/preview";
 import { shortHash } from "@/lib/midnightPreprod";
 import { COVER, useCoverChain } from "@/lib/useCoverChain";
+import { EXPLOIT, useExploitCoverChain } from "@/lib/useExploitCoverChain";
 import { useMidnightActivity } from "@/lib/useMidnightActivity";
 import { useMidnightV2Activity } from "@/lib/useMidnightV2Activity";
 import { useNow } from "@/lib/useNow";
@@ -62,7 +63,8 @@ function useCardanoLive(policy: KnownPolicy | undefined): { live: CardanoLive | 
   const [state, setState] = useState<{ id: string; live: CardanoLive | null; error: string | null }>({ id: "", live: null, error: null });
   const id = policy?.policyId ?? "";
   const buyTx = policy?.buyTx ?? null;
-  const depeg = policy?.product === "depeg";
+  // Script whose (100) reference-token burn closes the policy, for the pools we read live.
+  const script = policy?.product === "depeg" ? PREVIEW.scriptHash : policy?.product === "exploit-v2" ? EXPLOIT.scriptHash : null;
   useEffect(() => {
     if (!id || !BLOCKFROST_ID) return;
     const ac = new AbortController();
@@ -77,8 +79,8 @@ function useCardanoLive(policy: KnownPolicy | undefined): { live: CardanoLive | 
         live.ticket = md ? parseTicket(md) : null;
         if (live.ticket && live.ticket.policyId !== id) live.ticket = null;
       }
-      if (depeg) {
-        const hist = await bf<{ tx_hash: string; action: string }[]>(`/assets/${PREVIEW.scriptHash}${refTokenName(id)}/history`, ac.signal);
+      if (script) {
+        const hist = await bf<{ tx_hash: string; action: string }[]>(`/assets/${script}${refTokenName(id)}/history`, ac.signal);
         const burn = hist?.find((h) => h.action === "burned");
         if (burn) {
           const t = await bf<{ block_time: number }>(`/txs/${burn.tx_hash}`, ac.signal);
@@ -90,7 +92,7 @@ function useCardanoLive(policy: KnownPolicy | undefined): { live: CardanoLive | 
       if (!ac.signal.aborted) setState({ id, live: null, error: e instanceof Error ? e.message : String(e) });
     });
     return () => ac.abort();
-  }, [id, buyTx, depeg]);
+  }, [id, buyTx, script]);
   return state.id === id ? { live: state.live, error: state.error } : { live: null, error: null };
 }
 
@@ -203,13 +205,14 @@ export function PolicyTracker() {
   const params = useSearchParams();
   const id = params.get("id") ?? "";
   const chain = useCoverChain();
+  const exploitChain = useExploitCoverChain();
   const v1 = useMidnightActivity();
   const v2 = useMidnightV2Activity();
   const now = useNow(30_000);
-  const list = useMemo(() => knownPolicies(chain.pool?.policies ?? null), [chain.pool]);
+  const list = useMemo(() => knownPolicies(chain.pool?.policies ?? null, exploitChain.pool?.policies ?? null), [chain.pool, exploitChain.pool]);
   const policy = id ? findPolicy(list, id) : undefined;
   const { live, error } = useCardanoLive(policy);
-  const grace = Number(COVER.params.claimGraceMs);
+  const grace = Number((policy?.product === "depeg" ? COVER : EXPLOIT).params.claimGraceMs);
 
   const events = useMemo(
     () =>
@@ -219,12 +222,12 @@ export function PolicyTracker() {
             v1Actions: v1.actions,
             v2Actions: v2.actions,
             midnightSource: v1.source === "live" && v2.source === "live" ? "live" : "snapshot",
-            cardanoSource: chain.source,
+            cardanoSource: policy.product === "depeg" ? chain.source : exploitChain.source,
             cardanoLive: live,
             claimGraceMs: grace,
           })
         : [],
-    [policy, v1.actions, v2.actions, v1.source, v2.source, chain.source, live, grace],
+    [policy, v1.actions, v2.actions, v1.source, v2.source, chain.source, exploitChain.source, live, grace],
   );
 
   if (!policy)
@@ -316,12 +319,12 @@ export function PolicyTracker() {
           </p>
         )}
         <div className="mt-6 flex flex-wrap gap-2">
-          {policy.product === "depeg" && policy.openOnCardano && (
+          {(policy.product === "depeg" || policy.product === "exploit-v2") && policy.openOnCardano && (
             <Button href="/cover#my-policies" size="sm">
               Manage in My policies
             </Button>
           )}
-          <Button href={policy.product === "depeg" ? "/claim" : "/claim/evidence"} variant="secondary" size="sm">
+          <Button href={policy.product === "depeg" ? "/claim" : `/claim/evidence/?policy=${policy.policyId}`} variant="secondary" size="sm">
             {policy.product === "depeg" ? "Claim checker" : "Seal claim evidence"}
           </Button>
           <Button href="/policy" variant="ghost" size="sm">

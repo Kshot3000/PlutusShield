@@ -2,15 +2,19 @@
 
 import Link from "next/link";
 import { useCoverChain } from "@/lib/useCoverChain";
+import { useExploitCoverChain } from "@/lib/useExploitCoverChain";
 import { useWallet } from "@/lib/wallet";
 import { useMyPolicies } from "./MyPolicies";
 
-/** /app overview card: how many live policies the connected wallet holds on Preview. */
+/** /app overview card: how many live policies the connected wallet holds on Preview, across the depeg and exploit pools. */
 export function PoliciesCard() {
   const w = useWallet();
   const chain = useCoverChain();
-  const { policies } = useMyPolicies(chain);
+  const exploit = useExploitCoverChain();
+  const { policies } = useMyPolicies(chain, exploit);
   const live = policies?.filter((p) => p.status === "waiting" || p.status === "active" || p.status === "claimable");
+  const depeg = live?.filter((p) => p.product === "depeg").length ?? 0;
+  const exp = live?.filter((p) => p.product === "exploit-v2").length ?? 0;
   const connected = w.status === "connected";
   return (
     <Link
@@ -22,7 +26,11 @@ export function PoliciesCard() {
         {connected ? (live ? live.length : "…") : "—"}
       </p>
       <p className="mt-1 hidden text-xs text-text-dim sm:block">
-        {connected ? "On Cardano Preview · view in My policies →" : "Connect a wallet to see your cover"}
+        {connected
+          ? live?.length
+            ? `${depeg} depeg · ${exp} exploit on Cardano Preview · view in My policies →`
+            : "Depeg + exploit pools on Cardano Preview · view in My policies →"
+          : "Connect a wallet to see your cover"}
       </p>
     </Link>
   );

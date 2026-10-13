@@ -14,7 +14,7 @@
 import type { LivePolicy } from "@plutusshield/sdk/chain";
 import type { MidnightAction } from "@/lib/midnightIndexer";
 import { PREVIEW_ASSETS } from "@/lib/preview";
-import { allExploitPolicies } from "@/lib/exploitPreview";
+import { EXPLOIT_PREVIEW, EXPLOIT_PREVIEW_V1, allExploitPolicies } from "@/lib/exploitPreview";
 import { MIDNIGHT_V2 } from "@/lib/midnightPreprodV2";
 import { RELAY_SNAPSHOT, type RelayPolicy } from "@/lib/useMidnightActivity";
 import v1Record from "@/data/midnight-preprod-v1.json";
@@ -53,8 +53,13 @@ export interface KnownPolicy {
 
 const norm = (h: string) => h.trim().toLowerCase().replace(/^0x/, "");
 
-/** Every policy the site knows about, newest first, deduplicated by policy id. */
-export function knownPolicies(livePolicies: LivePolicy[] | null): KnownPolicy[] {
+/**
+ * Every policy the site knows about, newest first, deduplicated by policy id.
+ * `livePolicies` are read at the depeg cover script; `liveExploit` at the
+ * exploit-cover v2 script (so a policy bought in the browser shows up before
+ * any deployment record mentions it).
+ */
+export function knownPolicies(livePolicies: LivePolicy[] | null, liveExploit: LivePolicy[] | null = null): KnownPolicy[] {
   const out = new Map<string, KnownPolicy>();
   const put = (p: KnownPolicy) => {
     const prev = out.get(p.policyId);
@@ -78,6 +83,21 @@ export function knownPolicies(livePolicies: LivePolicy[] | null): KnownPolicy[] 
       policyId: lp.policy.policyId.toLowerCase(),
       buyTx: lp.ref.split("#")[0],
       product: "depeg",
+      coverage: lp.policy.coverage.toString(),
+      premium: lp.policy.premium.toString(),
+      ticker: a?.ticker ?? null,
+      start: Number(lp.policy.start),
+      expiry: Number(lp.policy.expiry),
+      boughtAt: lp.blockTime ? lp.blockTime * 1000 : null,
+      openOnCardano: true,
+    });
+  }
+  for (const lp of liveExploit ?? []) {
+    const a = PREVIEW_ASSETS[lp.tranche];
+    put({
+      policyId: lp.policy.policyId.toLowerCase(),
+      buyTx: lp.ref.split("#")[0],
+      product: "exploit-v2",
       coverage: lp.policy.coverage.toString(),
       premium: lp.policy.premium.toString(),
       ticker: a?.ticker ?? null,
@@ -241,7 +261,7 @@ export function buildTimeline(i: TimelineInput): TimelineEvent[] {
 
   if (p.buyTx) {
     const parts = [
-      p.product === "depeg" ? "USDM depeg cover" : `Exploit cover (${exploit?.pool.version ?? ""} pool, ${exploit?.pool.quorumLabel ?? ""} assessor committee)`,
+      p.product === "depeg" ? "USDM depeg cover" : `Exploit cover (${(exploit?.pool ?? (p.product === "exploit-v2" ? EXPLOIT_PREVIEW : EXPLOIT_PREVIEW_V1)).version} pool, ${(exploit?.pool ?? (p.product === "exploit-v2" ? EXPLOIT_PREVIEW : EXPLOIT_PREVIEW_V1)).quorumLabel} assessor committee)`,
       fmt(p.coverage) && `coverage ${fmt(p.coverage)}`,
       fmt(p.premium) && `premium ${fmt(p.premium)}`,
       p.start && p.expiry ? `cover ${new Date(p.start).toISOString().slice(0, 10)} → ${new Date(p.expiry).toISOString().slice(0, 10)}` : p.expiry ? `expires ${new Date(p.expiry).toISOString().slice(0, 10)}` : null,

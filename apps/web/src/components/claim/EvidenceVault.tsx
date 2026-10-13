@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
   EVIDENCE_LIMITS,
   INCIDENT_KINDS,
@@ -236,6 +236,14 @@ function SealForm({ onSealed }: { onSealed: (s: SealedEvidence) => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // "File claim on Midnight" in My policies links here as ?policy=<id>: prefill it (read after hydration; the page is static).
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("policy")?.trim().toLowerCase().replace(/^0x/, "") ?? "";
+    if (!/^[0-9a-f]{64}$/.test(id)) return;
+    const t = setTimeout(() => setForm((f) => (f.policyId ? f : { ...f, policyId: id })), 0);
+    return () => clearTimeout(t);
+  }, []);
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => {
     const next = { ...form, [k]: v };

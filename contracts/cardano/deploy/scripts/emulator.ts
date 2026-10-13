@@ -18,6 +18,9 @@
  *      signers), and with a missing witness; then a 2-of-3 committee-signed
  *      Settle pays the holder exactly the coverage and carries the Midnight
  *      resolution as tx metadata (label 7732)
+ *  10  My policies reads an exploit policy from the exploit script only; an
+ *      unclaimed exploit policy is released by a third party after the claim
+ *      grace (same Expire branch and builder as depeg), deposit to the buyer
  *
  * Every step asserts the on-chain pool state against @plutusshield/sdk.
  */
@@ -282,5 +285,34 @@ assert.equal(xAfter.capitals[0], xBefore.capitals[0] - 500n * U, "tranche pays e
 assert.equal(xAfter.datum.tranches[0].activeCover, 0n);
 assert.ok((await buyerAda()) > buyerAdaX + 500n * U - 2_000_000n, "holder received the 500 ADA payout (less fee)");
 log("✓ exploit payout: 500 ADA to the holder on 2-of-3 committee signatures, active cover released");
+
+// 10. My policies across both pools, then an unclaimed exploit policy expires:
+//     exploit_cover.ak keeps cover.ak's Expire branch, so the shared
+//     buildExpire (the /cover "Release" button) runs against the exploit script.
+as(buyerAcct);
+const xb2 = await act.buy(lucid, x, { asset: ADA, coverage: 200n * U, days: 30n, holder, now: emulator.now(), feeds: [] });
+await submit(`exploit Buy 200 ADA cover (left unclaimed), premium ${xb2.premium}`, xb2.tx);
+const xId2 = xb2.policy.policyId;
+const mineX = await listWalletPolicies(lucid, act.coverScriptOf(x), emulator.now());
+assert.deepEqual(mineX.map((p) => p.policy.policyId), [xId2], "exploit pool lists the buyer's open exploit policy");
+assert.ok(mineX[0].holder && mineX[0].buyer && mineX[0].status === "waiting");
+assert.ok(!(await listWalletPolicies(lucid, act.coverScriptOf(d), emulator.now())).some((p) => p.policy.policyId === xId2), "depeg pool never lists an exploit policy");
+log("✓ My policies: the exploit policy is read from the exploit script only (holder + buyer), never the depeg script");
+await assert.rejects(act.expire(lucid, x, xId2, emulator.now()), /can be released after/);
+log("✓ exploit Expire refused before expiry + claim grace");
+emulator.awaitSlot(Math.ceil((Number(xb2.policy.expiry + xParams.claimGraceMs) - emulator.now()) / 1000) + 60);
+const buyerAdaX2 = await buyerAda();
+const xPre = await act.readPool(lucid, x);
+as(deployerAcct);
+const xe = await act.expire(lucid, x, xId2, emulator.now());
+assert.equal(xe.refundTo, buyerAcct.address);
+await submit(`exploit Expire (refund ${xe.refund} to buyer)`, xe.tx);
+const xAfter2 = await act.readPool(lucid, x);
+assert.equal(xAfter2.datum.tranches[0].activeCover, 0n, "exploit capacity released");
+assert.equal(xAfter2.capitals[0], xPre.capitals[0], "capital unchanged by Expire (the pool keeps the premium)");
+assert.equal(await buyerAda(), buyerAdaX2 + xe.refund, "exploit deposit refunded to the buyer");
+as(buyerAcct);
+assert.equal((await listWalletPolicies(lucid, act.coverScriptOf(x), emulator.now())).length, 0, "released exploit policy leaves My policies");
+log("✓ exploit Release: unclaimed policy expired by anyone after the grace, deposit back to the buyer, row leaves My policies");
 
 console.log("emulator run passed");
