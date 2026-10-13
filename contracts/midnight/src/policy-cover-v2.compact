@@ -1,4 +1,5 @@
 /*
+ * SPDX-License-Identifier: Apache-2.0
  * policy-cover-v2.compact — PlutusShield private cover registry (Midnight),
  * v2: committee-gated claim resolution.
  *

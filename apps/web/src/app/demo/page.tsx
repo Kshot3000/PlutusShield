@@ -60,6 +60,9 @@ export default function DemoPage() {
             <Button href={KIT.script} external variant="secondary" className="w-full sm:w-auto">
               Video script
             </Button>
+            <Button href={KIT.progress} external variant="secondary" className="w-full sm:w-auto">
+              Wave 2 progress
+            </Button>
           </div>
         </div>
       </section>
@@ -155,6 +158,15 @@ export default function DemoPage() {
           </Button>
           <Button href="/claim/evidence" variant="secondary" className="w-full sm:w-auto">
             Seal evidence
+          </Button>
+          <Button href="/book" variant="secondary" className="w-full sm:w-auto">
+            Underwriting book
+          </Button>
+          <Button href="/claims" variant="secondary" className="w-full sm:w-auto">
+            Claims register
+          </Button>
+          <Button href="/status" variant="secondary" className="w-full sm:w-auto">
+            Systems status
           </Button>
           <Button href="/assessors" variant="secondary" className="w-full sm:w-auto">
             Become an assessor

@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "PlutusShield Compact contracts for Midnight: private cover registry, holder proofs, claims",
+  "license": "Apache-2.0",
   "scripts": {
     "compile": "compact compile +0.31.1 src/policy-cover.compact src/managed/policy-cover && compact compile +0.31.1 src/policy-cover-v2.compact src/managed/policy-cover-v2",
     "compile:fast": "compact compile +0.31.1 --skip-zk src/policy-cover.compact src/managed/policy-cover && compact compile +0.31.1 --skip-zk src/policy-cover-v2.compact src/managed/policy-cover-v2",

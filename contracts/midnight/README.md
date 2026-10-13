@@ -247,3 +247,13 @@ Compiles, passes local simulation, and runs on Midnight Preprod (deploy, `regist
 ### Assessor trust: Midnight decision, Cardano committee
 
 On the live v1 registry `resolveClaim` is gated by one assessor role commitment. The money side is stricter: the Cardano exploit-cover pool (v2) pays only on a `Settle` signed by 2 of the 3 assessor-committee keys fixed in its script parameters (`contracts/cardano/validators/exploit_cover.ak`), and each assessor signs only after checking this registry shows the claim PAID. So a single v1 Midnight key can mark a claim PAID, but can't release Cardano capital alone. `policy-cover-v2.compact` (above) closes that gap on the Midnight side with an M-of-3 `voteClaim`, and it is deployed on Preprod (see the live v2 record above) as the current registry; next is moving the committee keys to independent operators.
+
+## License
+
+Midnight-related code in this directory (Compact contracts, managed outputs,
+Preprod deploy records, relay / claim-kit tooling, and simulation tests) is
+licensed under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE).
+
+The rest of the PlutusShield monorepo remains under the root [MIT](../../LICENSE)
+license unless a subdirectory states otherwise.
+

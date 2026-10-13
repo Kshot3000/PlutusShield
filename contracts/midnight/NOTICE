@@ -1,0 +1,25 @@
+PlutusShield Midnight contracts
+Copyright 2026 Kshot
+
+This product includes software developed for PlutusShield
+(https://github.com/Kshot3000/PlutusShield).
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this directory except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under this directory is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+Midnight Buildathon note
+------------------------
+The Compact contracts in this directory (policy-cover and policy-cover-v2),
+their managed outputs, Preprod deploy records, relay/claim-kit tooling, and
+simulation tests are the Midnight-related code submitted for evaluation.
+They are publicly available under Apache-2.0 as required by the Midnight
+Buildathon rules for newly developed / materially extended Midnight code.

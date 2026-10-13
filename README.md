@@ -67,7 +67,7 @@ Full comparison: [docs/COMPETITIVE.md](docs/COMPETITIVE.md).
 ```
 PlutusShield/
 ├── README.md               # You are here
-├── LICENSE                 # MIT
+├── LICENSE                 # MIT (root); Midnight under contracts/midnight/LICENSE (Apache-2.0)
 ├── package.json            # pnpm workspace root
 ├── pnpm-workspace.yaml
 ├── docs/
@@ -164,7 +164,7 @@ See [contracts/cardano/README.md](contracts/cardano/README.md) for validators, d
 
 ## Midnight Buildathon
 
-**Submission kit:** pitch deck ([PDF](docs/buildathon/PlutusShield-Wave2-deck.pdf)), 3-minute [demo video script](docs/buildathon/VIDEO_SCRIPT.md), the [kit checklist](docs/buildathon/README.md), and the live **[guided demo](https://kshot3000.github.io/PlutusShield/demo/)** (the script as a click-through page with every transaction linked). How outside assessors take the committee seats on both chains: **[/assessors](https://kshot3000.github.io/PlutusShield/assessors/)**.
+**Submission kit:** pitch deck ([PDF](docs/buildathon/PlutusShield-Wave2-deck.pdf)), 3-minute [demo video script](docs/buildathon/VIDEO_SCRIPT.md), [Wave 2 progress note](docs/buildathon/WAVE2_PROGRESS.md) (for the AKINDO progress field), the [kit checklist](docs/buildathon/README.md), and the live **[guided demo](https://kshot3000.github.io/PlutusShield/demo/)** (the script as a click-through page with every transaction linked). Judge click-throughs beyond the five demo beats: **[/book](https://kshot3000.github.io/PlutusShield/book/)** (open underwriting book), **[/claims](https://kshot3000.github.io/PlutusShield/claims/)** (claims register), **[/status](https://kshot3000.github.io/PlutusShield/status/)**. How outside assessors take the committee seats on both chains: **[/assessors](https://kshot3000.github.io/PlutusShield/assessors/)**.
 
 PlutusShield is entered in the Midnight Foundation Buildathon (Wave 2). The Midnight half is two Compact contracts, both compiled with **compactc 0.31.1** (`compact` CLI 0.5.2, `pragma language_version >= 0.23`) and deployed on **Midnight Preprod**:
 
@@ -238,4 +238,13 @@ PlutusShield is pre-release software under active design. Nothing here is an off
 
 ## License
 
-[MIT](LICENSE) © 2026 Kshot ([@kshot9000](https://x.com/kshot9000))
+Dual-licensed for Midnight Buildathon compliance:
+
+| Scope | License | Where |
+|---|---|---|
+| **Midnight-related code** (Compact contracts, Preprod deploy records, relay / claim-kit tooling, simulation tests) | [Apache-2.0](contracts/midnight/LICENSE) | [`contracts/midnight/`](contracts/midnight/) — see [NOTICE](contracts/midnight/NOTICE) |
+| **Everything else** (Cardano validators, SDK, web app, docs, services) | [MIT](LICENSE) | Repository root |
+
+© 2026 Kshot ([@kshot9000](https://x.com/kshot9000))
+
+The Midnight Foundation Buildathon requires Apache-2.0 for Midnight-related code newly developed or materially extended for the program. Cardano settlement, the marketing site, and shared tooling stay MIT.

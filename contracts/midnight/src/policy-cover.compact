@@ -1,4 +1,5 @@
 /*
+ * SPDX-License-Identifier: Apache-2.0
  * policy-cover.compact — PlutusShield private cover registry (Midnight)
  *
  * Mirrors each Cardano policy NFT (by 32-byte policy id) with a private record:

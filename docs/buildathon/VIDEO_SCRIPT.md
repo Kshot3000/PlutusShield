@@ -2,7 +2,7 @@
 
 About 3 minutes. Record at 1600×900 or 1920×1080 in a desktop browser with a Cardano Preview wallet (Lace or Eternl, CIP-30) holding a little tADA. Testnet only, not audited: say so on camera.
 
-Links used on screen (all checked Oct 12, 2026):
+Links used on screen (checked Oct 12–13, 2026; oracle hash from the site snapshot):
 
 - Live site: https://kshot3000.github.io/PlutusShield/
 - Guided demo (this script as a page, every step with its on-chain receipts): https://kshot3000.github.io/PlutusShield/demo/
@@ -15,7 +15,9 @@ Links used on screen (all checked Oct 12, 2026):
 - Holder-filed claim on Midnight (claim kit, exploit policy 496dced8…): https://preprod.midnightexplorer.com/transactions/0x00989a6afe372f396299c3d0807816208647d3b4907576d29ae0587e90873630
 - Its 2-of-3 payout on Cardano (25 tADA, decided by v2 voteClaim): https://preview.cexplorer.io/tx/dbf0ba7a963c680354fa27eaf5e877c4dd28cb6b905885b496a51f3638ba15e0
 - Exploit cover bought from the website's own Buy builder (policy 9bdef8cb…): https://preview.cexplorer.io/tx/3c1fc629474f48e2798479a3529e3332f75d73be4f5ccdd41f81886c9f547fff
-- Latest oracle publish (peg 99.97%, published Oct 12 23:51 UTC; confirmed on Preview, checked Oct 12, 2026): https://preview.cexplorer.io/tx/6d0ae558a211d37445ba6215407f83faf3163d7ebb944f99efd0cbe3b3c047a4
+- Latest oracle publish baked into the site snapshot (peg 100.13%, published Oct 13 16:02 UTC; confirmed on Preview): https://preview.cexplorer.io/tx/dbf8256e50755dee38eebd990e242fd87e48db7d3dbe0726acc22e064edd9239
+- Open underwriting book (no wallet): https://kshot3000.github.io/PlutusShield/book/
+- Public claims register (no wallet): https://kshot3000.github.io/PlutusShield/claims/
 
 ---
 
@@ -58,6 +60,14 @@ Links used on screen (all checked Oct 12, 2026):
 **On screen:** the README Buildathon section or deck slide 9, then the repo.
 
 **Say:** "Everything you saw is on testnet and not audited yet. The three committee seats are run by us today, and the repo already has the kit for independent assessors to enroll. Holders already file claims from their own machine with a passphrase-encrypted claim kit, so the relay never holds their key. Lace Midnight connect is live, and /claim/evidence File with Lace drives proveCover and fileClaim: the holder prove bridge builds and proves the Compact call with midnight-js on the local proof server and hands Lace the proven transaction to balance and submit. Until the first finalized submit through that path, holders file with the claim kit. Exploit cover itself is bought in the browser on /cover, the same way as depeg cover. Next: the same submit from Lace itself in a browser, independent assessors on the three seats, an audit, then a capped mainnet launch. The code, tests and all the transactions are linked in the repo. Thanks for watching."
+
+---
+
+## Optional · 15 seconds for judges who click instead of watch
+
+**On screen:** `/book`, then `/claims`.
+
+**Say:** "If you are judging from the repo, open the underwriting book and the claims register. Every live Preview pool is scored in the open — tier B, capital, utilization — and every decided claim links to its Cardano and Midnight transactions. No wallet needed."
 
 ---
 

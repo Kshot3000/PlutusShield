@@ -5,8 +5,9 @@
  *   contracts/cardano/deploy/deployments/preview-exploit-v2.json (exploit Buy, 2-of-3 Settle)
  *   contracts/midnight/deployments/preprod-v2.json              (v2 contract, registerPolicy,
  *                                                                proveCover, fileClaim, voteClaim)
- * All links were checked on Oct 12, 2026 (Koios confirms the Preview txs; the
- * Midnight explorer resolves the Preprod hashes). Public data only, no keys.
+ * Links checked Oct 12–13, 2026 (Koios confirms the Preview txs; the
+ * Midnight explorer resolves the Preprod hashes). Oracle hash matches the site
+ * snapshot in preview-oracle-history.json. Public data only, no keys.
  */
 import { midnightExplorerContract, midnightExplorerTx } from "./midnightPreprod";
 
@@ -43,21 +44,22 @@ export function proofHref(p: DemoProof): string | null {
   return p.kind === "contract" ? midnightExplorerContract(p.hash) : midnightExplorerTx(p.hash);
 }
 
-export const DEMO_CHECKED = "Oct 12, 2026";
+export const DEMO_CHECKED = "Oct 13, 2026";
 
 export const MIDNIGHT_V2_CONTRACT = "5430b803b6b3df6e6ee1d498bb02e2f2d06cb46661e72af1e6208d864feb8110";
 
 /** Latest oracle publish recorded in preview.json at the time of this build. */
 export const LATEST_ORACLE = {
-  hash: "6d0ae558a211d37445ba6215407f83faf3163d7ebb944f99efd0cbe3b3c047a4",
-  pegBps: 9997,
-  at: "Oct 12, 2026 · 23:51 UTC",
+  hash: "dbf8256e50755dee38eebd990e242fd87e48db7d3dbe0726acc22e064edd9239",
+  pegBps: 10013,
+  at: "Oct 13, 2026 · 16:02 UTC",
 };
 
 export const REPO = "https://github.com/Kshot3000/PlutusShield";
 export const KIT = {
   deck: `${REPO}/blob/main/docs/buildathon/PlutusShield-Wave2-deck.pdf`,
   script: `${REPO}/blob/main/docs/buildathon/VIDEO_SCRIPT.md`,
+  progress: `${REPO}/blob/main/docs/buildathon/WAVE2_PROGRESS.md`,
   readme: `${REPO}#midnight-buildathon`,
 };
 
