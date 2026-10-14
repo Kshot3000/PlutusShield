@@ -22,6 +22,7 @@ import { BLOCKFROST_ID, BLOCKFROST_URL } from "@/lib/chainRead";
 import { PREVIEW, explorerTx } from "@/lib/preview";
 import { shortHash } from "@/lib/midnightPreprod";
 import { COVER, useCoverChain } from "@/lib/useCoverChain";
+import { EXPLOIT_PREVIEW_V1 } from "@/lib/exploitPreview";
 import { EXPLOIT, EXPLOIT_COMMITTEE, useExploitCoverChain } from "@/lib/useExploitCoverChain";
 import { useMidnightActivity } from "@/lib/useMidnightActivity";
 import { useMidnightV2Activity } from "@/lib/useMidnightV2Activity";
@@ -246,6 +247,23 @@ export function PolicyTracker() {
     );
 
   const { stages, status } = stagesOf(events, policy, now, grace);
+  // The downloadable documents must state the facts of the pool this policy
+  // actually sits in: a v1 exploit policy lives at the v1 script address and
+  // its Settle needed the single assessor key, not the v2 2-of-3 committee.
+  const docPool =
+    policy.product === "depeg" ? PREVIEW.poolAddress : policy.product === "exploit-v1" ? EXPLOIT_PREVIEW_V1.address : EXPLOIT.address;
+  const docWaitingMs =
+    policy.product === "depeg"
+      ? Number(COVER.params.saleGuard.waitingPeriodMs)
+      : policy.product === "exploit-v1"
+        ? EXPLOIT_PREVIEW_V1.waitingMinutes * 60_000
+        : Number(EXPLOIT.params.saleGuard.waitingPeriodMs);
+  const docTrigger =
+    policy.product === "depeg"
+      ? "USDM peg below 95.00% for 24 hours, attested by at least 2 of 3 allowlisted oracle feeds"
+      : policy.product === "exploit-v1"
+        ? "Approved Midnight claim + single-assessor Settle signature on Cardano (v1 pool)"
+        : `Approved Midnight claim + ${EXPLOIT_COMMITTEE.threshold}-of-${EXPLOIT_COMMITTEE.seats} Settle on Cardano`;
   const registries = [events.some((e) => e.registry === "v1") && { tag: "v1", addr: V1_CONTRACT }, events.some((e) => e.registry === "v2") && { tag: "v2", addr: V2_CONTRACT }].filter(Boolean) as {
     tag: string;
     addr: string;
@@ -342,19 +360,15 @@ export function PolicyTracker() {
         claimGraceMs={grace}
         coverage={policy.coverage ? fmtAmt(policy.coverage, policy.ticker) : null}
         premium={policy.premium ? fmtAmt(policy.premium, policy.ticker) : null}
-        pool={policy.product === "depeg" ? PREVIEW.poolAddress : EXPLOIT.address}
-        waitingPeriodMs={Number((policy.product === "depeg" ? COVER : EXPLOIT).params.saleGuard.waitingPeriodMs)}
-        trigger={
-          policy.product === "depeg"
-            ? "USDM peg below 95.00% for 24 hours, attested by at least 2 of 3 allowlisted oracle feeds"
-            : `Approved Midnight claim + ${EXPLOIT_COMMITTEE.threshold}-of-${EXPLOIT_COMMITTEE.seats} Settle on Cardano`
-        }
+        pool={docPool}
+        waitingPeriodMs={docWaitingMs}
+        trigger={docTrigger}
       />
       <PolicyReceipt
         policy={policy}
         coverage={policy.coverage ? fmtAmt(policy.coverage, policy.ticker) : null}
         premium={policy.premium ? fmtAmt(policy.premium, policy.ticker) : null}
-        pool={policy.product === "depeg" ? PREVIEW.poolAddress : EXPLOIT.address}
+        pool={docPool}
         buyExplorerUrl={policy.buyTx ? explorerTx(policy.buyTx) : null}
         premiumAsset={policy.ticker}
         boughtAtMs={live?.buyAt ?? policy.boughtAt}
