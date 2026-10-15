@@ -237,7 +237,11 @@ function midnightEvents(registry: "v1" | "v2", actions: MidnightAction[], policy
           key: `v2-vote-${v.txHash}`,
           chain: "midnight",
           registry: "v2",
-          title: `Committee seat ${v.seat + 1} voted ${v.approved ? "approve" : "reject"}`,
+          // Midnight seats are numbered 0–2 in the record and everywhere else
+          // on the site (relay `--member <0|1|2>`); the Cardano assessor
+          // indices (1–3, "assessor-1"…) are a different numbering — do not
+          // +1 the seat here or the timeline names the wrong voter per tx.
+          title: `Committee seat ${v.seat} voted ${v.approved ? "approve" : "reject"}`,
           detail: `voteClaim(): tally after this vote ${v.approvals} approve / ${v.rejections} reject, status ${v.statusAfter}.`,
           tx: v.txHash,
           block: v.block ?? a?.height ?? null,

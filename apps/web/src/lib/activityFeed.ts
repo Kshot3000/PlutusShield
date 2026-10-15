@@ -72,7 +72,11 @@ const oracleEntries = (): AtomEntry[] =>
       updated: new Date(p.at).toISOString(),
       link: `${SITE_ROOT}/oracle/`,
       related: [{ href: explorerTx(p.tx), title: "Publish transaction" }],
-      summary: `The relay published ${p.bps} bps to all three Preview feeds (trigger ${pct(triggerBps)}). ${p.bps <= triggerBps ? "At or below the depeg trigger: cover sales pause and claims can settle." : "Above the trigger: cover sales stay open."}`,
+      // The validator's boundary is strict: a reading attests a depeg only
+      // below the trigger (oracle.ak `attests`), and a reading at or above
+      // it is a healthy peg for sales (oracle.ak `attests_peg`). Exactly at
+      // the trigger is healthy, not a depeg — keep this `<`, not `<=`.
+      summary: `The relay published ${p.bps} bps to all three Preview feeds (trigger ${pct(triggerBps)}). ${p.bps < triggerBps ? "Below the depeg trigger: cover sales pause and claims can settle." : "At or above the depeg trigger: cover sales stay open."}`,
       kind: "oracle",
       categories: ["depeg", "cardano"],
     }));

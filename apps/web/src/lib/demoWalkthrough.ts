@@ -227,19 +227,19 @@ export const DEMO_BEATS: DemoBeat[] = [
       {
         chain: "midnight",
         kind: "tx",
-        label: "voteClaim · seat 1 approves",
+        label: "voteClaim · seat 0 approves",
         hash: "db60e9d7e73cfe5e5af12733b1635e679270bcd075fcc0536345fa64fd2dfc4e",
       },
       {
         chain: "midnight",
         kind: "tx",
-        label: "voteClaim · seat 2 rejects",
+        label: "voteClaim · seat 1 rejects",
         hash: "b027116544d495267dc124511d003297c87c36f024aa570ec3474d24cf0cedfc",
       },
       {
         chain: "midnight",
         kind: "tx",
-        label: "voteClaim · seat 3 approves → PAID",
+        label: "voteClaim · seat 2 approves → PAID",
         hash: "bd62e689f13326a71d8db92f88d6aa4d7ede55952be32bbaf8440ec0482f7d74",
       },
       {
@@ -252,9 +252,9 @@ export const DEMO_BEATS: DemoBeat[] = [
       {
         chain: "midnight",
         kind: "tx",
-        label: "voteClaim · seat 3 approves → PAID (holder claim)",
+        label: "voteClaim · seat 2 approves → PAID (holder claim)",
         hash: "beb6d9f50021856fdec84b52754ecc0d44517250b2cad6da95e0de2fbf7470cf",
-        note: "Seats 1 + 3 checked the sealed bundle off-ledger and approved",
+        note: "Seats 0 + 2 checked the sealed bundle off-ledger and approved",
       },
     ],
     honest:
