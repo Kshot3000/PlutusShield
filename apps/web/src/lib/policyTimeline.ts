@@ -108,6 +108,12 @@ export function knownPolicies(livePolicies: LivePolicy[] | null, liveExploit: Li
     });
   }
   for (const e of allExploitPolicies()) {
+    // The Buy's landing time is the pool record's tx-log timestamp for the
+    // Buy hash — NOT the policy start. Start is the Buy's validity upper
+    // bound plus the waiting period (10 min on Preview), so stamping the
+    // Buy with it overstates the payment time by ~20 minutes on the
+    // timeline, the tracker list, and the premium receipt's "Bought at".
+    const buyAtIso = e.pool.txs.find((t) => t.hash === e.buyTx)?.at;
     put({
       policyId: e.policyId.toLowerCase(),
       buyTx: e.buyTx,
@@ -117,7 +123,7 @@ export function knownPolicies(livePolicies: LivePolicy[] | null, liveExploit: Li
       ticker: e.asset === "lovelace" ? "tADA" : e.asset,
       start: Number(e.start),
       expiry: Number(e.expiry),
-      boughtAt: Number(e.start) || null,
+      boughtAt: buyAtIso ? Date.parse(buyAtIso) : null,
       openOnCardano: !e.settleTx,
     });
   }
