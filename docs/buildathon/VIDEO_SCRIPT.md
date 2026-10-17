@@ -15,7 +15,7 @@ Links used on screen (checked Oct 12–13, 2026; oracle hash from the site snaps
 - Holder-filed claim on Midnight (claim kit, exploit policy 496dced8…): https://preprod.midnightexplorer.com/transactions/0x00989a6afe372f396299c3d0807816208647d3b4907576d29ae0587e90873630
 - Its 2-of-3 payout on Cardano (25 tADA, decided by v2 voteClaim): https://preview.cexplorer.io/tx/dbf0ba7a963c680354fa27eaf5e877c4dd28cb6b905885b496a51f3638ba15e0
 - Exploit cover bought from the website's own Buy builder (policy 9bdef8cb…): https://preview.cexplorer.io/tx/3c1fc629474f48e2798479a3529e3332f75d73be4f5ccdd41f81886c9f547fff
-- Latest oracle publish baked into the site snapshot (peg 100.13%, published Oct 13 16:02 UTC; confirmed on Preview): https://preview.cexplorer.io/tx/dbf8256e50755dee38eebd990e242fd87e48db7d3dbe0726acc22e064edd9239
+- Latest oracle publish baked into the site snapshot (peg 99.78%, published Oct 13 21:26 UTC; confirmed on Preview): https://preview.cexplorer.io/tx/87ffffde153828c55c624ad39980c7a7013e937f10b22dd1c50ff9f740810ada
 - Open underwriting book (no wallet): https://kshot3000.github.io/PlutusShield/book/
 - Public claims register (no wallet): https://kshot3000.github.io/PlutusShield/claims/
 

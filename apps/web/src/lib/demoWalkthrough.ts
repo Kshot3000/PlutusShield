@@ -9,6 +9,7 @@
  * Midnight explorer resolves the Preprod hashes). Oracle hash matches the site
  * snapshot in preview-oracle-history.json. Public data only, no keys.
  */
+import oracleHistory from "@/data/preview-oracle-history.json";
 import { midnightExplorerContract, midnightExplorerTx } from "./midnightPreprod";
 
 export type DemoChain = "cardano" | "midnight" | "both";
@@ -48,11 +49,25 @@ export const DEMO_CHECKED = "Oct 13, 2026";
 
 export const MIDNIGHT_V2_CONTRACT = "5430b803b6b3df6e6ee1d498bb02e2f2d06cb46661e72af1e6208d864feb8110";
 
-/** Latest oracle publish recorded in preview.json at the time of this build. */
+/**
+ * Latest live oracle publish in the site snapshot. Derived from
+ * preview-oracle-history.json — the same record /oracle and the open-data
+ * oracle.json build from (regenerated from preview.json on every build) —
+ * never typed by hand: a hard-coded publish went stale on Oct 13, 2026,
+ * when four later live publishes (17:29–21:26 UTC) landed in the record
+ * while /demo still labelled the 16:02 publish "Latest".
+ */
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+type OraclePublish = { at: string; bps: number; tx: string; live?: boolean };
+const latestPublish = [...(oracleHistory.publishes as OraclePublish[])]
+  .filter((p) => p.live)
+  .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0];
+if (!latestPublish) throw new Error("preview-oracle-history.json has no live oracle publish for the demo");
+const latestAt = new Date(latestPublish.at);
 export const LATEST_ORACLE = {
-  hash: "dbf8256e50755dee38eebd990e242fd87e48db7d3dbe0726acc22e064edd9239",
-  pegBps: 10013,
-  at: "Oct 13, 2026 · 16:02 UTC",
+  hash: latestPublish.tx,
+  pegBps: latestPublish.bps,
+  at: `${MONTHS[latestAt.getUTCMonth()]} ${latestAt.getUTCDate()}, ${latestAt.getUTCFullYear()} · ${String(latestAt.getUTCHours()).padStart(2, "0")}:${String(latestAt.getUTCMinutes()).padStart(2, "0")} UTC`,
 };
 
 export const REPO = "https://github.com/Kshot3000/PlutusShield";
