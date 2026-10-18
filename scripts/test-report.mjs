@@ -4,8 +4,10 @@
  *
  *   node scripts/test-report.mjs          run `pnpm test`, write apps/web/src/data/test-report.json,
  *                                         and rewrite the <!-- test-counts --> block in SECURITY.md
- *   node scripts/test-report.mjs --check  no tests run; fail if SECURITY.md or README.md quote a
- *                                         count that differs from the recorded report
+ *   node scripts/test-report.mjs --check  no tests run; fail if SECURITY.md, README.md or
+ *                                         docs/ARCHITECTURE.md quote a count that differs from
+ *                                         the recorded report, or if the web source types a
+ *                                         suite total as a literal instead of deriving it
  *
  * Counts come from each suite's own summary (Aiken's "Summary N checks", node:test's
  * "# tests / # pass / # fail", and the emulator's ✓ steps), never typed by hand.
@@ -19,6 +21,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const REPORT = path.join(ROOT, 'apps/web/src/data/test-report.json');
 const SECURITY = path.join(ROOT, 'SECURITY.md');
 const README = path.join(ROOT, 'README.md');
+const ARCHITECTURE = path.join(ROOT, 'docs/ARCHITECTURE.md');
+const WEB_SRC = path.join(ROOT, 'apps/web/src');
 const START = '<!-- test-counts -->';
 const END = '<!-- /test-counts -->';
 
@@ -69,7 +73,30 @@ const CLAIMS = [
   [SECURITY, /(\d+) SDK tests/g, 'sdk'],
   [SECURITY, /(\d+) oracle-relay tests/g, 'relay'],
   [SECURITY, /(\d+) committee-kit tests/g, 'committee'],
+  [ARCHITECTURE, /Aiken, (\d+) tests/g, 'aiken'],
+  [ARCHITECTURE, /(\d+) simulation tests/g, 'midnight'],
 ];
+
+/**
+ * Suite totals must never be typed as literals into the web source: pages
+ * derive them from test-report.json (as /docs/security, /docs/risks and
+ * @/lib/status do), so a literal in these phrasings is a stale claim the
+ * moment a suite grows. Per-module counts ("13 SDK tests" for one file's
+ * evidence suite on /docs/privacy) are not suite totals and stay allowed.
+ */
+const WEB_LITERALS = [
+  /\d+ tests passing/g,
+  /\d+ simulation tests pass/g,
+  /Aiken test suite \(\d+ checks\)/g,
+  /\d+ Aiken (tests|checks)\b/g,
+];
+
+function webFiles(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const p = path.join(dir, e.name);
+    return e.isDirectory() ? webFiles(p) : /\.(ts|tsx)$/.test(e.name) ? [p] : [];
+  });
+}
 
 function check(report) {
   const bad = [];
@@ -81,6 +108,12 @@ function check(report) {
   }
   const sec = fs.readFileSync(SECURITY, 'utf8');
   if (!sec.includes(`${START}\n${sentence(report.suites)}\n${END}`)) bad.push('SECURITY.md: test-counts block is not the generated sentence (run pnpm test:report)');
+  for (const file of webFiles(WEB_SRC)) {
+    const text = fs.readFileSync(file, 'utf8');
+    for (const re of WEB_LITERALS) {
+      for (const m of text.matchAll(re)) bad.push(`${path.relative(ROOT, file)}: "${m[0]}" is a literal suite count — derive it from test-report.json instead`);
+    }
+  }
   return bad;
 }
 

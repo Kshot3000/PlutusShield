@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DocsLayout } from "@/components/docs/DocsLayout";
 import { C, Callout, DocLink, Formula, List, P, Section, Steps, Strong, Table } from "@/components/docs/Prose";
+import report from "@/data/test-report.json";
 
 export const metadata: Metadata = {
   title: "Settlement & claims",
@@ -167,7 +168,7 @@ policy.start         ≥ tx_upper_bound + waiting_period_ms`}</Formula>
       </Section>
 
       <Section id="tested" title="Attack cases tested">
-        <P>The Aiken test suite (131 checks) includes these settlement and sale cases:</P>
+        <P>The Aiken test suite ({report.suites.aiken.total} checks) includes these settlement and sale cases:</P>
         <Table
           caption="Settlement and sale test coverage"
           head={["Case", "Expected"]}

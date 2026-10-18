@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { DocsLayout } from "@/components/docs/DocsLayout";
 import { DOC_PAGES, SOURCE_CODE, SOURCE_DOCS } from "@/components/docs/nav";
+import report from "@/data/test-report.json";
 import { Callout, DocLink, Section } from "@/components/docs/Prose";
 
 export const metadata: Metadata = {
@@ -12,10 +13,10 @@ export const metadata: Metadata = {
 };
 
 const status = [
-  { k: "Cardano validators", v: "Aiken, Plutus V3 · ADA + USDC tranches · sale circuit-breaker · 131 tests passing" },
-  { k: "Midnight registry", v: "Compact 0.31.1 · 6 circuits · 60 tests passing · v2 committee registry live on Preprod" },
+  { k: "Cardano validators", v: `Aiken, Plutus V3 · ADA + USDC tranches · sale circuit-breaker · ${report.suites.aiken.total} tests passing` },
+  { k: "Midnight registry", v: `Compact 0.31.1 · 6 circuits · ${report.suites.midnight.total} tests passing · v2 committee registry live on Preprod` },
   { k: "Evidence vault", v: "In-browser AES-256-GCM + the registry's evidenceCommitment, checked against the compiled contract · sealed evidence filed on Preprod for live claims" },
-  { k: "Oracle relay", v: "Live: CoinGecko, Minswap on-chain and Kraken venues, median + TWAP, depeg-window search · fail-closed publisher refreshes the Preview peg every 20 minutes · 14 tests passing" },
+  { k: "Oracle relay", v: `Live: CoinGecko, Minswap on-chain and Kraken venues, median + TWAP, depeg-window search · fail-closed publisher refreshes the Preview peg every 20 minutes · ${report.suites.relay.total} tests passing` },
   { k: "Deployment", v: "Live on Cardano Preview + Midnight Preprod (testnets only, test value only)" },
   { k: "Audit", v: "Not audited" },
   { k: "Purchases", v: "Open on testnet: CIP-30 wallet buys on /cover, deposits and withdrawals on /pool" },
