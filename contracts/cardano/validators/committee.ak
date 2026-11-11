@@ -10,6 +10,7 @@
 //// Parameters: `seed` (one-shot NFT mint) and `delay_ms` (minimum time
 //// between a proposal landing and it taking effect).
 
+use aiken/cbor
 use aiken/collection/dict
 use aiken/collection/list
 use aiken/crypto.{VerificationKeyHash}
@@ -365,4 +366,17 @@ test current_committee_ignores_pending() {
     output: Output { ..state_out(settled), datum: InlineDatum(d) },
   }
   committee.current_committee([ref], own) == old
+}
+
+/// Pinned in packages/sdk/test/hardened.test.ts (committeeStateData /
+/// committeeActionData must produce the same bytes).
+test sdk_committee_golden_vectors() {
+  let pending: Data = pending_at(t0 + delay)
+  let propose: Data = Propose { next: new }
+  let plain: Data = settled
+  and {
+    cbor.serialise(pending) == #"d8799fd8799f9f581ca55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e5501581ca55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e5502581ca55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e5503ff02ffd8799fd8799fd8799f9f581ca55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e5502581ca55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e5503581ca55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e5504ff02ff1b000001a33c68d400ffffff",
+    cbor.serialise(propose) == #"d8799fd8799f9f581ca55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e5502581ca55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e5503581ca55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e5504ff02ffff",
+    cbor.serialise(plain) == #"d8799fd8799f9f581ca55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e5501581ca55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e5502581ca55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e55a55e5503ff02ffd87a80ff",
+  }
 }

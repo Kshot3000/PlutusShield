@@ -113,7 +113,10 @@ test("PolicyDatum / PoolDatum / redeemer CBOR match Aiken", () => {
   assert.equal(toCborHex(poolActionData({ kind: "Deposit", tranche: 1 })), "d8799f01ff");
 });
 
-test("productTerms derives the validator parameters used in the Aiken tests", () => {
+// v1 (deployed Preview build, deployments/plutus.v1.json) params vector. The
+// Aiken source is now the hardened build; its params vector is pinned in
+// hardened.test.ts.
+test("productTerms derives the v1 validator parameters (deployed build)", () => {
   const params: CoverParams = {
     seed: { txHash: "5eed".repeat(16), outputIndex: 0 },
     assets: ASSETS,

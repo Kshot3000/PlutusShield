@@ -18,3 +18,5 @@ export * from "./calendar.ts";
 export * from "./wording.ts";
 export * from "./certificate.ts";
 export * from "./receipt.ts";
+// Hardened-build encoders are namespaced: their names overlap the v1 (deployed) ones.
+export * as hardened from "./hardened.ts";

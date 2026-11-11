@@ -83,10 +83,20 @@ export function buildParams(cfg: DeployConfig, seed: OutputReference, oraclePoli
   };
 }
 
-export function unappliedCode(blueprintPath = join(DEPLOY_DIR, "..", "plutus.json")): string {
+/**
+ * Blueprint of the validators the Preview deployments (and the web app's tx
+ * builders) run: the pre-hardening build, frozen at deployments/plutus.v1.json.
+ * `contracts/cardano/plutus.json` is now the hardened build (per-operator
+ * oracle feeds, rotatable committee registry, min deposit, tagged batched
+ * refunds, pool min-ADA outside LP capital), whose params use the encoders in
+ * packages/sdk/src/hardened.ts. These v1 tools must not be pointed at it.
+ */
+export const V1_BLUEPRINT = join(DEPLOY_DIR, "deployments", "plutus.v1.json");
+
+export function unappliedCode(blueprintPath = V1_BLUEPRINT): string {
   const bp = JSON.parse(readFileSync(blueprintPath, "utf8"));
   const v = bp.validators.find((x: { title: string }) => x.title === "cover.cover.mint");
-  if (!v) throw new Error("cover.cover.mint not in plutus.json; run `aiken build`");
+  if (!v) throw new Error("cover.cover.mint is missing from the v1 blueprint");
   return v.compiledCode;
 }
 
@@ -199,10 +209,10 @@ export function bech32Address(network: Network, a: Address): string {
 // ---------------------------------------------------------------- exploit cover
 
 /** Unapplied exploit_cover validator (validators/exploit_cover.ak). */
-export function unappliedExploitCode(blueprintPath = join(DEPLOY_DIR, "..", "plutus.json")): string {
+export function unappliedExploitCode(blueprintPath = V1_BLUEPRINT): string {
   const bp = JSON.parse(readFileSync(blueprintPath, "utf8"));
   const v = bp.validators.find((x: { title: string }) => x.title === "exploit_cover.exploit_cover.mint");
-  if (!v) throw new Error("exploit_cover.exploit_cover.mint not in plutus.json; run `aiken build`");
+  if (!v) throw new Error("exploit_cover.exploit_cover.mint is missing from the v1 blueprint");
   return v.compiledCode;
 }
 

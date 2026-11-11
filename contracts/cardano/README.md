@@ -2,6 +2,20 @@
 
 Aiken (Plutus V3) validators for the MVP product: **parametric stablecoin depeg cover**. Cardano holds the money. Underwriters fund a pool, buyers pay premiums into it and receive a policy NFT, and the pool pays out automatically when a quorum of authenticated oracle feeds shows the depeg lasted for the required window.
 
+
+## Hardened build (branch `fix/hardening`)
+
+The source in this directory (and `plutus.json`) is the **hardened** build. The Preview deployments and the web app still run the **v1** build, frozen at `deploy/deployments/plutus.v1.json`; `deploy/lib/cover.ts` applies parameters to that frozen blueprint, so the Preview tooling and the emulator e2e keep matching what is on-chain. The hardened build changes script hashes and the parameter encoding (SDK: `packages/sdk/src/hardened.ts`), and nothing is redeployed yet. Where the sections below describe v1 behaviour, this list wins:
+
+| # | v1 problem | Hardened behaviour | Tests |
+|---|---|---|---|
+| 1 | "2-of-3 oracle" used one signing key: one `oracle.policy_id` minted all three feed tokens, so one key could forge a quorum | `OracleConfig { feeds: List<Feed>, quorum }`, `Feed { name, policy_id, operator }`. A reading counts only if it holds exactly one token under that feed's own policy, named as the feed, **at the operator's key address**. Feeds are counted by distinct operator. `config_ok`: 3..=32 feeds, distinct operators, distinct policies, strict-majority quorum (>= 2) | `oracle.ak` `one_key_cannot_forge_two_feeds`, `feed_token_at_wrong_address_is_ignored`, `config_needs_three_distinct_operators`; `cover.ak` `init_rejects_single_key_oracle` |
+| 2 | readings dated in the future were accepted | `Settle` and `Buy` require `window_end <=` tx validity lower bound (and `window_start < window_end`) | `oracle.ak` `future_dated_*` |
+| 3 | exploit assessor committee fixed in the script parameters (rotation meant a new pool) | `exploit_cover(params, committee_policy)` reads the committee from the `assessor_committee` NFT registry (`validators/committee.ak`) as a reference input. Changes: `Propose` (current quorum signs, `effective_at >= upper bound + delay_ms`) -> `Apply` (anyone, after `effective_at`) or `Cancel` (current quorum). ContractsLibrary Settings pattern. Settle always uses `current`, never `pending` | `committee.ak` (16), `exploit_cover.ak` rotation tests |
+| 4 | dust deposits could jam the single pool UTxO | `AssetTerms.min_deposit` (>= 1); `Deposit` below it fails | `deposit_below_minimum_fails`, `deposit_at_minimum_ok`, `init_rejects_zero_min_deposit` |
+| 5 | one Expire per tx; batching would let one refund output satisfy several policies | `Expire` retires any number of policies; each needs its own refund output to its `refund_to`, tagged with inline datum = `policy_id` | `expire_batch_of_two_policies_ok`, `expire_batch_one_refund_for_two_policies_fails`, `expire_untagged_refund_fails`, `expire_batch_must_release_all_cover`, `expire_cannot_move_capital` |
+| 6 | the pool's min-ADA counted as ada-tranche capital, so the last LP could never withdraw everything | `CoverParams.pool_min_lovelace` stays in the pool UTxO and is excluded from ada capital; `InitPool` requires exactly that much lovelace and zero capital | `last_lp_withdraws_everything`, `withdraw_cannot_take_pool_min_ada`, `init_with_extra_ada_fails` |
+
 Pools are **multi-asset**: one pool UTxO holds an independent tranche per accepted currency, by default **ada** and **USDC** (Circle **USDCx** on mainnet, a mock tUSDCx on Preview). Each policy is priced, collateralized, and paid out in one tranche's asset.
 
 > **Status:** compiles with Aiken v1.1.24 (stdlib v4.0.0) and passes 131 `aiken check` tests (73 depeg validator, 39 exploit validator, 19 lib). The whole flow passes in the Lucid Emulator (`deploy/`, `pnpm test:deploy`). **Also live on Cardano Preview** — pool address and txs in [deploy/deployments/preview.json](deploy/deployments/preview.json); runbook in [deploy/README.md](deploy/README.md). Not audited. Test value only.
@@ -87,7 +101,7 @@ ProductTerms {
   base_rate_bps, risk_mult_bps, min_days, max_days,
   max_single_policy_bps, max_utilization_bps
 }
-OracleConfig { policy_id, feeds: List<AssetName>, quorum }
+OracleConfig { policy_id, feeds: List<AssetName>, quorum }   (v1; hardened: { feeds: List<Feed { name, policy_id, operator }>, quorum })
 ```
 
 `packages/sdk` builds these from the same model parameters the quote engine uses (`productTerms("depeg", "B", depegTrigger(...))`): base 2% = `200`, tier multipliers A/B/C = `8_000`/`10_000`/`15_000`, kink 70%, single-policy cap 10% = `1_000`, utilization cap 90% = `9_000`, and `assetTerms(asset)` gives a 5-unit premium floor per currency. `saleGuard()` defaults to a 24h waiting period and 2h max price age (`DEFAULT_SALE_GUARD`); the Preview config uses 60 min / 120 min so drills stay quick. `InitPool` refuses to start a pool with nonsensical parameters, such as a zero quorum, a quorum larger than the feed list, or a threshold above 100%, or a disabled price check (`max_price_age_ms = 0`).
@@ -184,7 +198,7 @@ The validator counts committee entries found in `extra_signatories` (`committee_
 
 Live on Preview: **v2** (2-of-3 committee) `deploy/deployments/preview-exploit-v2.json`, script `097ba40a…`; **v1** (single assessor, history) `deploy/deployments/preview-exploit.json`, script `ef2f1001…`, whose applied script is frozen in `deploy/deployments/preview-exploit-v1.script.json` so its LP capital stays withdrawable (`pnpm exploit … --pool=v1`). Commands: `pnpm exploit committee-keygen|init|deposit|withdraw|buy|reject-check|settle`.
 
-Still open: the three Preview committee keys are run by the team (not independent operators yet); rotating the committee means a new pool (the committee is in the script parameters); Midnight's `resolveClaim` is still gated by one assessor role key, which can mark a claim PAID on Midnight but can't move Cardano capital without two committee signatures.
+Still open: the three Preview committee keys are run by the team (not independent operators yet); rotating the committee means a new pool on v1 (the committee is in the script parameters; the hardened build moves it to a rotatable registry); Midnight's `resolveClaim` is still gated by one assessor role key, which can mark a claim PAID on Midnight but can't move Cardano capital without two committee signatures.
 
 ## Pairing with Midnight
 
@@ -205,7 +219,7 @@ See also the gap list in the [Preview runbook](deploy/README.md#known-gaps-befor
 - **Adverse selection, residual.** The circuit-breaker plus waiting period closes the "buy into a visible depeg" hole. What remains: a buyer who sees a depeg forming off-chain before the oracles publish can still buy, but the waiting period means the depeg has to *persist* past `start` and for a full trigger window after it. Oracle latency and the waiting period length are deployment choices. Readings are TWAPs, so a sharp drop at the very end of a healthy window can still look healthy.
 - **Expiry refunds go to `refund_to`, not to the current holder.** The user token is transferable, but the deposit returns to the address the buyer set at purchase. If you sell your policy, the deposit stays with you. Keepers have no fee incentive to submit `Expire` (LPs do: it unlocks their capital).
 - One pool UTxO serialises all actions (contention under load). Batching / order UTxOs come later.
-- One policy per Settle/Expire transaction.
+- One policy per Settle transaction (v1: also per Expire; the hardened build batches Expire).
 - The reference datum is a PlutusShield datum, not CIP-68 metadata, even though the token labels follow CIP-67.
 - Rounding: the SDK quote is rounded to cents. Use `chainPremium()` from `@plutusshield/sdk/cardano` to get the on-chain amount, which never falls below the validator's floor.
 - An external audit is required before any mainnet capital.
