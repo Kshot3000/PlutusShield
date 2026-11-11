@@ -11,6 +11,7 @@
 //// that asset. Tranches never price against each other, so no FX oracle is
 //// needed and one tranche's claims can never drain another's capital.
 
+use aiken/crypto.{VerificationKeyHash}
 use cardano/address.{Address}
 use cardano/assets.{AssetName, PolicyId}
 use cardano/transaction.{OutputReference}
@@ -49,12 +50,27 @@ pub type ProductTerms {
   max_utilization_bps: Int,
 }
 
-/// Which oracle feeds are trusted. A feed is a UTxO, used as a reference
-/// input, that holds exactly one token `policy_id.<feed name>` where the feed
-/// name is in `feeds`. `quorum` distinct feeds must agree.
-pub type OracleConfig {
+/// One allowlisted oracle feed, run by one operator.
+///
+/// A feed reading is a UTxO, used as a reference input, that
+///   - holds exactly one token under `policy_id` (named `name`) and no other
+///     token under that policy, and
+///   - sits at an address whose payment credential is the `operator` key,
+/// so only the operator (who controls both the feed policy and the address)
+/// can publish or update it. Every feed has its own operator key and its own
+/// policy: one compromised key can never speak for two feeds.
+pub type Feed {
+  name: AssetName,
   policy_id: PolicyId,
-  feeds: List<AssetName>,
+  operator: VerificationKeyHash,
+}
+
+/// Which oracle feeds are trusted, and how many distinct operators must
+/// agree. `params_ok` requires at least 3 feeds with distinct operators and
+/// distinct policies, and a strict-majority `quorum` (2-of-3, 3-of-5, ...).
+/// Feeds are counted by operator, so one key can never count twice.
+pub type OracleConfig {
+  feeds: List<Feed>,
   quorum: Int,
 }
 
@@ -65,6 +81,10 @@ pub type AssetTerms {
   asset: AssetClass,
   /// Premium floor in this asset's base units (5 ADA = 5_000_000 lovelace).
   min_premium: Int,
+  /// Smallest LP deposit accepted, in this asset's base units. Stops anyone
+  /// from jamming the single pool UTxO with a stream of dust deposits while
+  /// claimants race to settle. Must be >= 1.
+  min_deposit: Int,
 }
 
 /// Sale circuit-breaker. Stops buyers from purchasing cover into a depeg that
@@ -97,10 +117,15 @@ pub type CoverParams {
   claim_grace_ms: Int,
   /// Circuit-breaker applied to every `Buy`.
   sale_guard: SaleGuard,
+  /// Lovelace that always stays in the pool UTxO as its ledger min-UTxO. It
+  /// is never counted as ada-tranche capital, so the initializer's min-ada
+  /// isn't donated to the first LP and the last LP can withdraw 100%.
+  pool_min_lovelace: Int,
 }
 
 /// Ledger of one tranche. Its capital is the quantity of the tranche asset
-/// held by the pool UTxO itself (for ada: all lovelace in the pool UTxO).
+/// held by the pool UTxO itself (for ada: the pool UTxO's lovelace minus
+/// `CoverParams.pool_min_lovelace`).
 pub type Tranche {
   /// Outstanding LP share tokens of this tranche (`lp` ‖ tranche index byte).
   total_shares: Int,
@@ -174,7 +199,9 @@ pub type PoolAction {
   Buy
   /// Holder burns the policy and receives `coverage` from its tranche.
   Settle
-  /// Anyone retires a policy after expiry + grace, unlocking its capital.
-  /// The reference UTxO's min-ada goes back to `PolicyDatum.refund_to`.
+  /// Anyone retires one or more policies after expiry + grace, unlocking
+  /// their capital. Each reference UTxO's min-ada goes back to its own
+  /// `PolicyDatum.refund_to`, in an output tagged with that policy's id
+  /// (inline datum = policy_id), so one refund can never satisfy two policies.
   Expire
 }

@@ -52,7 +52,8 @@ export function parse(log) {
       const ok = /emulator run passed/.test(body);
       out.emulator = { total: steps, pass: ok ? steps : 0, fail: ok ? 0 : 1, refused };
     } else {
-      const n = (k) => +(body.match(new RegExp(`^# ${k} (\\d+)`, 'm'))?.[1] ?? NaN);
+      // node:test summary lines: TAP ("# tests 12") or the spec reporter Node 23+ uses by default ("ℹ tests 12")
+      const n = (k) => +(body.match(new RegExp(`^(?:#|ℹ) ${k} (\\d+)`, 'm'))?.[1] ?? NaN);
       out[s.key] = { total: n('tests'), pass: n('pass'), fail: n('fail') };
     }
   }

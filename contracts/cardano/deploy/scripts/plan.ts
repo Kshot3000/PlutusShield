@@ -19,7 +19,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { lpTokenName, type OutputReference } from "../../../../packages/sdk/src/cardano.ts";
 import { assetId } from "../../../../packages/sdk/src/assets.ts";
-import { buildParams, deployment, loadConfig } from "../lib/cover.ts";
+import { buildParams, deployment, loadConfig, V1_BLUEPRINT } from "../lib/cover.ts";
 import { DEPLOY_DIR, loadKey, sigPolicy } from "../lib/keys.ts";
 import { previewLucid, readDeploymentFile, toJson, writeDeploymentFile } from "../lib/chain.ts";
 
@@ -62,13 +62,13 @@ if (!seed) {
 const params = buildParams(cfg, seed, oraclePolicyId, usdcPolicyId);
 const d = deployment("Preview", params);
 
-// Independent check: aiken applies the same CBOR and must get the same hash.
+// Independent check: aiken applies the same CBOR to the same (v1) blueprint and must get the same hash.
 let aikenMatches: boolean | undefined;
 const appliedOut = join(DEPLOY_DIR, "deployments", dryRun ? "preview.dryrun.plutus.json" : "preview.plutus.json");
 try {
   const tmp = join(mkdtempSync(join(tmpdir(), "ps-")), "applied.json");
   const cwd = join(DEPLOY_DIR, "..");
-  execFileSync("aiken", ["blueprint", "apply", "-m", "cover", "-v", "cover", "-o", tmp, d.paramsCbor], { cwd, stdio: "pipe" });
+  execFileSync("aiken", ["blueprint", "apply", "-i", V1_BLUEPRINT, "-m", "cover", "-v", "cover", "-o", tmp, d.paramsCbor], { cwd, stdio: "pipe" });
   const hash = execFileSync("aiken", ["blueprint", "hash", "-i", tmp, "-m", "cover", "-v", "cover"], { cwd, stdio: "pipe" }).toString().trim();
   aikenMatches = hash === d.policyId;
   copyFileSync(tmp, appliedOut);

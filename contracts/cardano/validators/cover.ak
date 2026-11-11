@@ -17,23 +17,27 @@
 use aiken/cbor
 use aiken/collection/dict
 use aiken/collection/list
-use aiken/interval.{Finite}
+use aiken/interval
 use aiken/primitive/bytearray
 use cardano/address.{Script}
 use cardano/assets.{AssetName, Assets, PolicyId}
 use cardano/transaction.{
-  Datum, InlineDatum, Input, Output, OutputReference, Transaction, ValidityRange,
+  Datum, InlineDatum, Input, Output, OutputReference, Transaction,
 }
 use plutusshield/names.{
   is_user_name, lp_name, policy_id_from, pool_nft, ref_name, user_name,
 }
 use plutusshield/oracle
+use plutusshield/pool.{
+  capitals, is_ada, lower_bound, others_untouched, policy_input, refund_tag,
+  set_at, tranche_of, upper_bound, validate_expire,
+}
 use plutusshield/pricing.{bps, day_ms}
 use plutusshield/types.{
   AssetClass, AssetTerms, BurnUserTokens, Buy, CoverDatum, CoverParams, Deposit,
-  Expire, InitPool, MintAction, OracleConfig, OracleDatum, Policy, PolicyDatum,
-  Pool, PoolAction, PoolDatum, ProductTerms, SaleGuard, Settle, Tranche, Trigger,
-  ViaPool, Withdraw,
+  Expire, Feed, InitPool, MintAction, OracleConfig, OracleDatum, Policy,
+  PolicyDatum, Pool, PoolAction, PoolDatum, ProductTerms, SaleGuard, Settle,
+  Tranche, Trigger, ViaPool, Withdraw,
 }
 
 validator cover(params: CoverParams) {
@@ -110,8 +114,15 @@ fn validate_init(params: CoverParams, own: PolicyId, self: Transaction) -> Bool 
       pool_out.value,
       own,
       params.assets,
-      capitals(pool_out.value, params.assets),
+      capitals(pool_out.value, params.assets, params.pool_min_lovelace),
     ),
+    // The pool starts empty: no capital in any tranche (for ada: exactly the
+    // pool's own min-UTxO), so nobody's deposit is backed by unowned value.
+    list.all(
+      capitals(pool_out.value, params.assets, params.pool_min_lovelace),
+      fn(c) { c == 0 },
+    ),
+    assets.lovelace_of(pool_out.value) >= params.pool_min_lovelace,
     params_ok(params),
   }
 }
@@ -131,13 +142,15 @@ pub fn params_ok(params: CoverParams) -> Bool {
       fn(a) {
         and {
           a.min_premium >= 0,
+          a.min_deposit >= 1,
           // ada is only ever ("", ""), never a fake "" policy with a name.
           a.asset.policy_id != assets.ada_policy_id || a.asset.asset_name == assets.ada_asset_name,
         }
       },
     ),
-    o.quorum >= 1,
-    o.quorum <= list.length(o.feeds),
+    // >= 3 feeds, one operator key and one feed policy each, majority quorum
+    oracle.config_ok(o),
+    params.pool_min_lovelace >= 0,
     p.trigger.threshold_bps > 0,
     p.trigger.threshold_bps <= bps,
     p.trigger.window_ms > 0,
@@ -166,14 +179,16 @@ fn validate_pool(
   self: Transaction,
 ) -> Bool {
   let ts = params.assets
-  let caps_in = capitals(pool_in.output.value, ts)
+  let caps_in = capitals(pool_in.output.value, ts, params.pool_min_lovelace)
   expect [pool_out] = outputs_with(self.outputs, own, pool_nft)
   expect InlineDatum(raw) = pool_out.datum
   expect Pool(next): CoverDatum = raw
-  let caps_out = capitals(pool_out.value, ts)
+  let caps_out = capitals(pool_out.value, ts, params.pool_min_lovelace)
   let minted = own_mint(self.mint, own)
   let continuing = and {
     pool_out.address == pool_in.output.address,
+    // The pool's own min-UTxO never leaves (it isn't LP capital).
+    assets.lovelace_of(pool_out.value) >= params.pool_min_lovelace,
     pool_value_ok(pool_out.value, own, ts, caps_out),
     // Without an ada tranche, lovelace in the pool is only min-UTxO and may
     // never be taken out.
@@ -199,6 +214,8 @@ fn validate_pool(
       }
       and {
         amount > 0,
+        // Anti-jamming: no dust deposits to keep the one pool UTxO busy.
+        amount >= list.expect_at(ts, t).min_deposit,
         shares > 0,
         minted == [Pair(lp_name(t), shares)],
         next.tranches == set_at(
@@ -248,12 +265,15 @@ fn validate_pool(
         // Claim window: trigger window must sit inside [start, expiry]
         // (checked by the oracle), and the claim lands before grace ends.
         upper_bound(self.validity_range) <= p.expiry + params.claim_grace_ms,
+        // Readings must be for windows that already ended when the tx can
+        // first be valid: no settling on a window that hasn't happened.
         oracle.triggered(
           self.reference_inputs,
           params.oracle,
           p.trigger,
           p.start,
           p.expiry,
+          lower_bound(self.validity_range),
         ),
         // The policy's own tranche pays exactly the coverage, once, in the
         // policy's asset.
@@ -270,37 +290,20 @@ fn validate_pool(
       }
     }
 
-    Expire -> {
-      expect [Pair(r, rq), ..rest] = minted
-      let (policy_in, p) = policy_input(self.inputs, own, r)
-      let deposit = assets.lovelace_of(policy_in.output.value)
-      let t = tranche_of(ts, p.asset)
-      let (tr, capital, out_capital) = touch(t)
-      and {
-        rq == -1,
-        r == ref_name(p.policy_id),
-        // The holder's user token may be burned in the same tx, or later.
-        rest == [] || rest == [Pair(user_name(p.policy_id), -1)],
-        lower_bound(self.validity_range) > p.expiry + params.claim_grace_ms,
-        // Whoever submits the expiry, the reference UTxO's min-ada goes back
-        // to the address the buyer chose at purchase.
-        list.any(
-          self.outputs,
-          fn(o) {
-            o.address == p.refund_to && assets.lovelace_of(o.value) >= deposit
-          },
-        ),
-        out_capital == capital,
-        next.tranches == set_at(
-          pool.tranches,
-          t,
-          Tranche {
-            total_shares: tr.total_shares,
-            active_cover: tr.active_cover - p.coverage,
-          },
-        ),
-      }
-    }
+    // One or more policies, each refunded to its own `refund_to` in an
+    // output tagged with its id (see `pool.validate_expire`).
+    Expire ->
+      validate_expire(
+        ts,
+        params.claim_grace_ms,
+        own,
+        pool,
+        caps_in,
+        caps_out,
+        next,
+        minted,
+        self,
+      )
   }
 }
 
@@ -356,6 +359,7 @@ fn validate_buy(
       params.oracle,
       product.trigger,
       sale_by - guard.max_price_age_ms,
+      lower_bound(self.validity_range),
     ),
     // Capacity and price are per tranche: a USDC policy is backed by USDC
     // capital only, an ada policy by ada capital only.
@@ -392,83 +396,12 @@ fn own_mint(mint: Assets, own: PolicyId) -> Pairs<AssetName, Int> {
   assets.tokens(mint, own) |> dict.to_pairs
 }
 
-fn is_ada(a: AssetClass) -> Bool {
-  a.policy_id == assets.ada_policy_id
-}
-
-fn asset_qty(value: Assets, asset: AssetClass) -> Int {
-  assets.quantity_of(value, asset.policy_id, asset.asset_name)
-}
-
-/// Capital per tranche, in `params.assets` order. The ada tranche's capital
-/// is all lovelace in the UTxO (including its min-UTxO ada).
-fn capitals(value: Assets, ts: List<AssetTerms>) -> List<Int> {
-  list.map(ts, fn(a) { asset_qty(value, a.asset) })
-}
-
-/// Index of `asset` in the accepted assets. Fails for an unaccepted asset.
-fn tranche_of(ts: List<AssetTerms>, asset: AssetClass) -> Int {
-  expect Some(t) = list.index_of(list.map(ts, fn(a) { a.asset }), asset)
-  t
-}
-
-/// Tranches other than `target` keep their capital. The ada tranche may
-/// *gain* lovelace when it is not the target (min-UTxO top-ups when a token
-/// tranche first receives capital); that only ever donates to ada LPs.
-fn others_untouched(
-  ts: List<AssetTerms>,
-  ins: List<Int>,
-  outs: List<Int>,
-  target: Int,
-  i: Int,
-) -> Bool {
-  when ts is {
-    [] -> True
-    [a, ..rest] -> {
-      expect [x, ..xs] = ins
-      expect [y, ..ys] = outs
-      and {
-        i == target || y == x || is_ada(a.asset) && y >= x,
-        others_untouched(rest, xs, ys, target, i + 1),
-      }
-    }
-  }
-}
-
-/// `xs` with element `i` replaced by `x`. Fails if `i` is out of range.
-fn set_at(xs: List<a>, i: Int, x: a) -> List<a> {
-  when xs is {
-    [] -> fail @"tranche index out of range"
-    [y, ..rest] ->
-      if i == 0 {
-        [x, ..rest]
-      } else {
-        [y, ..set_at(rest, i - 1, x)]
-      }
-  }
-}
-
 fn outputs_with(
   outputs: List<Output>,
   own: PolicyId,
   name: AssetName,
 ) -> List<Output> {
   list.filter(outputs, fn(o) { assets.quantity_of(o.value, own, name) == 1 })
-}
-
-/// The single input holding reference token `r`, with its policy datum.
-fn policy_input(
-  inputs: List<Input>,
-  own: PolicyId,
-  r: AssetName,
-) -> (Input, PolicyDatum) {
-  expect [input] = list.filter(
-    inputs,
-    fn(i) { assets.quantity_of(i.output.value, own, r) == 1 },
-  )
-  expect InlineDatum(raw) = input.output.datum
-  expect Policy(p): CoverDatum = raw
-  (input, p)
 }
 
 /// Pool UTxO carries only: ada, the pool NFT, and the token tranche assets
@@ -506,20 +439,6 @@ fn pool_datum(d: PoolDatum) -> Datum {
   InlineDatum(data)
 }
 
-fn upper_bound(range: ValidityRange) -> Int {
-  when range.upper_bound.bound_type is {
-    Finite(t) -> t
-    _ -> fail @"validity range needs a finite upper bound"
-  }
-}
-
-fn lower_bound(range: ValidityRange) -> Int {
-  when range.lower_bound.bound_type is {
-    Finite(t) -> t
-    _ -> fail @"validity range needs a finite lower bound"
-  }
-}
-
 // ================================================================ tests
 //
 // Fixtures: a two-tranche [ada, USDCx] depeg pool for USDM at tier B, 2-of-3
@@ -533,6 +452,22 @@ const own: PolicyId =
 
 const oracle_policy: PolicyId =
   #"0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0a"
+
+/// Three independent feed operators, each with its own key and feed policy.
+const op_a = #"a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+
+const op_b = #"b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+
+const op_c = #"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+
+const pol_a = #"0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0a"
+
+const pol_b = #"0bbc1e0bbc1e0bbc1e0bbc1e0bbc1e0bbc1e0bbc1e0bbc1e0bbc1e0b"
+
+const pol_c = #"0ccc1e0ccc1e0ccc1e0ccc1e0ccc1e0ccc1e0ccc1e0ccc1e0ccc1e0c"
+
+/// Pool UTxO min-ada (never LP capital).
+const pool_min = 2_000_000
 
 /// Mainnet USDCx (Circle xReserve), 6 decimals. Preview deployments use a
 /// mock token instead; see contracts/cardano/deploy/README.md.
@@ -557,8 +492,12 @@ const test_params =
   CoverParams {
     seed,
     assets: [
-      AssetTerms { asset: ada, min_premium: 5_000_000 },
-      AssetTerms { asset: usdc, min_premium: 5_000_000 },
+      AssetTerms { asset: ada, min_premium: 5_000_000, min_deposit: 10_000_000 },
+      AssetTerms {
+        asset: usdc,
+        min_premium: 5_000_000,
+        min_deposit: 10_000_000,
+      },
     ],
     product: ProductTerms {
       product_id: "depeg",
@@ -571,8 +510,11 @@ const test_params =
       max_utilization_bps: 9_000,
     },
     oracle: OracleConfig {
-      policy_id: oracle_policy,
-      feeds: ["feed-a", "feed-b", "feed-c"],
+      feeds: [
+        Feed { name: "feed-a", policy_id: pol_a, operator: op_a },
+        Feed { name: "feed-b", policy_id: pol_b, operator: op_b },
+        Feed { name: "feed-c", policy_id: pol_c, operator: op_c },
+      ],
       quorum: 2,
     },
     claim_grace_ms: 3 * 86_400_000,
@@ -580,6 +522,7 @@ const test_params =
       waiting_period_ms: 86_400_000,
       max_price_age_ms: 2 * 3_600_000,
     },
+    pool_min_lovelace: pool_min,
   }
 
 const t0 = 1_800_000_000_000
@@ -649,8 +592,10 @@ fn base_pool() -> PoolDatum {
   ada_book(shares, active)
 }
 
+/// Pool value for the given tranche capitals: ada capital sits on top of the
+/// pool's own min-ada.
 fn pool_value(ada_cap: Int, usd_cap: Int) -> Assets {
-  assets.from_lovelace(ada_cap)
+  assets.from_lovelace(ada_cap + pool_min)
     |> assets.add(own, pool_nft, 1)
     |> assets.add(usdc.policy_id, usdc.asset_name, usd_cap)
 }
@@ -755,7 +700,7 @@ fn init_tx(with_seed: Bool) -> Transaction {
     } else {
       []
     },
-    outputs: [pool_out_v(2_000_000, 0, empty_pool())],
+    outputs: [pool_out_v(0, 0, empty_pool())],
     mint: assets.from_asset(own, pool_nft, 1),
   }
 }
@@ -795,8 +740,12 @@ test init_pool_rejects_duplicate_assets() fail {
   let dup = CoverParams {
     ..test_params,
     assets: [
-      AssetTerms { asset: usdc, min_premium: 5_000_000 },
-      AssetTerms { asset: usdc, min_premium: 1 },
+      AssetTerms {
+        asset: usdc,
+        min_premium: 5_000_000,
+        min_deposit: 10_000_000,
+      },
+      AssetTerms { asset: usdc, min_premium: 1, min_deposit: 10_000_000 },
     ],
   }
   cover.mint(dup, InitPool, own, init_tx(True))
@@ -814,7 +763,13 @@ test init_pool_rejects_no_assets() fail {
 test usdc_only_pool_inits() {
   let only = CoverParams {
     ..test_params,
-    assets: [AssetTerms { asset: usdc, min_premium: 5_000_000 }],
+    assets: [
+      AssetTerms {
+        asset: usdc,
+        min_premium: 5_000_000,
+        min_deposit: 10_000_000,
+      },
+    ],
   }
   let tx = Transaction {
     ..init_tx(True),
@@ -1112,15 +1067,13 @@ fn peg_feeds(price: Int, window_end: Int) -> List<Input> {
   ]
 }
 
-fn healthy_feeds() -> List<Input> {
-  peg_feeds(9_990, sale_by - 1_800_000)
-}
-
 fn buy_tx(p: PolicyDatum, valid_until: Int) -> Transaction {
   Transaction {
     ..transaction.placeholder,
     inputs: [pool_in(capital, shares, active)],
-    reference_inputs: healthy_feeds(),
+    // readings ended 30 min before the latest landing time: fresh, and
+    // already in the past at the tx's lower bound
+    reference_inputs: peg_feeds(9_990, valid_until - 1_800_000),
     outputs: [
       pool_out(capital + p.premium, shares, active + p.coverage),
       policy_out(p),
@@ -1374,15 +1327,32 @@ fn feed(
     window_start: start,
     window_end: end,
   }
+  // `oracle_policy` stands for "the feed's genuine policy": each allowlisted
+  // feed is published by its own operator under its own policy, at the
+  // operator's address. Any other policy is a forgery attempt.
+  let (pol, op) = if name == "feed-a" {
+    (pol_a, op_a)
+  } else if name == "feed-b" {
+    (pol_b, op_b)
+  } else if name == "feed-c" {
+    (pol_c, op_c)
+  } else {
+    (oracle_policy, #"0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0a")
+  }
+  let pol = if policy_id == oracle_policy {
+    pol
+  } else {
+    policy_id
+  }
   Input {
     output_reference: OutputReference {
       transaction_id: #"0aac1e0000000000000000000000000000000000000000000000000000000000",
       output_index: 0,
     },
     output: Output {
-      address: address.from_verification_key(#"0aac1e"),
+      address: address.from_verification_key(op),
       value: assets.from_lovelace(2_000_000)
-        |> assets.add(policy_id, name, 1),
+        |> assets.add(pol, name, 1),
       datum: InlineDatum(d),
       reference_script: None,
     },
@@ -1673,8 +1643,8 @@ fn expire_tx(at: Int, mint: Assets) -> Transaction {
     ],
     outputs: [
       pool_out(capital, shares, active - p.coverage),
-      // the reference UTxO's 2 ADA deposit, back to the buyer
-      wallet_out(assets.from_lovelace(2_000_000)),
+      // the reference UTxO's 2 ADA deposit, back to the buyer, tagged
+      refund_out(p.policy_id, 2_000_000),
     ],
     mint,
     validity_range: interval.between(at, at + 600_000),
@@ -1716,7 +1686,7 @@ test expire_keeping_deposit_fails() fail {
     outputs: [
       pool_out(capital, shares, active - coverage),
       Output {
-        ..wallet_out(assets.from_lovelace(2_000_000)),
+        ..refund_out(bought_id(), 2_000_000),
         address: address.from_verification_key(#"5e1f"),
       },
     ],
@@ -1729,7 +1699,7 @@ test expire_short_refund_fails() fail {
     ..expire_tx(expired_at(), burn_ref()),
     outputs: [
       pool_out(capital, shares, active - coverage),
-      wallet_out(assets.from_lovelace(1_999_999)),
+      refund_out(bought_id(), 1_999_999),
     ],
   }
   spend_pool(base_pool(), Expire, tx)
@@ -1756,10 +1726,193 @@ test expire_releases_only_the_policy_tranche() fail {
         usd_capital,
         usd_book(usd_shares, usd_active - coverage),
       ),
+      refund_out(bought_id(), 2_000_000),
+    ],
+  }
+  spend_pool(base_pool(), Expire, tx)
+}
+
+/// Refund output for `Expire`: `refund_to` (the holder), tagged with the id.
+fn refund_out(id: ByteArray, lovelace: Int) -> Output {
+  Output {
+    ..wallet_out(assets.from_lovelace(lovelace)),
+    datum: InlineDatum(refund_tag(id)),
+  }
+}
+
+test expire_untagged_refund_fails() fail {
+  let tx = Transaction {
+    ..expire_tx(expired_at(), burn_ref()),
+    outputs: [
+      pool_out(capital, shares, active - coverage),
       wallet_out(assets.from_lovelace(2_000_000)),
     ],
   }
   spend_pool(base_pool(), Expire, tx)
+}
+
+// A second expired policy, bought from another pool state.
+const other_pool_ref =
+  OutputReference {
+    transaction_id: #"cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+    output_index: 3,
+  }
+
+fn second_policy() -> PolicyDatum {
+  PolicyDatum {
+    ..live_policy(),
+    policy_id: policy_id_from(other_pool_ref),
+    coverage: 5_000_000_000,
+  }
+}
+
+fn batch_expire_tx(refunds: List<Output>) -> Transaction {
+  let p1 = live_policy()
+  let p2 = second_policy()
+  Transaction {
+    ..transaction.placeholder,
+    inputs: [
+      pool_in(capital, shares, active),
+      Input { output_reference: policy_ref, output: policy_out(p1) },
+      Input { output_reference: other_pool_ref, output: policy_out(p2) },
+    ],
+    outputs: [
+      pool_out(capital, shares, active - p1.coverage - p2.coverage),
+      ..refunds
+    ],
+    mint: assets.from_asset(own, ref_name(p1.policy_id), -1)
+      |> assets.add(own, ref_name(p2.policy_id), -1),
+    validity_range: interval.between(expired_at(), expired_at() + 600_000),
+  }
+}
+
+test expire_batch_of_two_policies_ok() {
+  let tx = batch_expire_tx(
+    [
+      refund_out(live_policy().policy_id, 2_000_000),
+      refund_out(second_policy().policy_id, 2_000_000),
+    ],
+  )
+  spend_pool(base_pool(), Expire, tx) && cover.spend(
+    test_params,
+    Some(Policy(second_policy())),
+    Expire,
+    other_pool_ref,
+    tx,
+  )
+}
+
+test expire_batch_one_refund_for_two_policies_fails() fail {
+  // the classic double satisfaction: one 2-ADA output "refunds" both
+  spend_pool(
+    base_pool(),
+    Expire,
+    batch_expire_tx([refund_out(live_policy().policy_id, 2_000_000)]),
+  )
+}
+
+test expire_batch_must_release_all_cover() fail {
+  let tx = Transaction {
+    ..batch_expire_tx(
+      [
+        refund_out(live_policy().policy_id, 2_000_000),
+        refund_out(second_policy().policy_id, 2_000_000),
+      ],
+    ),
+    outputs: [
+      // only the first policy's cover released
+      pool_out(capital, shares, active - coverage),
+      refund_out(live_policy().policy_id, 2_000_000),
+      refund_out(second_policy().policy_id, 2_000_000),
+    ],
+  }
+  spend_pool(base_pool(), Expire, tx)
+}
+
+test expire_cannot_move_capital() fail {
+  let tx = Transaction {
+    ..expire_tx(expired_at(), burn_ref()),
+    outputs: [
+      pool_out(capital - 1_000_000, shares, active - coverage),
+      refund_out(bought_id(), 3_000_000),
+    ],
+  }
+  spend_pool(base_pool(), Expire, tx)
+}
+
+// ---------------------------------------------------------------- pool min-ada
+
+test deposit_below_minimum_fails() fail {
+  // 9.999999 ADA < 10 ADA min deposit (anti-jamming)
+  let tx = deposit_tx(9_999_999, 9_999_999, shares + 9_999_999)
+  spend_pool(base_pool(), Deposit { tranche: 0 }, tx)
+}
+
+test deposit_at_minimum_ok() {
+  let tx = deposit_tx(10_000_000, 10_000_000, shares + 10_000_000)
+  spend_pool(base_pool(), Deposit { tranche: 0 }, tx)
+}
+
+test last_lp_withdraws_everything() {
+  // no active cover: the only LP burns every share and takes all capital;
+  // the pool keeps exactly its own min-ada
+  let tx = Transaction {
+    ..transaction.placeholder,
+    inputs: [pool_in(capital, shares, 0)],
+    outputs: [pool_out(0, 0, 0), wallet_out(assets.from_lovelace(capital))],
+    mint: assets.from_asset(own, lp_name(0), -shares),
+  }
+  spend_pool(ada_book(shares, 0), Withdraw { tranche: 0, shares }, tx)
+}
+
+test withdraw_cannot_take_pool_min_ada() fail {
+  let tx = Transaction {
+    ..transaction.placeholder,
+    inputs: [pool_in(capital, shares, 0)],
+    outputs: [pool_out(-1, 0, 0), wallet_out(assets.from_lovelace(capital + 1))],
+    mint: assets.from_asset(own, lp_name(0), -shares),
+  }
+  spend_pool(ada_book(shares, 0), Withdraw { tranche: 0, shares }, tx)
+}
+
+test init_with_extra_ada_fails() fail {
+  // extra lovelace at init would be unowned capital the first LP captures
+  let tx = Transaction {
+    ..init_tx(True),
+    outputs: [pool_out_v(1, 0, empty_pool())],
+  }
+  cover.mint(test_params, InitPool, own, tx)
+}
+
+test init_rejects_zero_min_deposit() fail {
+  let bad = CoverParams {
+    ..test_params,
+    assets: [
+      AssetTerms { asset: ada, min_premium: 5_000_000, min_deposit: 0 },
+      AssetTerms {
+        asset: usdc,
+        min_premium: 5_000_000,
+        min_deposit: 10_000_000,
+      },
+    ],
+  }
+  cover.mint(bad, InitPool, own, init_tx(True))
+}
+
+test init_rejects_single_key_oracle() fail {
+  // the old Preview setup: one policy/key behind all three feeds
+  let bad = CoverParams {
+    ..test_params,
+    oracle: OracleConfig {
+      feeds: [
+        Feed { name: "feed-a", policy_id: pol_a, operator: op_a },
+        Feed { name: "feed-b", policy_id: pol_a, operator: op_a },
+        Feed { name: "feed-c", policy_id: pol_a, operator: op_a },
+      ],
+      quorum: 2,
+    },
+  }
+  cover.mint(bad, InitPool, own, init_tx(True))
 }
 
 // ---------------------------------------------------------------- mint guards
@@ -1807,6 +1960,6 @@ test sdk_golden_vectors() {
     cbor.serialise(pool_data) == #"d8799fd8799f9fd8799f1b000000e8d4a510001b00000045d964b800ffd8799f1b000000746a5288001b000000174876e800ffffffff",
     cbor.serialise(withdraw_data) == #"d87a9f011b000000174876e800ff",
     cbor.serialise(deposit_data) == #"d8799f01ff",
-    cbor.serialise(params_data) == #"d8799fd8799f58205eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed00ff9fd8799fd8799f4040ff1a004c4b40ffd8799fd8799f581c1f3aec8bfe7ea4fe14c5f121e2a92e301afe414147860d557cac7e34455553444378ff1a004c4b40ffffd8799f456465706567d8799f445553444d19251c1a05265c00ff18c81927100e19016d1903e8192328ffd8799f581c0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0a9f46666565642d6146666565642d6246666565642d63ff02ff1a0f731400d8799f1a05265c001a006ddd00ffff",
+    cbor.serialise(params_data) == #"d8799fd8799f58205eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed5eed00ff9fd8799fd8799f4040ff1a004c4b401a00989680ffd8799fd8799f581c1f3aec8bfe7ea4fe14c5f121e2a92e301afe414147860d557cac7e34455553444378ff1a004c4b401a00989680ffffd8799f456465706567d8799f445553444d19251c1a05265c00ff18c81927100e19016d1903e8192328ffd8799f9fd8799f46666565642d61581c0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0aac1e0a581ca1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1ffd8799f46666565642d62581c0bbc1e0bbc1e0bbc1e0bbc1e0bbc1e0bbc1e0bbc1e0bbc1e0bbc1e0b581cb2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2ffd8799f46666565642d63581c0ccc1e0ccc1e0ccc1e0ccc1e0ccc1e0ccc1e0ccc1e0ccc1e0ccc1e0c581cc3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3ffff02ff1a0f731400d8799f1a05265c001a006ddd00ff1a001e8480ff",
   }
 }
